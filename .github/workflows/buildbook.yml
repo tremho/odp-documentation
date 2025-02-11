@@ -1,0 +1,36 @@
+# This workflow makes sure we can build all the books successfully
+permissions:
+  contents: read
+on:
+  push:
+    branches: [main]
+  pull_request:
+concurrency:
+  group: ${{ github.workflow }}-${{ github.head_ref || github.run_id }}
+  cancel-in-progress: true
+name: build-book
+jobs:
+  buildbook:
+    runs-on: ubuntu-latest
+    name: ${{ matrix.target }}
+    strategy:
+      matrix:
+        target: [thumbv8m.main-none-eabihf]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Install mdbook
+        run: |
+          curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.12/mdbook-v0.4.12-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C /usr/local/bin
+
+      - name: Build all books
+        run: |
+          for book in $(find . -name book.toml -exec dirname {} \;); do
+            mdbook build $book
+          done
+
+      - name: Upload built books
+        uses: actions/upload-artifact@v4
+        with:
+          name: built-books
+          path: '**/book'
+          if-no-files-found: error
