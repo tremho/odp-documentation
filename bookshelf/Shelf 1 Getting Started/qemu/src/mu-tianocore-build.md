@@ -21,6 +21,7 @@ sudo apt-get install mono-complete
 sudo apt-get install mtools
 rustup override set nightly
 cargo install cargo-make
+cargo install cargo-binutils
 export GCC5_AARCH64_PREFIX=/usr/bin/aarch64-linux-gnu-
 stuart_setup -c Platforms/QemuSbsaPkg/PlatformBuild.py TOOL_CHAIN_TAG=GCC5
 stuart_update -c Platforms/QemuSbsaPkg/PlatformBuild.py TOOL_CHAIN_TAG=GCC5
