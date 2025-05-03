@@ -15,3 +15,5 @@ Cargo.lock
 
 # Ignore book output
 book
+
+.temp/

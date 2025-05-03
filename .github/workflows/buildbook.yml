@@ -22,7 +22,7 @@ jobs:
         run: |
           curl -sSL https://github.com/rust-lang/mdBook/releases/download/v0.4.12/mdbook-v0.4.12-x86_64-unknown-linux-gnu.tar.gz | tar -xz -C /usr/local/bin
 
-      - name: Sync and build bookshelf
+      - name: Sync and build boo kshelf
         run: |
           git clone https://github.com/DomtronVox/mdbookshelf.git
           cd mdbookshelf
