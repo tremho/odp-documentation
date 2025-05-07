@@ -17,7 +17,7 @@ differentiation.
 There are many proven standards that define and govern the development of this firmware. 
 For example, __UEFI__ (_Unified Extensible Firmware Interface_) defines a standard for boot-level firmware in a series of layers, and __DICE__ (Device Identity Composition Engine) defines a standard for cryptographic verification of firmware components for a security layer.
 
-Hardware components issue events or respond to signals transmitted over data buses such as eSPI, SMBus, or I²C. These signals 
+Hardware components issue events or respond to signals transmitted over data buses such as eSPI,UART, I2C/I3C. These signals 
 are monitored or driven by firmware, forming the basis for orchestrating and governing hardware behavior
 
 Historically, much of this firmware has been vendor-supplied and tightly coupled to specific EC or boot hardware. It's often written in C or even assembly, and may be vulnerable to memory-unsafe operations or unintended behavior introduced by seemingly harmless changes.

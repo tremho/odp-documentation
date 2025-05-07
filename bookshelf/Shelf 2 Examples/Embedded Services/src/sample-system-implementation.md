@@ -1,6 +1,7 @@
 # Sample System Implementation
-
-##  ACPI Interface Definition
+This is short sample implementing a thermal control service interface. 
+This sample assumes one thermal sensor and one thermal control device accessible via ACPI.
+For an ARM implementation, FF-A and Hafnium is assumed.  For x86/x64, an eSPI transport is assumed and direct (Non-Secure) access is made from there.
 
 ### FFA Device Definition
 
@@ -395,9 +396,18 @@ Device(EC0) {
 }
 ```
 
-![A diagram of a communication system AI-generated content may be
-incorrect.](media/image12.png)
-
+```mermaid
+sequenceDiagram
+  OSPM->>ACPI: call _BST method
+  ACPI->>ACPI: Map to EC0 fields in EC operation Region
+  ACPI->>ACPI: EC0 accesses change to eSPI Peripheral accesses
+  ACPI->>eSPI: Each field acccess changed to peripheral read/write
+  ACPI->>ACPI: ACI handles SCI, port IO, MMIO, serialized
+  ACPI->>ACPI: eSPI read/writes complete
+  ACPI->>ACPI: Data is reorganized to _BST structure
+  ACPI->>OSPM: Return _BST structure with status
+```  
+  
 #### Non-Secure eSPI Notifications
 
 All interrupts are handled by the ACPI driver. When EC needs to send a
@@ -414,8 +424,14 @@ Method (_Q07) {
 }
 ```
 
-![A diagram of a non-secure notification AI-generated content may be
-incorrect.](media/image13.png)
+```mermaid
+sequenceDiagram
+  EC->>SCI ISR: EC asserts alert (IRQ)
+  SCI ISR->>SCI DPC: Schedule DPC if EC_SC indicates SCI
+  SCI DPC->>EC: Read EC_DATA to determine event
+  EC->>SCI DPC: Send Qxx event
+  SCI DPC->>ACPI: Call _Qxx function in EC0
+ ``` 
 
 ### Secure eSPI Access
 
@@ -452,8 +468,22 @@ Method (_BST) {
 }
 ```
 
-![A diagram of a communication system AI-generated content may be
-incorrect.](media/image14.png)
+```mermaid
+sequenceDiagram
+ OSPM->>ACPI: call_BST method
+ ACPI->>FFA: Send EC_BAT_GET_BST_request
+ FFA->>EC Service: Forward EC_BAT_GET_BST_request
+ EC Service->>EC Service: Convert to eSPI peripheral read/write
+ EC Service->>eSPI: send peripheral read/write access
+ EC Service->>FFA: FFA_YIELD (as needed)
+ FFA->>EC Service: FFA_RESUME (check for complete)
+ eSPI->>EC Service: Return peripheral read data
+ EC Service->>EC Service: Convert to EC_BAT_GET_BST response
+ EC Service->>FFA: FFA response to original request
+ FFA->>ACPI: return FFA status and _BST response
+ ACPI->OSPM: return _BST structure
+
+```
 
 #### Secure eSPI Notification
 
@@ -477,5 +507,20 @@ Method(_NFY, 2, Serialized) {
 }
 ```
 
-![A diagram of a event AI-generated content may be
-incorrect.](media/image15.png)
+```mermaid
+sequenceDiagram
+   EC->>eSPI: EC asserts Alert (FIQ)
+   eSPI->>EC: Read EC_SC to check for SCI
+   eSPI->>EC: Read EC_DATA for SCI event
+   EC->>eSPI: SCI Qxx event
+   
+   eSPI->>EC Service: Notification callback Qxx
+   EC Service->>EC Service: Convert qxx to Virtual ID
+   EC Service->>EC Nfy Service: Notify Virtual ID
+   EC Nfy Service->>FFA:Send Physical ID
+   FFA->>ACPI:Call_NFY with Virtual ID
+   ACPI->>ACPI: Read SMEM notify details
+   ACPI--)EC Service: Clear event (optional)
+
+   
+```    

@@ -29,6 +29,7 @@ ODP features a subproject body of code that represents the elements one might tr
 [UEFI-SDK Repository](https://github.com/OpenDevicePartnership/uefi-sdk)
 
 [Documentation](https://github.com/OpenDevicePartnership/uefi-sdk/releases/doc/boot_services/index.html)
+
 _(internal note to reviewers: link above is empty - TODO: Replace with link to a github release with an actual cargo doc rendering when ready)_
 
 This SDK-like material covers

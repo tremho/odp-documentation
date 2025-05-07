@@ -4,7 +4,6 @@
     - [Tracks](./concepts/ODP_implementation_tracks.md)
     - [Patina](./concepts/Pantina.md)
     - [Embedded Controller (SOC)](./concepts/Embedded_controller.md)
-    - [ACPI EC Interface](./concepts/legacy_ec_interface.md)
     - [EC_Services](./concepts/EC_Services.md)
 - [Tutorials](./Tutorials.md)
     - [Discovery](./tutorial/Discovery.md)

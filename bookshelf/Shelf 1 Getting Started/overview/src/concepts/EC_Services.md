@@ -11,11 +11,39 @@ These service interfaces include those for:
 - power services
 - time services
 
-Implementations of ODP may be architected for both Secure and Non-Secure system firmware designs.
-A non-secure design is based upon ACPI and an architecture that may allow cross-contamination of concerns between the implementation of component tasks through the services that expose them.
-A Secure firmware design insures that individual tasks are not permitted to exceed the scope of thier own domain.  While certain aspects of this come from the advantages of the Rust implementation, in a "secure" implementation, access is governed by a hypervisor environment (hafnium) at the service level itself.
+Services may be available for operating systems other than Windows.
+
+OEMs may wish to implement their own services as part of their product differentiation.
+
+### EC Service communication protocols
+With a communication channel protocol established between OS and EC, operating system agents and applications are able to monitor and operate peripheral controllers from application space.
+
+This scope comes with some obvious security ramifications that must be recognized.
+
+Implementations of ODP may be architected for both Secure and Non-Secure system firmware designs, as previously discussed.
 
 ![Secure Architecture](./images/image1.png)
 
-More can be learned about embedded controllers and embedded controller services for ODP by visiting the repository at [TODO](todo)
+In the diagram above, the dark blue sections are those elements that are part of normal (non-secure) memory space and may be called
+from a service interface directly.  As we can see on the Non-Secure side, the ACPI transport channel has access to the EC component implementations either directly or through the FF-A (Firmware Framework Memory Management Protocol).
+
+### FF-A
+The Firmware Framework Memory Management Protocol [(Spec)](https://developer.arm.com/documentation/den0140/latest/)
+describes the relationship of a hypervisor controlling a set of secure memory partitiions with configurable access and ownership attributes and the protocol for exchanging information between these virtualized contexts.
+
+FF-A is available for Arm devices only.  A common solution for x64 is still in development. For x64 implementations, use of SMM is employed to orchestrate hypervisor access using the [Hafnium] Rust product.
+
+In a Non-Secure implementation _without_ a hyperviser, the ACPI connected components can potentially change the state within any accessible memory space.  An implementation with a hypervisor cannot.  It may still be considered a "Non-Secure" implementation, however, as the ACPI data itself is unable to be verified for trust.
+
+In a fully "Secure" implementation, controller code is validated at boot time to insure the trust of the data it provides. Additionally, for certain types of data, digital signing and/or encryption may be used on the data exchanged to provide an additional level of trust.
+
+
+### Sample implementation links
+
+(Shelf 2)
+
+[Secure EC Services](../../../Shelf 2 Examples/Embedded Services/book/secure-ec-services-overview.html)
+
+[Legacy EC Services](../../../Shelf 2 Examples/Embedded Services/book/legacy-ec-interface.html)
+
 
