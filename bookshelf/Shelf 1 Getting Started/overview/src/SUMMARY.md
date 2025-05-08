@@ -1,4 +1,5 @@
 - [Welcome!](./Welcome.md)
+    - [A quick look at Rust](./A%20quick%20look%20at%20Rust.md)
 - [Concepts](./Concepts.md)
     - [Bookshelves](./concepts/Bookshelves.md)
     - [Tracks](./concepts/ODP_implementation_tracks.md)

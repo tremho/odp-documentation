@@ -19,10 +19,8 @@ But let’s face it: while it's *certainly possible* to write memory-safe and se
 
 As new standards—and potentially even government regulations—begin to push for memory-safe languages in critical systems, the Open Device Partnership aims to be ahead of the curve by bringing that future into the present.
 
-If you are looking for a place to get started with Rust, the vernerable "Rust Book" is probably your best bet: 
-[The Rust Programming Language](https://doc.rust-lang.org/stable/book/)
-
-Start by reviewing the [Concepts](./Concepts.md) section, which explains how the various pieces fit together.
+Let's start by familiarizing ourselves with Rust (if you are not already),
+then we will get a high-level understanding of ODP Concepts in the [Concepts](./Concepts.md) section, which explains how the various pieces fit together.
 
 One you've familiarized yourself with the fundamentals of Rust and the concepts and scope of ODP, you are ready to [Build Your own modern Laptop](tbd).
  
