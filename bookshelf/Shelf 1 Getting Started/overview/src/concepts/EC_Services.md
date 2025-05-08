@@ -29,7 +29,7 @@ from a service interface directly.  As we can see on the Non-Secure side, the AC
 
 ### FF-A
 The Firmware Framework Memory Management Protocol [(Spec)](https://developer.arm.com/documentation/den0140/latest/)
-describes the relationship of a hypervisor controlling a set of secure memory partitiions with configurable access and ownership attributes and the protocol for exchanging information between these virtualized contexts.
+describes the relationship of a hypervisor controlling a set of secure memory partitions with configurable access and ownership attributes and the protocol for exchanging information between these virtualized contexts.
 
 FF-A is available for Arm devices only.  A common solution for x64 is still in development. For x64 implementations, use of SMM is employed to orchestrate hypervisor access using the [Hafnium] Rust product.
 

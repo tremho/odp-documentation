@@ -22,7 +22,7 @@ For A deeper dive into what SMM is, see [How SMM isolation hardens the platform]
 Another term seen about will be "SMC", or "Secure Memory Control", which is a technology often found in ARM-based architectures. In this scheme, memory is divided into secure and non-secure areas that are mutally exclusive of each other,  as well as a narrow section known as "Non-Secure Callable" which is able to call into the "Secure" area from the "Non-Secure" side. 
 
 Secure Memory Control concepts are discussed in detail with this document: 
-[TrustZone Technoogy for Armv8-M Architecture](https://developer.arm.com/documentation/100690/0201)
+[TrustZone Technology for Armv8-M Architecture](https://developer.arm.com/documentation/100690/0201)
 
 SMM or SMC adoption has design ramifications for EC Services exchanges, but also affects the decisions made around boot firmware, and we'll see these terms again when we look at ODP Patina implementations.
 
