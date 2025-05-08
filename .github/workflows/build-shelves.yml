@@ -1,0 +1,120 @@
+name: Generate and Publish Docs
+
+on:
+  push:
+    tags:
+      - 'v*'
+  workflow_dispatch:
+
+permissions:
+  contents: write
+  
+jobs:
+  build-docs:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v3
+
+      - name: Set up Rust
+        uses: actions-rs/toolchain@v1
+        with:
+          toolchain: stable
+          override: true
+
+      - name: Install mdBook
+        run: cargo install mdbook --version 0.4.36
+
+      - name: Build cargo docs
+        run: cargo doc --no-deps --release
+
+      - name: Build Shelf 1
+        run: |
+          cd bookshelf
+          cd ".\Shelf 1 Getting Started\"
+          cd overview
+          mdbook build
+          cd ..\uefi 
+          mdbook build
+
+        - name: Build Shelf 2
+        run: |
+          cd "..\..\Shelf 2 Examples\"
+          cd qemu
+          mdbook build
+          cd "..\Embedded Services\"
+          mdbook build
+          cd "..\How To Build a Modern Laptop\"
+          mdbook build
+
+        - name: Build Shelf 4
+          run: |
+          cd "..\..\Shelf 4 Specifications\"
+          cd "EC Interface"
+          mdbook build
+
+      - name: Prepare site directory
+        run: |
+          mkdir -p site
+          cp -r bookshelf/Shelf\ 1\ Getting\ Started/overview/book site/overview 
+          cp -r bookshelf/Shelf\ 1\ Getting\ Started/uefi/book site/uefi
+          cp -r bookshelf/Shelf\ 2\ Examples/qemu/book site/qemu
+          cp -r bookshelf/Shelf\ 2\ Examples/Embedded\ Services/book site/embedded_services 
+          cp -r bookshelf/Shelf\ 2\ Examples/How\ To\ Build\ a\ Modern\ Laptop/book site/how_to_build_a_modern_laptop    
+          cp -r bookshelf/Shelf\ 4\ Specifications/EC\ Interface/book site/ec_interface      
+          cp index.html site/index.html
+
+      - name: Upload site as artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: site
+          path: site
+
+      - name: Create zip archives for release
+        run: |
+          mkdir dist
+          zip -r dist/bookshelves.zip book
+
+      - name: Set release tag env var
+        run: echo "TAG_NAME=${GITHUB_REF##*/}" >> $GITHUB_ENV
+  
+      - name: Install GitHub CLI
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y gh
+  
+      - name: Create GitHub Release if not exists
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          if ! gh release view "$TAG_NAME" --repo "$GITHUB_REPOSITORY" &>/dev/null; then
+            gh release create "$TAG_NAME" --repo "$GITHUB_REPOSITORY" \
+              -t "$TAG_NAME" -n "Documentation release for $TAG_NAME"
+          fi
+
+      - name: Upload zip files to GitHub Release using gh CLI
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+         gh release upload "$TAG_NAME" dist/*.zip --clobber --repo "$GITHUB_REPOSITORY"
+    
+  deploy-pages:
+    needs: build-docs
+    runs-on: ubuntu-latest
+    steps:
+      - name: Download site artifact
+        uses: actions/download-artifact@v4
+        with:
+          name: site
+          path: site
+
+      - name: Debug site folder contents
+        run: |
+          echo "Contents of site:"
+          find site
+
+      - name: Publish to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./site
