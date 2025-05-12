@@ -27,5 +27,3 @@
 [EC Manufacturing Service](ec-manufacturing-service.md)
 
 [EC OEM Service](ec-oem-service.md)
-
-[Sample System Implementation](sample-system-implementation.md)

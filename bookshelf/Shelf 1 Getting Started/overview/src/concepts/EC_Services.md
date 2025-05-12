@@ -40,10 +40,7 @@ In a fully "Secure" implementation, controller code is validated at boot time to
 
 ### Sample implementation links
 
-(Shelf 2)
-
-[Secure EC Services](../../../Shelf 2 Examples/Embedded Services/book/secure-ec-services-overview.html)
-
-[Legacy EC Services](../../../Shelf 2 Examples/Embedded Services/book/legacy-ec-interface.html)
-
+See 
+<a href="../../../2/embedded_services/index.html" target="_blank">Sample System Implementation ⧉</a>
+from "Shelf 2"
 

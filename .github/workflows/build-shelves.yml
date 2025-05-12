@@ -37,7 +37,7 @@ jobs:
           cd ..\uefi 
           mdbook build
 
-        - name: Build Shelf 2
+      - name: Build Shelf 2
         run: |
           cd "..\..\Shelf 2 Examples\"
           cd qemu
@@ -47,8 +47,8 @@ jobs:
           cd "..\How To Build a Modern Laptop\"
           mdbook build
 
-        - name: Build Shelf 4
-          run: |
+      - name: Build Shelf 4
+        run: |
           cd "..\..\Shelf 4 Specifications\"
           cd "EC Interface"
           mdbook build

@@ -15,7 +15,7 @@ leveraging the advantages of the basic ones.  Most of these have to do with the 
 
 There are several parts to the rust toolchain that you should be aware of to start. 
 
-### cargo
+### cargo 
 Cargo is an all-around utility player for the rust environment.  It is many things:
 - a build manager
 - a package manager
@@ -222,7 +222,7 @@ fn get_three()-> i32 {​
 - The function starts with `fn`.  
 - Rust style conventions prefer "snake case" (underscore separated lowercase words) style for the function name.
 - Functions take parameters which are listed within parenthesis following the function name.
-- Functions that return a type denote their return type with -> <type> after the parameter list.
+- Functions that return a type denote their return type with -> `<type>` after the parameter list.
 - The function body is within { } brackets.
 - The result of the last expression executed becomes the return value if no 'return' keyword is encountered.
 - The return type () is called the unit type — it’s like void in C/C++, representing ‘no meaningful value’.
@@ -290,13 +290,13 @@ One can imagine "Message" being used to direct some operation to do one of the f
 
 ##### Option
 Option is a way to handle Null values in a way a little different from some other languages.  An Option is basically a way to say that something has a value or it has no value (Some or None). Option is an enum that is part of the standard Rust library.
-Since Option<T> is not the same type as T, the compiler will not allow an evaluation of a possible Null value.
+Since `Option<T>` is not the same type as `T`, the compiler will not allow an evaluation of a possible Null value.
 You can also use the `is_some()` and `is_none()` functions of an option to determine if it has a value.
 
 ##### Result
 Where Option is the state of "Some or None" Result is the state of "Ok or Err".  
 
-Option<T> is used when a value may or may not be present. Result<T, E> is used when a function may succeed (Ok) or fail (Err). Both are enums and must be handled explicitly.
+`Option<T>` is used when a value may or may not be present. `Result<T, E>` is used when a function may succeed (Ok) or fail (Err). Both are enums and must be handled explicitly.
 
 Any operation or function that is executed
 may potentially fail, and Rust does not employ any sort of try/catch or "on_error" redirections found in other languages.
@@ -326,7 +326,7 @@ fn main() {
 The error case never occurs, but if it did, it would probably be inadvisable to simply call panic! as a result. Of course, sometimes
 there are no good choices, but especially in firmware driver code, casually throwing panic! exceptions is not a good idea.
 
-On that note, you will encounter a lot of sample code from the web and elsewhere that simply advice calling `.unwrap()` on an option or a result. While often used in examples or quick scripts, relying on .unwrap() in production firmware is discouraged. Define errors explicitly and handle them deliberately.
+On that note, you will encounter a lot of sample code from the web and elsewhere that simply advise calling `.unwrap()` on an option or a result. While often used in examples or quick scripts, relying on .unwrap() in production firmware is discouraged. Define errors explicitly and handle them deliberately.
 
 
 #### Functions and methods for user defined types
@@ -356,6 +356,7 @@ impl Student {​
 - "new" function
 - Default trait
 
+```
 impl Default for Student {​
     fn default() -> Self {​
         Student {​
