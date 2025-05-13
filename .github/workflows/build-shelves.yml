@@ -25,9 +25,6 @@ jobs:
       - name: Install mdBook
         run: cargo install mdbook --version 0.4.36
 
-      - name: Build cargo docs
-        run: cargo doc --no-deps --release
-
       - name: Build Shelf 1
         run: |
           cd bookshelf
