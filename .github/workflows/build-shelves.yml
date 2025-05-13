@@ -62,7 +62,7 @@ jobs:
           cp -r bookshelf/Shelf\ 2\ Examples/Embedded\ Services/book site/embedded_services 
           cp -r bookshelf/Shelf\ 2\ Examples/How\ To\ Build\ a\ Modern\ Laptop/book site/how_to_build_a_modern_laptop    
           cp -r bookshelf/Shelf\ 4\ Specifications/EC\ Interface/book site/ec_interface      
-          cp index.html site/index.html
+          cp library.html site/library.html
 
       - name: Upload site as artifact
         uses: actions/upload-artifact@v4
