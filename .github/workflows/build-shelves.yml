@@ -40,6 +40,7 @@ jobs:
       - name: Build Shelf 2
         run: |
           pwd
+          ls
           cd ..
           pwd
           ls 
