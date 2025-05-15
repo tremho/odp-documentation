@@ -16,4 +16,5 @@ Cargo.lock
 # Ignore book output
 book
 
-.temp/
+# local output from ./temp/build.bat
+.temp/site
