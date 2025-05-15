@@ -39,7 +39,11 @@ jobs:
 
       - name: Build Shelf 2
         run: |
-          cd ../../Shelf\ 2\ Examples/
+          pwd
+          cd ..
+          pwd
+          cd "Shelf 2 Examples"
+          pwd
           cd qemu
           mdbook build
           cd ../Embedded\ Services/
