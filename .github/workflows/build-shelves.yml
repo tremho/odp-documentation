@@ -41,7 +41,7 @@ jobs:
         run: |
           pwd
           ls
-          cd ..
+          cd bookshelf
           pwd
           ls 
           cd "Shelf 2 Examples"
