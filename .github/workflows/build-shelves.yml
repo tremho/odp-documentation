@@ -31,7 +31,7 @@ jobs:
       - name: Build Shelf 1
         run: |
           cd bookshelf
-          cd ".\Shelf 1 Getting Started\"
+          cd ./Shelf\ 1\ Getting\ Started/
           cd overview
           mdbook build
           cd ..\uefi 
@@ -39,18 +39,18 @@ jobs:
 
       - name: Build Shelf 2
         run: |
-          cd "..\..\Shelf 2 Examples\"
+          cd ../../Shelf\ 2\ Examples/
           cd qemu
           mdbook build
-          cd "..\Embedded Services\"
+          cd ../Embedded\ Services/
           mdbook build
-          cd "..\How To Build a Modern Laptop\"
+          cd ../How\ To\ Build\ a\ Modern\ Laptop/
           mdbook build
 
       - name: Build Shelf 4
         run: |
-          cd "..\..\Shelf 4 Specifications\"
-          cd "EC Interface"
+          cd ../../Shelf\ 4\ Specifications/
+          cd EC\ Interface
           mdbook build
 
       - name: Prepare site directory
