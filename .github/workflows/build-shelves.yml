@@ -34,7 +34,7 @@ jobs:
           cd ./Shelf\ 1\ Getting\ Started/
           cd overview
           mdbook build
-          cd ..\uefi 
+          cd ../uefi 
           mdbook build
 
       - name: Build Shelf 2
