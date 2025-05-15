@@ -42,6 +42,7 @@ jobs:
           pwd
           cd ..
           pwd
+          ls 
           cd "Shelf 2 Examples"
           pwd
           cd qemu
