@@ -25,7 +25,7 @@ jobs:
       - name: Install mdBook
         run: cargo install mdbook
 
-      - name: Install mer
+      - name: Install mermaid
         run: cargo install mdbook-mermaid
 
       - name: Build Shelf 1
@@ -39,13 +39,8 @@ jobs:
 
       - name: Build Shelf 2
         run: |
-          pwd
-          ls
           cd bookshelf
-          pwd
-          ls 
           cd "Shelf 2 Examples"
-          pwd
           cd qemu
           mdbook build
           cd ../Embedded\ Services/
@@ -53,10 +48,17 @@ jobs:
           cd ../How\ To\ Build\ a\ Modern\ Laptop
           mdbook build
 
+      - name: Build Shelf 3
+        run: |
+          cd bookshelf
+          cd "Shelf 3 Support"
+          mdbook build
+
       - name: Build Shelf 4
         run: |
-          cd ../../Shelf\ 4\ Specifications
-          cd EC\ Interface
+          cd bookshelf          
+          cd "Shelf 4 Specifications"
+          cd "EC Interface"
           mdbook build
 
       - name: Prepare site directory
@@ -67,6 +69,7 @@ jobs:
           cp -r bookshelf/Shelf\ 2\ Examples/qemu/book site/qemu
           cp -r bookshelf/Shelf\ 2\ Examples/Embedded\ Services/book site/embedded_services 
           cp -r bookshelf/Shelf\ 2\ Examples/How\ To\ Build\ a\ Modern\ Laptop/book site/how_to_build_a_modern_laptop    
+          cp -r bookshelf/Shelf\ 3\ Support/book site/support
           cp -r bookshelf/Shelf\ 4\ Specifications/EC\ Interface/book site/ec_interface      
           cp library.html site/library.html
 
