@@ -44,12 +44,12 @@ jobs:
           mdbook build
           cd ../Embedded\ Services/
           mdbook build
-          cd ../How\ To\ Build\ a\ Modern\ Laptop/
+          cd ../How\ To\ Build\ a\ Modern\ Laptop
           mdbook build
 
       - name: Build Shelf 4
         run: |
-          cd ../../Shelf\ 4\ Specifications/
+          cd ../../Shelf\ 4\ Specifications
           cd EC\ Interface
           mdbook build
 
