@@ -1,7 +1,7 @@
 # Patina
 ## (Boot Firmware)
 
-___Patina___ is the codename for ODP's Rust-based SDK and framework for UEFI-compliant boot firmware development.
+___Patina___ is the name given to UEFI-compliant boot firmware developed using ODP patterns.
 
 It is based upon the venerable __UEFI__ standard and doesn't seek to reinvent the process of this well-known
 framework, as it necessarily re-implements these familiar patterns in Rust instead of C.

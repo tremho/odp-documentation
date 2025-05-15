@@ -3,7 +3,7 @@
 - [Concepts](./Concepts.md)
     - [Bookshelves](./concepts/Bookshelves.md)
     - [Tracks](./concepts/ODP_implementation_tracks.md)
-    - [Patina](./concepts/Pantina.md)
+    - [Patina](./concepts/Patina.md)
     - [Embedded Controller (SOC)](./concepts/Embedded_controller.md)
     - [EC_Services](./concepts/EC_Services.md)
 - [Tutorials](./Tutorials.md)
