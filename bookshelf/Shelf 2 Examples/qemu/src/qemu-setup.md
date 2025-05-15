@@ -16,7 +16,7 @@ This also depends on rustup being installed
 Note this uses Version 9.0.0 tip QEMU and other versions have varying issues. Building the emulator takes some time depending on your computer.
 
 ```
-sudo apt-get install git libglib2.0-dev libfdt-dev libpixman-1-dev zlib1g-dev ninja-build qemu-utils libudev-dev ncurseslib-dev
+sudo apt-get install git libglib2.0-dev libfdt-dev libpixman-1-dev zlib1g-dev ninja-build qemu-utils libudev-dev libncurses-dev
 wget https://download.qemu.org/qemu-9.0.0.tar.xz
 tar xf qemu-9.0.0.tar.xz
 cd qemu-9.0.0
