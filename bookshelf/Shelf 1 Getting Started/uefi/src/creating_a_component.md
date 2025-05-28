@@ -36,7 +36,7 @@ To understand the `Config` parameter structure and the dependency injection and 
 
 The file `bin/q35_dxe_core.rs` is the main binding and execution point for the manifest of components that will make up the image.
 
-If we look at this file we will see a Core:default() function is called with a number of `with_config()` and `with_component()` calls, along with a few others, chained together. This sets up the components that will be included.
+If we look at this file we will see a `Core:default()` function is called with a number of `with_config()` and `with_component()` calls, along with a few others, chained together. This sets up the components that will be included.
 The chain concludes with `.start().unwrap()`.  We can add our component just prior to this, by inserting the lines
 ```
 .with_component(test_component::run_test_component)
