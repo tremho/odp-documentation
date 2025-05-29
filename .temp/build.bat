@@ -10,6 +10,8 @@ cd qemu
 mdbook build
 cd "..\Embedded Services\"
 mdbook build
+cd "..\Battery\"
+mdbook build
 cd "..\How To Build a Modern Laptop\"
 mdbook build
 
@@ -37,6 +39,7 @@ xcopy "uefi\book\*" "..\..\.temp\site\1\uefi" /E /I /Y
 cd "../Shelf 2 Examples"
 xcopy "qemu\book\*" "..\..\.temp\site\2\qemu" /E /I /Y
 xcopy "Embedded Services\book\*" "..\..\.temp\site\2\embedded_services" /E /I /Y
+xcopy "Battery\book\*" "..\..\.temp\site\2\battery" /E /I /Y
 xcopy "How To Build a Modern Laptop\book\*" "..\..\.temp\site\2\how_to_build_a_modern_laptop" /E /I /Y
 cd "..\Shelf 3 Support"
 xcopy "book\*" "..\..\.temp\site\3\support" /E /I /Y

@@ -47,6 +47,8 @@ jobs:
           mdbook build
           cd ../How\ To\ Build\ a\ Modern\ Laptop
           mdbook build
+          cd ../Battery
+          mdbook build
 
       - name: Build Shelf 3
         run: |
@@ -68,6 +70,7 @@ jobs:
           cp -r bookshelf/Shelf\ 1\ Getting\ Started/uefi/book site/uefi
           cp -r bookshelf/Shelf\ 2\ Examples/qemu/book site/qemu
           cp -r bookshelf/Shelf\ 2\ Examples/Embedded\ Services/book site/embedded_services 
+          cp -r bookshelf/Shelf\ 2\ Examples/Battery/book site/battery 
           cp -r bookshelf/Shelf\ 2\ Examples/How\ To\ Build\ a\ Modern\ Laptop/book site/how_to_build_a_modern_laptop    
           cp -r bookshelf/Shelf\ 3\ Support/book site/support
           cp -r bookshelf/Shelf\ 4\ Specifications/EC\ Interface/book site/ec_interface      
