@@ -44,7 +44,7 @@ As explored in [...](...), some of this information is exposed through direct ha
 
 Batteries typically report their state over a bus when queried and may also broadcast alarms when thresholds are breached.
 
-The SBS specification outlines 21 functions that a smart battery should implement. These define a consistent set of data points and behaviors that other power management components can rely on:
+The SBS specification outlines these functions that a smart battery should implement. These define a consistent set of data points and behaviors that other power management components can rely on:
 
 - `ManufacturerAccess` – Optional, manufacturer-specific 16-bit value.
 - `RemainingCapacityAlarm` – Battery capacity threshold at which an alert should be raised.
@@ -67,6 +67,18 @@ The SBS specification outlines 21 functions that a smart battery should implemen
 - `AverageTimeToEmpty` – One-minute average of minutes to empty.
 - `AverageTimeToFull` – One-minute average of minutes to full charge.
 - `BatteryStatus` – Flags indicating current state conditions.
+-  `CycleCount` - Number of cycles (a measure of wear). A cycle is the amount of discharge approximately equal to the value of the DesignCapacity.
+- `DesignCapacity` - The theoretical capacity of a new battery pack.
+- `DesignVoltage` - The theoritical voltage of a new battery pack.
+- `SpecificationInfo` - Version and scaling specification info
+- `ManufactureDate` - The data of manufacture as a bit-packed integer
+- `SerialNumber` - the manufacturer assigned serial number of this battery pack.
+- `ManufacturerName` - Name of the manufacturer
+- `DeviceName` - Name of battery model.
+- `DeviceChemistry` - String defining the battery chemical type
+- `ManufacturerData` - (optional) proprietary manufacturer data.
+
+Please refer to the actual specification for details.  For example, functions referring to capacity may report in either current (mAh) or wattage (Wh) depending upon the current state of the CAPACITY_MODE flag (found in BatteryMode).
 
 Some systems may support removable batteries, and such conditions must be accounted for in those designs.
 
@@ -80,4 +92,6 @@ This allows us to begin development without sourcing specific hardware while sti
 
 Once complete, this mock can be replaced with hardware-specific IO bindings, without requiring changes to the higher-level system logic.
 
-_(WIP – TODO – TO BE CONTINUED)_
+Next we will look at what resources in the ODP repositories we will be working with as we build our battery implementation.
+
+<!--[Return to Library](../../Library.html) -->
