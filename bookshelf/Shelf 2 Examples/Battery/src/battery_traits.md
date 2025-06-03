@@ -246,5 +246,11 @@ cargo build
 ```
 at the project root.  This should build without error.
 
-<!-- Now what...? -->
+## Now to expose this to the service
+
+We have defined the battery traits and given our simulated placeholder values for our mock battery here.
+If we were implementing a real battery, the process would follow the same pattern except that instead of the literal values we've assigned, we would
+call upon our Hardware Abstraction Layer (HAL) implementation modules to pull these values from the actual hardware circuitry, per manufacturer design (i.e. GPIO or MMIO).
+But before any of this is useful, it needs to be exposed to the service layer.  In the next step, we'll do a simple test that shows we can expose these values, and then we'll implement the service layer that conveys these up the chain in response to service messages.
+
 
