@@ -65,15 +65,18 @@ jobs:
 
       - name: Prepare site directory
         run: |
-          mkdir -p site
-          cp -r bookshelf/Shelf\ 1\ Getting\ Started/overview/book site/overview 
-          cp -r bookshelf/Shelf\ 1\ Getting\ Started/uefi/book site/uefi
-          cp -r bookshelf/Shelf\ 2\ Examples/qemu/book site/qemu
-          cp -r bookshelf/Shelf\ 2\ Examples/Embedded\ Services/book site/embedded_services 
-          cp -r bookshelf/Shelf\ 2\ Examples/Battery/book site/battery 
-          cp -r bookshelf/Shelf\ 2\ Examples/How\ To\ Build\ a\ Modern\ Laptop/book site/how_to_build_a_modern_laptop    
-          cp -r bookshelf/Shelf\ 3\ Support/book site/support
-          cp -r bookshelf/Shelf\ 4\ Specifications/EC\ Interface/book site/ec_interface      
+          mkdir -p site/1
+          mkdir -p site/2
+          mkdir -p site/3
+          mkdir -p site/4
+          cp -r bookshelf/Shelf\ 1\ Getting\ Started/overview/book site/1/overview 
+          cp -r bookshelf/Shelf\ 1\ Getting\ Started/uefi/book site/1/uefi
+          cp -r bookshelf/Shelf\ 2\ Examples/qemu/book site/2/qemu
+          cp -r bookshelf/Shelf\ 2\ Examples/Embedded\ Services/book site/2/embedded_services 
+          cp -r bookshelf/Shelf\ 2\ Examples/Battery/book site/2/battery 
+          cp -r bookshelf/Shelf\ 2\ Examples/How\ To\ Build\ a\ Modern\ Laptop/book site/2/how_to_build_a_modern_laptop    
+          cp -r bookshelf/Shelf\ 3\ Support/book site/3/support
+          cp -r bookshelf/Shelf\ 4\ Specifications/EC\ Interface/book site/4/ec_interface      
           cp library.html site/library.html
 
       - name: Upload site as artifact
