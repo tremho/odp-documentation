@@ -1,0 +1,536 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>Battery Service - Battery and Power Management</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="favicon.svg">
+        <link rel="shortcut icon" href="favicon.png">
+        <link rel="stylesheet" href="css/variables.css">
+        <link rel="stylesheet" href="css/general.css">
+        <link rel="stylesheet" href="css/chrome.css">
+        <link rel="stylesheet" href="css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">Battery and Power Management</h1>
+
+                    <div class="right-buttons">
+                        <a href="print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="battery-service"><a class="header" href="#battery-service">Battery Service</a></h1>
+<p>We've successfully exposed and proven our implementation of battery traits and their values for our mock battery.
+In this step, we'll continue our integration by connecting to a battery service.</p>
+<h2 id="battery-service-1"><a class="header" href="#battery-service-1">Battery-service</a></h2>
+<p>The ODP repository embedded-services has the battery-service we need for this, as well as the power-policy infracture support that uses it.</p>
+<p>We will bring that into our scope now.</p>
+<p>In the <code>battery_project</code> directory, where you previously cloned <code>embedded-batteries</code>, now clone <code>embedded-services</code> in much the same way with the command</p>
+<pre><code>git clone git@github.com:OpenDevicePartnership/embedded-services.git
+</code></pre>
+<p>and then build it</p>
+<pre><code>cd embedded-services
+cargo build
+</code></pre>
+<h3 id="a-mock-battery-device"><a class="header" href="#a-mock-battery-device">A Mock Battery Device</a></h3>
+<p>To fit the design of the ODP battery service, we first need to create a wrapper that contains our MockBattery and a Device Trait.  We need to implement <code>DeviceContainer</code> for this wrapper and reference that <code>Device</code>.
+Then we will register the wrapper with <code>register_device(...)</code> and we will have an async loop that awaits commands on the <code>Device</code>'s <code>channel</code>, executes them, and updates state.</p>
+<h4 id="import-the-battery-service-from-the-odp-crate"><a class="header" href="#import-the-battery-service-from-the-odp-crate">Import the battery-service from the ODP crate</a></h4>
+<p>We built the crate in the previous step. We now need to remember to update our Cargo.toml to know where to find it.
+Open the <code>Cargo.toml</code> file of your mock-battery project and add this battery-service path
+so that your <code>[dependencies]</code> section now looks like this:</p>
+<pre><code>[dependencies]
+embedded-batteries = { path = "../embedded-batteries/embedded-batteries" }
+battery-service = { path = "../embedded-services/battery-service" }
+</code></pre>
+<p>This will allow us to import what we need for the next steps.</p>
+<h3 id="define-the-mockbatterydevice-wrapper"><a class="header" href="#define-the-mockbatterydevice-wrapper">Define the MockBatteryDevice wrapper</a></h3>
+<p>In your mock_battery project <code>src</code> folder, create a new file named <code>mock_battery_device.rs</code> and give it this content:</p>
+<pre><code>use crate::mock_battery::MockBattery;
+use embedded_services::power::policy::DeviceId;
+use embedded_services::power::policy::action::device::AnyState;
+use embedded_services::power::policy::device::{
+    Device, DeviceContainer, CommandData, ResponseData//, State
+};
+// use embedded_services::intrusive_list::Node;
+
+
+pub struct MockBatteryDevice {
+    #[allow(dead_code)] // Prevent unused warning for MockBattery -- not used yet   
+    battery: MockBattery,
+    device: Device,
+}
+
+impl MockBatteryDevice {
+    pub fn new(id: DeviceId) -&gt; Self {
+    Self {
+            battery: MockBattery,
+            device: Device::new(id)
+        }
+    }
+
+    pub fn device(&amp;self) -&gt; &amp;Device {
+        &amp;self.device
+    }
+
+    pub async fn run(&amp;self) {
+        loop {
+            let cmd = self.device.receive().await;
+
+            // Access command using the correct method
+            let request = &amp;cmd.command; 
+
+            match request {
+                CommandData::ConnectConsumer(cap) =&gt; {
+                    println!("Received ConnectConsumer for {}mA @ {}mV", cap.current_ma, cap.voltage_mv);
+
+                    // Safe placeholder: detach any existing state
+                    match self.device.device_action().await {
+                        AnyState::ConnectedProvider(dev) =&gt; {
+                            if let Err(e) = dev.detach().await {
+                                println!("Detach failed: {:?}", e);
+                            }
+                        }
+                        AnyState::ConnectedConsumer(dev) =&gt; {
+                            if let Err(e) = dev.detach().await {
+                                println!("Detach failed: {:?}", e);
+                            }
+                        }
+                        _ =&gt; (),
+                    }
+
+                    cmd.respond(Ok(ResponseData::Complete));
+                }
+
+                CommandData::ConnectProvider(cap) =&gt; {
+                    println!("Received ConnectProvider for {}mA @ {}mV", cap.current_ma, cap.voltage_mv);
+
+                    match self.device.device_action().await {
+                        AnyState::ConnectedProvider(dev) =&gt; {
+                            if let Err(e) = dev.detach().await {
+                                println!("Detach failed: {:?}", e);
+                            }
+                        }
+                        AnyState::ConnectedConsumer(dev) =&gt; {
+                            if let Err(e) = dev.detach().await {
+                                println!("Detach failed: {:?}", e);
+                            }
+                        }
+                        _ =&gt; (),
+                    }
+
+                    cmd.respond(Ok(ResponseData::Complete));
+                }
+
+                CommandData::Disconnect =&gt; {
+                    println!("Received Disconnect");
+
+                    match self.device.device_action().await {
+                        AnyState::ConnectedProvider(dev) =&gt; {
+                            if let Err(e) = dev.detach().await {
+                                println!("Detach failed: {:?}", e);
+                            }
+                        }
+                        AnyState::ConnectedConsumer(dev) =&gt; {
+                            if let Err(e) = dev.detach().await {
+                                println!("Detach failed: {:?}", e);
+                            }
+                        }
+                        _ =&gt; {
+                            println!("Already disconnected or idle");
+                        }
+                    }
+
+                    cmd.respond(Ok(ResponseData::Complete));
+                }
+            }
+        }
+    }
+}
+
+impl DeviceContainer for MockBatteryDevice {
+    fn get_power_policy_device(&amp;self) -&gt; &amp;Device {
+        &amp;self.device
+    }
+}
+</code></pre>
+<p>What we've done here is:</p>
+<ul>
+<li>
+<p>Imported what we need from the ODP repositories for both the SmartBattery definition from <code>embedded-batteries</code> and the battery service components from <code>embedded-services</code> crates as as our own local MockBattery definition.</p>
+</li>
+<li>
+<p>Define and implement our MockBatteryDevice</p>
+</li>
+<li>
+<p>implement a run loop for our MockBatteryDevice</p>
+</li>
+</ul>
+<h4 id="including-embedded-services"><a class="header" href="#including-embedded-services">Including embedded-services</a></h4>
+<p>We previously imported what we needed for the <code>battery-service</code> from <code>embedded-services</code> but now we need imports from <code>embedded-services</code> itself, so we must add this line
+to the <code>[dependencies]</code> section of <code>mock_battery/Cargo.toml</code>:</p>
+<pre><code>embedded-services = { path = "../embedded-services/embedded-service" }
+</code></pre>
+<h4 id="including-mock_battery_device"><a class="header" href="#including-mock_battery_device">Including mock_battery_device</a></h4>
+<p>Just like we had to inform the build of our mock_battery, we need to do likewise with mock_battery_device.  So edit <code>lib.rs</code> and to this:</p>
+<pre><code>pub mod mock_battery;
+pub mod mock_battery_device;
+</code></pre>
+<h3 id="registering-our-device"><a class="header" href="#registering-our-device">Registering our device</a></h3>
+<p>We need to register and run our device, but here's where we need to make a deviation. The embedded-services functions expect an asynchronous model.  In our embedded target, we will no doubt want to use the async executor from <a href="../../3/support/embassy.html#async-executor">Embassy</a> for this, but since for the moment we are still building and running on the desktop, we need a different option.  For desktop support, we will be using the <code>tokio</code> crate for async support.</p>
+<p>This divergent juncture is also an excellent opportunity to demonstrate how two different implementation options might be selected using Feature flags, so we'll do that here.</p>
+<h4 id="set-up-cargotoml"><a class="header" href="#set-up-cargotoml">Set up Cargo.toml</a></h4>
+<p>We can set up for features in <code>Cargo.toml</code> of <code>mock_battery</code> by adding this section:</p>
+<pre><code>[features]
+default = ["desktop"]
+desktop = ["tokio"]
+embedded = ["embassy-executor"]
+</code></pre>
+<p>To support async, we will use Embassy for the embedded build.  This is supported by the ODP framework as well, so we will want to match it's dependencies here.</p>
+<p>For desktop builds, we can use <code>tokio</code> for this.</p>
+<p>We will need to import the <code>tokio</code> crate from <code>crates.io</code> to support the desktop implementation.
+We import <code>embassy-executor</code> from <code>git</code>, since this must match the one referenced by the ODP framework.</p>
+<p>We can do that by adding these lines to our <code>[dependencies]</code> section:</p>
+<pre><code># Optional runtimes
+tokio = { version = "1", features = ["full"], optional = true }
+embassy-executor = { git = "https://github.com/embassy-rs/embassy", package = "embassy-executor", features = ["arch-std","executor-thread"], optional = true }
+
+</code></pre>
+<p>we mark them as optional, because they will only be used for their repective builds.</p>
+<h4 id="updating-the-dependencies"><a class="header" href="#updating-the-dependencies">Updating the dependencies</a></h4>
+<p>We now must make some edits to our top-level (<code>battery_project</code>) <code>Cargo.toml</code> file to reflect the new dependencies.</p>
+<p>Add the references to <code>member</code> list of the <code>[workspace]</code> section:</p>
+<pre><code>members = [
+    "mock_battery",
+    "embedded-services/embedded-service",
+    "embedded-services/battery-service",
+    "embedded-batteries/embedded-batteries"
+]
+</code></pre>
+<p>and create a new <code>[workspace.depedencies]</code> section in this file as well:</p>
+<pre><code>[workspace.dependencies]
+embedded-services = { path = "embedded-services/embedded-service" }
+</code></pre>
+<p>This reconciles the name from 'embedded-service' to 'embedded-services'.</p>
+<h4 id="unavoidable-detail-ahead-dependency-overrides"><a class="header" href="#unavoidable-detail-ahead-dependency-overrides">Unavoidable Detail Ahead: Dependency Overrides</a></h4>
+<p>At this point, you'll encounter a wall of configuration. Unfortunately, the current structure of the service crates requires us to explicitly patch and align many transitive dependencies to avoid conflicts—especially around async runtime and HAL crates.</p>
+<p>This may feel excessive, but it’s a one-time setup step to align everything cleanly for builds targeting either desktop or embedded systems. Once it’s in place, the rest of the work proceeds smoothly.</p>
+<p>Add the following lines to the <code>[workspace.dependencies]</code> section:</p>
+<pre><code># These align versions of crates used across embedded-services, battery-service,
+# and embassy dependencies to avoid mismatched or duplicated transitive dependencies.
+bitfield = "0.17.0"
+bitflags = "2.8.0"
+bitvec = { version = "1.0.1", default-features = false }
+cfg-if = "1.0.0"
+chrono = { version = "0.4", default-features = false }
+cortex-m = "0.7.6"
+cortex-m-rt = "0.7.5"
+critical-section = "1.1"
+defmt = "0.3"
+document-features = "0.2.7"
+
+embassy-executor     = { git = "https://github.com/embassy-rs/embassy", package = "embassy-executor" }
+embassy-futures      = { git = "https://github.com/embassy-rs/embassy", package = "embassy-futures" }
+embassy-sync         = { git = "https://github.com/embassy-rs/embassy", package = "embassy-sync" }
+embassy-time         = { git = "https://github.com/embassy-rs/embassy", package = "embassy-time" }
+embassy-time-driver  = { git = "https://github.com/embassy-rs/embassy", package = "embassy-time-driver" }
+
+embedded-batteries-async = { path = "embedded-batteries/embedded-batteries-async" }
+embedded-cfu-protocol    = { git = "https://github.com/OpenDevicePartnership/embedded-cfu" }
+embedded-hal             = "1.0"
+embedded-hal-async       = "1.0"
+embedded-hal-nb          = "1.0"
+embedded-io              = "0.6.1"
+embedded-io-async        = "0.6.1"
+embedded-storage         = "0.3"
+embedded-storage-async   = "0.4.1"
+embedded-usb-pd          = { git = "https://github.com/OpenDevicePartnership/embedded-usb-pd", default-features = false }
+
+fixed     = "1.23.1"
+heapless  = "0.8.*"
+log       = "0.4"
+postcard  = "1.*"
+rand_core = "0.6.4"
+serde     = { version = "1.0.*", default-features = false }
+tps6699x  = { git = "https://github.com/OpenDevicePartnership/tps6699x" }
+</code></pre>
+<p>And, finally, add this patch section so that Cargo does not try to load embassy from <code>crates.io</code> despite other declarations:</p>
+<pre><code>[patch.crates-io]
+embassy-executor = { git = "https://github.com/embassy-rs/embassy", package = "embassy-executor" }
+embassy-time     = { git = "https://github.com/embassy-rs/embassy", package = "embassy-time" }
+embassy-sync     = { git = "https://github.com/embassy-rs/embassy", package = "embassy-sync" }
+embassy-futures  = { git = "https://github.com/embassy-rs/embassy", package = "embassy-futures" }
+</code></pre>
+<p>You should now be able to run <code>cargo build</code> from the <code>battery_project</code> directory without errors.</p>
+<h4 id="two-versions-of-main"><a class="header" href="#two-versions-of-main">Two versions of main</a></h4>
+<p>Our register-and-run main function will have two versions. One for desktop (the default, and the one we just built in the previous step), and one for embedded.</p>
+<p>In the <code>mock_battery</code> directory, create the file <code>embedded_main.rs</code> that we will use for our embedded target.  Give it this content:</p>
+<pre><code>use embassy_executor::Spawner;
+use embedded_services::power::policy::register_device;
+use embedded_services::power::policy::DeviceId;
+use mock_battery::mock_battery_device::MockBatteryDevice;
+
+#[embassy_executor::main]
+async fn main(_spawner: Spawner) {
+
+    let dev = Box::leak(Box::new(MockBatteryDevice::new(DeviceId(0))));
+    
+    register_device(dev).await.unwrap();
+    dev.run().await;
+}
+
+pub fn run() {
+    // Stub for build compatibility when running on non-embedded platform
+    panic!("This binary must be built for an embedded target");
+}
+
+</code></pre>
+<p>and create a file named <code>desktop_main.rs</code> with this content:</p>
+<pre><code>use embedded_services::power::policy::register_device;
+use embedded_services::power::policy::DeviceId;
+use mock_battery::mock_battery_device::MockBatteryDevice;
+
+
+pub async fn run() {
+
+    let dev = Box::leak(Box::new(MockBatteryDevice::new(DeviceId(0))));
+    
+    register_device(dev).await.unwrap();
+    dev.run().await;
+}
+
+// Stub for build compatibility when running on non-embedded platform
+#[cfg(feature = "desktop")]
+#[unsafe(no_mangle)]
+pub extern "C" fn _critical_section_1_0_acquire() {}
+
+#[cfg(feature = "desktop")]
+#[unsafe(no_mangle)]
+pub extern "C" fn _critical_section_1_0_release() {}
+
+#[cfg(feature = "desktop")]
+#[unsafe(no_mangle)]
+pub extern "C" fn _embassy_time_now() -&gt; u64 {
+    0
+}
+
+#[cfg(feature = "desktop")]
+#[unsafe(no_mangle)]
+pub extern "C" fn _embassy_time_schedule_wake(_timestamp: u64) {}
+</code></pre>
+<p>Build the desktop version with</p>
+<pre><code>cargo build --features desktop
+</code></pre>
+<p>and build the embedded version with</p>
+<pre><code>cargo build --features embedded --no-default-features
+</code></pre>
+<p>Both should build without errors.</p>
+<p>Note that <code>cargo build</code> by itself defaults to the desktop option.</p>
+<p>The <code>--no-default-features</code> flag is required for the embedded option because of the exclusivity of the feature options.</p>
+<p>Also note that you might optionally add <code> -p mock_battery</code> to this command to definitively say which workspace project to build, but this will be the default anyway since it is the only one that takes these features.</p>
+<h4 id="no-output"><a class="header" href="#no-output">No output</a></h4>
+<p>If you try to do a <code>cargo run</code> for the embedded build you will see an error that it can't do that without an embedded target -- which we will get to in good time.</p>
+<p>If you do a <code>cargo run</code> for the desktop build you will not see any output, and will have to use <code>ctrl-c</code> to break and exit the program.</p>
+<p>This is because we changed our main function (for both feature targets) to register and wait for commands from the service, and we haven't done that yet.  So nothing is going to appear until we do.</p>
+<p>We'll be doing that in the next section.</p>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="battery_values.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="battery_service_action.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="battery_values.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="battery_service_action.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="elasticlunr.min.js"></script>
+        <script src="mark.min.js"></script>
+        <script src="searcher.js"></script>
+
+        <script src="clipboard.min.js"></script>
+        <script src="highlight.js"></script>
+        <script src="book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="mermaid.min.js"></script>
+        <script src="mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

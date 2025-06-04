@@ -42,6 +42,17 @@
         <script src="toc.js"></script>
     </head>
     <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
     <div id="body-container">
         <!-- Work around some values being stored in localStorage wrapped in quotes -->
         <script>
@@ -119,7 +130,7 @@
                             <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
                             <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
                         </ul>
-                        <button id="search-toggle" class="icon-button" type="button" title="Search. (Shortkey: s)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="S" aria-controls="searchbar">
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
                             <i class="fa fa-search"></i>
                         </button>
                     </div>
@@ -160,6 +171,72 @@
 <h3 id="with-the-open-device-partnership-and-rust"><a class="header" href="#with-the-open-device-partnership-and-rust">with the Open Device Partnership and Rust</a></h3>
 <p><em>Wherein we will use the processes and examples we explore elsewhere dedicated to the practical task of building the firmware for a modern laptop</em></p>
 <p><em>TODO</em></p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="overview"><a class="header" href="#overview">Overview</a></h1>
+<p>The "How to Build a Modern Laptop" book will be organized as a series of steps, each which references previous example documention found on the Introduction and Example shelves.</p>
+<p>The general approach will be to explain the scope of what we are building: A Virtual laptop that runs in a QEMU virtual emulator with an embedded controller that is built onto an inexpensive, readily available commercial developer evaluation board using one of the board's supported communication protocols (e.g. SPI).  To do this, this book will first discuss setting up the development environment and pointing readers to ways to obtain a development board and associated cables.</p>
+<p>The scope and audience of this book will be primarily aimed at those who are either already experienced in similar firmware development and are fluent in Rust. Although there will be frequent references to the prior material, a developer new to the domain or language may feel lost without at least that level of onboarding, so beginners should do all the introductory examples first.
+Even experienced developers will likely want to review the introductory content before continuing, just to make sure they are on the same page to start.</p>
+<p>This discussion will refer to articles found on Shelf 1 and 2 for a more tutorial-based approach to learning how to use these tools.</p>
+<p>When the reader feels they have the tools they need in place and have a good working familiarity with the use of the aforementioned development tools, and a solid command of Rust programming, the book proceeds with the steps for the actual build.</p>
+<p><img src="..." alt="Plan Diagram" /> A diagram of the contents and steps should be inserted at this point to illustrate the overview in graphic form.</p>
+<p>This starts with the implementation of the key components and services of the Embedded Controller.  Examples of how this may be accomplished will have been written for Battery, Charger, and Thermal at least, and possibly also USB.  These will be referred to as this book lays out which components need to be available, and how they must behave to be considered viable for the integration.</p>
+<p>There will be a bit of a split track on this depending upon whehter or not the integration is into a "Legacy" (x86) environment or a "Secure" (ARM) environment incorporating a hypervisor and Hafnium.</p>
+<p><em>This "split" is not currently represented in the TOC listing, but will be added when the point of deviation becomes more resolved, and will include a new look at using Hafnium</em></p>
+<p>When all the Embedded Controller work is complete, it's time to move on to the Patina Boot Firmware.  Again, this is covered in prior introductory and example material that is referred to in this book.  Again, this discussion will split between support for the Secure and Legacy integrations with regard to orchestrating with the EC both in DXE and in Runtime.</p>
+<p><em>This "split" is not currently represented in the TOC listing, but will be added when the point of deviation becomes more resolved, and will include a new look at configuring paging tables and coordination with the FFA, etc.</em></p>
+<p>The Patina discussion will also necessarily touch upon HID elements - at least a keyboard - and presumably with similar example articles to refer to as the other components for this.</p>
+<p>Finally, the Patina layer will execute the boot loader to load and start a Windows OS image.  From there we can run a simple application to demonstrate the runtime services can report on battery status and/or other aspects.</p>
+<p>The book closes with a summary and takeaways and suggested further references.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="setting-up"><a class="header" href="#setting-up">Setting Up</a></h1>
+<p>This discusses the tooling that is needed for this endeavor, which is covered in the tutorial sections and referenced for detail, but checklist-style steps are provided here to insure both the novice and experienced developer are on the same footing before continuing with the build.  This includes references to the introductory prerequisites for Rust, and also covers embedded tooling, debugging, and use of MS Code as a common IDE choice.</p>
+<p>A visual matrix of required tools and versions would be useful here.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="embedded-controller"><a class="header" href="#embedded-controller">Embedded Controller</a></h1>
+<p>The Embedded Controller topic comes first, because this is where most of the modern features live and when we get to Patina, it will need to wait for this to be ready and then also connect to it for certain runtime operations.</p>
+<p>Basic idea is to reference the Battery effort currently in place, and the soon to follow Charger and Thermal examples.  This should provide a pretty good blueprint for building a mock or real EC for these components and inspire the pattern for things not covered by the examples.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="battery"><a class="header" href="#battery">Battery</a></h1>
+<p>The battery example is underway and is the first of a series of related examples.  This example will create a "functional" mock battery implementation that can be tested on the desktop and installed onto a development board for standalone integration.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="charger"><a class="header" href="#charger">Charger</a></h1>
+<p>This will be an adjunct to the current Battery example, completing the relationship for power management.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="thermal"><a class="header" href="#thermal">Thermal</a></h1>
+<p>This example will closely follow the Battery effort and will tie into the overall EC Services in much the same way.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="connectivity"><a class="header" href="#connectivity">Connectivity</a></h1>
+<p>possibly include a USB example
+may also include mentions (probably not examples) of WiFi and Bluetooth integration</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="usb"><a class="header" href="#usb">USB</a></h1>
+<p>May or may not produce a sample showing implementation of USB. If there is not an example, there will at least be a discussion.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="wifi"><a class="header" href="#wifi">WiFi</a></h1>
+<p>May or may not produce and example of implementing WiFi...
+If no example, there will at least be a discussion.<br />
+This <em>might</em> move to Patina, although I think it may need to be on the EC for certain options to be practical. <em>TBD</em></p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="bluetooth"><a class="header" href="#bluetooth">Bluetooth</a></h1>
+<p>May or may not produce and example of implementing Bluetooth...
+If no example, there will at least be a discussion.<br />
+This <em>might</em> move to Patina, although I think it may need to be on the EC for certain options to be practical. <em>TBD</em></p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="patina"><a class="header" href="#patina">Patina</a></h1>
+<p>This will discuss the building of the Patina boot code.  This will follow much the same path as the Patina introduction/test_component example and refer to the practical examples that come from that.</p>
+<p><a href="patina/...">Mermaid boot flow</a> a Mermaid boot flow diagram that shows the visual timeline of the DXE exchange with SEC and orchestration with the EC, the preparation of Runtime Services, and the boot loader startup of Windows and subsequent application-level interrogation of Runtime Services would be helpful here.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="security"><a class="header" href="#security">Security</a></h1>
+<p>As we create Patina DXE components and runtime services, we need to be mindful of the security architecture and support.  This will have been covered by this point by some introduction and examples, and this section will
+focus on how to integrate these concepts in a practical way for the build in question.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="dxe"><a class="header" href="#dxe">DXE</a></h1>
+<p>This will take the practical examples that follow on after the <code>test_component</code> work that was done in the samples and frame them in terms of implementation, including orchestration with the startup and readiness of the Embedded Controller.
+These will include, but are not necessarily limited to, the examples currently underway or planned, such as Battery, Charger, Thermal. Human Interface Device (HID) components such as a keyboard implementation may be included as well.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="runtime-services"><a class="header" href="#runtime-services">Runtime Services</a></h1>
+<p>This will implement the Patina Runtime Services integration with the EC components we have created there, so that we can check the battery status and other aspects of the EC services we have preiously implemented from the OS/application layer.</p>
+<p><a href="patina/...">Diagram TBD</a> a diagram that shows the Runtime Services and their interaction with Windows (EC_Services) may be useful here.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="booting-into-windows"><a class="header" href="#booting-into-windows">Booting into Windows</a></h1>
+<p>The end result of the boot process is to boot the Operating System, and in this example, that is naturally Windows.  Among other reasons, this allows us to discuss the EC_Services components that are uniquely required by Windows.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="using-your-virtual-laptop"><a class="header" href="#using-your-virtual-laptop">Using your virtual laptop</a></h1>
+<p>Sets the overview for the application-level exercises that come next.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="first-checks"><a class="header" href="#first-checks">First Checks</a></h1>
+<p>Some checklist items that can be done to show that Windows is indeed running and ready for application-level interaction.</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="an-application"><a class="header" href="#an-application">An Application</a></h1>
+<p>In this section, we create a simple Windows application (or possibly install an existing one) that shows both that (a) an application can run on this new laptop creation and (b) the runtime services we created, such as battery status, can be accessed from app level</p>
+<div style="break-before: page; page-break-before: always;"></div><h1 id="summary-and-takeaways"><a class="header" href="#summary-and-takeaways">Summary and Takeaways</a></h1>
+<p>In conclusion, we recount what has been acheived in the course of this book.</p>
+<p>In the end, the reader/developer now has a functional virtual laptop built on their desktop computer, and can now use this knowledge to build a real one using ODP.</p>
+<p>Some content will be devoted to guides and caveats for those who will be branching from here into real hardware implementation.  This will probably be mostly in the form of external links to content written by others.</p>
+<p>These steps, and their constituent references are summarized, and a section for additional external reading links is also included.</p>
 
                     </main>
 

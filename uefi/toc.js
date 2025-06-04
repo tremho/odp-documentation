@@ -8,7 +8,7 @@ class MDBookSidebarScrollbox extends HTMLElement {
         super();
     }
     connectedCallback() {
-        this.innerHTML = '<ol class="chapter"><li class="chapter-item "><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li></ol>';
+        this.innerHTML = '<ol class="chapter"><li class="chapter-item "><a href="introduction.html"><strong aria-hidden="true">1.</strong> Introduction</a></li><li class="chapter-item "><a href="setting_up_for_patina.html"><strong aria-hidden="true">2.</strong> Setting up for Patina</a></li><li class="chapter-item "><a href="patina-dxe-core-qemu_code.html"><strong aria-hidden="true">3.</strong> Patina-dxe-core-qemu Code</a></li><li class="chapter-item "><a href="creating_a_component.html"><strong aria-hidden="true">4.</strong> Creating_a_Component</a></li><li class="chapter-item "><a href="using_patina_fw_patcher.html"><strong aria-hidden="true">5.</strong> Using the Patina FW Patcher</a></li></ol>';
         // Set the current, active page, and reveal it if it's hidden
         let current_page = document.location.href.toString().split("#")[0].split("?")[0];
         if (current_page.endsWith("/")) {
