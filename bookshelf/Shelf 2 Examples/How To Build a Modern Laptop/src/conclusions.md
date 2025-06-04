@@ -8,4 +8,5 @@ Some content will be devoted to guides and caveats for those who will be branchi
 
 These steps, and their constituent references are summarized, and a section for additional external reading links is also included. 
 
+[Return to Library](../../library.html)
 
