@@ -171,8 +171,9 @@ pub mod mock_battery_device;
 ```
 
 ### Registering our device
-We need to register and run our device, but here's where we need to make a deviation. The embedded-services functions expect an asynchronous model.  In our embedded target, we will no doubt want to use [Embassy](...) for this, but since for the moment we are still building and running on the desktop, we need a different option.  For desktop support, we will be using the `tokio` crate for this.
-This is also an excellent opportunity to demonstrate how two different implementation options might be selected using Feature flags, so we'll do that here.
+We need to register and run our device, but here's where we need to make a deviation. The embedded-services functions expect an asynchronous model.  In our embedded target, we will no doubt want to use the async executor from [Embassy](../../3/support/embassy.html#async-executor) for this, but since for the moment we are still building and running on the desktop, we need a different option.  For desktop support, we will be using the `tokio` crate for async support.
+
+This divergent juncture is also an excellent opportunity to demonstrate how two different implementation options might be selected using Feature flags, so we'll do that here.
 
 #### Set up Cargo.toml
 We can set up for features in `Cargo.toml` of `mock_battery` by adding this section:
