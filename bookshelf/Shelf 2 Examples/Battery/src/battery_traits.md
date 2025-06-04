@@ -1,54 +1,11 @@
 # Using the ODP repositories for defined Battery Traits
-
-In the previous section, we saw how the _Smart Battery Specification (SBS)_ defines a set of functions that a Smart Battery service should implement.
-
-In this section, we are going to review how these traits are defined in Rust within the [embedded-services repository](https://github.com/OpenDevicePartnership/embedded-services/), and we are going to import these structures into our own workspace as we build our mock battery.
-
-## Setting up for development
-We are going to create a project space that contains a folder for our battery code, and the dependent repository clones.
-
-So, start by finding a suitable location on your local computer and create the workpace:
-
-```
-mkdir battery_project
-cd battery_project
-mkdir mock_battery
-```
-
-Now, we are going to clone the embedded-batteries directory and build the crates it exports.
-
-```
-cd battery_project
-git clone git@github.com:OpenDevicePartnership/embedded-batteries.git
-cd embedded-batteries
-cargo build
-```
-
-Now, we can go into our project space and start our own work.  Within the mock_battery directory, create this project structure:
-
-```
-src/ 
- - mock_battery.rs
-Cargo.toml 
-```
-note that Cargo.toml is _not_ within the `src` folder, but `mock_battery.rs` is.
-
-Use this as a minimal Cargo.toml to set things in place and declare our dependency on the embedded-batteries repository we cloned and built:
-```
-[package]
-name = "mock_battery"
-version = "0.1.0"
-edition = "2021"
-
-[dependencies]
-embedded-batteries = { path = "../embedded-batteries/embedded-batteries" }  # Adjust as needed
-```
+In the previous step we set up our project workspace so that we can import from the ODP framework. In this step we will define the traits that our mock battery will expose. 
 
 # Implementing the defined traits
 From the overview discussion you will recall that the SBS specification defines the Smart Battery with a series of functions that will return required data in expected ways.
-Not surprisingly, then, we will find that the embedded-batteries crate we have imported defines these functions as traits to a SmartBattery trait.  If you new to Rust, recall that if this were, say, C++ or Java, we would call this the SmartBattery _class_, or an _interface_.  These are _almost_ interchangeable terms, but there are differences.  See [this definition](https://doc.rust-lang.org/book/ch10-02-traits.html) for more detail on that.
+Not surprisingly, then, we will find that the embedded-batteries crate we have imported defines these functions as traits to a SmartBattery trait.  If you are new to Rust, recall that if this were, say, C++ or Java, we would call this the SmartBattery _class_, or an _interface_.  These are _almost_ interchangeable terms, but there are differences.  See [this definition](https://doc.rust-lang.org/book/ch10-02-traits.html) for more detail on that.
 
-We will see the SmartBattery trait defines the same functions we saw in the specification (except for the optional proprietary manufacturer facilitations).
+If we look through the `embedded-batteries` repository, we will see the SmartBattery trait defines the same functions we saw in the specification (except for the optional proprietary manufacturer facilitations).
 
 So our job now is to implement these functions with data that comes from our battery - our Mock Battery.
 
@@ -76,7 +33,6 @@ impl Error for MockBatteryError {
         ErrorKind::Other
     }    
 }
-
 
 pub struct MockBattery;
 
@@ -238,13 +194,33 @@ impl SmartBattery for MockBattery {
 }
 
 ```
+Yes, that's a bit long, but it's not particularly complex.
 We'll unpack what all this is in a moment.  For now, let's verify this Rust code is valid and that we've imported from the ODP repository properly.
 
 Type
 ```
 cargo build
 ```
-at the project root.  This should build without error.
+at the project root.
+This will produce an error saying the build fails because there are no targets specified in the manifest.  
+This is because we haven't made our mock_battery public.  
+
+Create a file named `lib.rs` in the `src` folder and give it this content
+```
+pub mod mock_battery;
+```
+And then try the build again. This time it should build without error.
+
+## What's in there
+The code in `mock_battery.rs` starts out with a `use` statement that imports what we will need from the `embedded-batteries::smart_battery` crate.
+
+The next section defines a simple custom error type for use in our mock battery implementation. This MockBatteryError enum currently has no variants — it serves as a placeholder that allows our code to conform to the expected error traits used by the broader embedded_batteries framework.
+
+By implementing core::fmt::Display, we ensure that error messages can be printed in a readable form (here, just "MockBatteryError"). Then, by implementing the embedded_batteries::smart_battery::Error trait, we allow this error to be returned in contexts where the smart battery interface expects a well-formed error object. The .kind() method returns ErrorKind::Other to indicate a generic error category.
+
+This scaffolding allows our mock implementation to slot into the service framework cleanly, even if the actual logic is still forthcoming.
+
+Finally, we get to the SmartBattery implementation for our MockBattery.  As you might guess, this simply implements each of the functions of the trait as declared, by simply returning an arbitrary representative return value for each.  We'll make these values more meaningful later, but for now, it's pretty minimalist.
 
 ## Now to expose this to the service
 
