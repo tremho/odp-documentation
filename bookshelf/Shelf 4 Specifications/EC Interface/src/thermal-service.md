@@ -42,15 +42,14 @@ integer 3000.
 Method (_TMP) {
   // Check to make sure FFA is available and not unloaded
   If(LEqual(\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(24){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateByteField(BUFF,19, TMP1) // In – Thermal Zone Identifier
-    CreateField(BUFF,144,32,TMPD) // Out – temperature for TZ
+    Name(BUFF, Buffer(38){})
+    CreateField(BUFF, 0, 64, STAT) // Out – Status
+    CreateField(BUFF, 64, 64, RCVD) // ReceiverId(only lower 16-bits are used) 
+    CreateField(BUFF, 128, 128, UUID) // UUID of service
+    CreateField(BUFF, 256, 8, CMDD) // Command register
+    CreateField(BUFF, 264, 8, TMP1) // In – Thermal Zone Identifier
+    CreateField(BUFF, 264, 32, TMPD) // Out – temperature for TZ
 
-    Store(20, LENG)
     Store(0x1, CMDD) // EC_THM_GET_TMP
     Store(1,TMP1)
     Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID) // Thermal
@@ -119,34 +118,34 @@ Method(_DSM,4,Serialized,0,UnknownObj, {BuffObj, IntObj,IntObj,PkgObj}) {
   If(LEqual(Arg2,One)) {
     // Check to make sure FFA is available and not unloaded
     If(LEqual(\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(32){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateByteField(BUFF,19, TID1) // In – Thermal Zone Identifier
-    CreateDwordField(BUFF,20,THS1) // In – Timeout in ms
-    CreateDwordField(BUFF,24,THS2) // In – Low threshold tenth Kelvin
-    CreateDwordField(BUFF,28,THS3) // In – High threshold tenth Kelvin
-    CreateField(BUFF,144,32,THSD) // Out – Status from EC
+      Name(BUFF, Buffer(46){})
+      CreateField(BUFF, 0, 64, STAT) // Out – Status
+      CreateField(BUFF, 64, 64, RCVD) // ReceiverId(only lower 16-bits are used) 
+      CreateField(BUFF, 128, 128, UUID) // UUID of service
+      CreateField(BUFF, 256, 8, CMDD) // Command register
+      CreateField(BUFF, 264, 8, TID1) // In – Thermal Zone Identifier
+      CreateField(BUFF, 272, 32, THS1) // In – Timeout in ms
+      CreateField(BUFF, 304, 32, THS2) // In – Low threshold tenth Kelvin
+      CreateField(BUFF, 336, 32, THS3) // In – High threshold tenth Kelvin
+      CreateField(BUFF, 264, 32, THSD) // Out – Status from EC
 
-    Store(0x30, LENG)
-    Store(0x2, CMDD) // EC_THM_SET_THRS
-    Store(1,TID1)
-    Store(Arg0,THS1)
-    Store(Arg1,THS2)
-    Store(Arg2,THS3)
-    Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID) // Thermal
-    Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      Store(0x2, CMDD) // EC_THM_SET_THRS
+      Store(1,TID1)
+      Store(Arg0,THS1)
+      Store(Arg1,THS2)
+      Store(Arg2,THS3)
+      Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID) // Thermal
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
 
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-      Return (THSD)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        Return (THSD)
+      } else {
+        Return(Zero)
+      }
     } else {
       Return(Zero)
     }
-  } else {
-    Return(Zero)
   }
 }
 ```
@@ -181,15 +180,14 @@ Method(_DSM,4,Serialized,0,UnknownObj, {BuffObj, IntObj,IntObj,PkgObj}) {
     If(LEqual(Arg2,Two)) {
       // Check to make sure FFA is available and not unloaded
       If(LEqual(\_SB.FFA0.AVAL,One)) {
-        Name(BUFF, Buffer(34){}) // Create buffer for send/recv data
-        CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-        CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-        CreateField(BUFF,16,128,UUID) // UUID of service
-        CreateByteField(BUFF,18, CMDD) // In – First byte of command
-        CreateByteField(BUFF,19, TID1) // In – Thermal Zone Identifier
-        CreateField(BUFF,144,128,THSD) // Out – Includes status, timeout, low/high
-        
-        Store(20, LENG)
+        Name(BUFF, Buffer(50){})
+        CreateField(BUFF, 0, 64, STAT) // Out – Status
+        CreateField(BUFF, 64, 64, RCVD) // ReceiverId(only lower 16-bits are used) 
+        CreateField(BUFF, 128, 128, UUID) // UUID of service
+        CreateField(BUFF, 256, 8, CMDD) // Command register
+        CreateField(BUFF, 264, 8, TID1) // In – Thermal Zone Identifier
+        CreateField(BUFF, 264, 128, THSD) // Out – Status from EC
+
         Store(0x3, CMDD) // EC_THM_GET_THRS
         Store(1,TID1)
         Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID) // Thermal
@@ -242,20 +240,19 @@ Arg0 – Status from EC
 Method (_SCP) {
   // Check to make sure FFA is available and not unloaded
   If(LEqual(\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(32){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateByteField(BUFF,19, SCP0) // In – Thermal Zone Identifier
-    CreateDwordField(BUFF,20, SCP1) // In – Cooling mode policy
-    CreateDwordField(BUFF,24, SCP2) // In – Acoustic Limit
-    CreateDwordField(BUFF,28, SCP3) // In – Power Limit
-    CreateField(BUFF,144,32, SCPD) // Out – temperature for TZ
+    Name(BUFF, Buffer(46){})
+    CreateField(BUFF, 0, 64, STAT) // Out – Status
+    CreateField(BUFF, 64, 64, RCVD) // ReceiverId(only lower 16-bits are used) 
+    CreateField(BUFF, 128, 128, UUID) // UUID of service
+    CreateField(BUFF, 256, 8, CMDD) // Command register
+    CreateField(BUFF, 264, 8, TID1) // In – Thermal Zone Identifier
+    CreateField(BUFF, 272, 32, SCP1) // In – Timeout in ms
+    CreateField(BUFF, 304, 32, SCP2) // In – Low threshold tenth Kelvin
+    CreateField(BUFF, 336, 32, SCP3) // In – High threshold tenth Kelvin
+    CreateField(BUFF, 264, 32, SCPD) // Out – Status from EC
 
-    Store(0x30, LENG)
     Store(0x4, CMDD) // EC_THM_SET_SCP
-    Store(1,SCP0)
+    Store(1,TID1)
     Store(Arg0,SCP1)
     Store(Arg1,SCP2)
     Store(Arg2,SCP3)
@@ -307,18 +304,17 @@ return error code
 ```
 Method(GVAR,2,Serialized) {
   If(LEqual(\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(38){})
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18,CMDD) // Command register
-    CreateByteField(BUFF,19,INST) // Instance ID
-    CreateWordField(BUFF,20,VLEN) // 16-bit variable length
-    CreateField(BUFF,176,128,VUID) // UUID of variable to read
-    CreateField(BUFF,208,64,RVAL) // Output Data
-  
+    Name(BUFF, Buffer(52){})
+    CreateField(BUFF, 0, 64, STAT) // Out – Status
+    CreateField(BUFF, 64, 64, RCVD) // ReceiverId(only lower 16-bits are used) 
+    CreateField(BUFF, 128, 128, UUID) // UUID of service
+    CreateField(BUFF, 256, 8, CMDD) // Command register
+    CreateField(BUFF, 264, 8, INST) // In – Instance ID
+    CreateField(BUFF, 272, 16, VLEN) // In – Variable Length in bytes
+    CreateField(BUFF, 288, 128, VUID) // In – Variable UUID
+    CreateField(BUFF, 264, 64, RVAL) // Out – Variable value
+
     Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID)
-    Store(38, LENG)
     Store(0x5, CMDD) // EC_THM_GET_VAR
     Store(Arg0,INST) // Save instance ID
     Store(4,VLEN) // Variable is always DWORD here
@@ -366,19 +362,18 @@ Arg0 – 32-bit status field
 ```
 Method(SVAR,3,Serialized) {
   If(LEqual(\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(42){})
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18,CMDD) // Command register
-    CreateByteField(BUFF,19,INST) // Instance ID
-    CreateWordField(BUFF,20,VLEN) // 16-bit variable length
-    CreateField(BUFF,176,128,VUID) // UUID of variable to read
-    CreateDwordField(BUFF,38,DVAL) // Data value
-    CreateField(BUFF,208,32,RVAL) // Ouput Data
+    Name(BUFF, Buffer(60){})
+    CreateField(BUFF, 0, 64, STAT) // Out – Status
+    CreateField(BUFF, 64, 64, RCVD) // ReceiverId(only lower 16-bits are used) 
+    CreateField(BUFF, 128, 128, UUID) // UUID of service
+    CreateField(BUFF, 256, 8, CMDD) // Command register
+    CreateField(BUFF, 264, 8, INST) // In – Instance ID
+    CreateField(BUFF, 272, 16, VLEN) // In – Variable Length in bytes
+    CreateField(BUFF, 288, 128, VUID) // In – Variable UUID
+    CreateField(BUFF, 416, 64, DVAL) // In – Variable UUID
+    CreateField(BUFF, 264, 64, RVAL) // Out – status
 
     Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID)
-    Store(42, LENG)
     Store(0x6, CMDD) // EC_THM_SET_VAR
     Store(Arg0,INST) // Save instance ID
     Store(4,VLEN) // Variable is always DWORD here
