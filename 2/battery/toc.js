@@ -8,7 +8,7 @@ class MDBookSidebarScrollbox extends HTMLElement {
         super();
     }
     connectedCallback() {
-        this.innerHTML = '<ol class="chapter"><li class="chapter-item expanded affix "><a href="battery_overview.html">Overview</a></li><li class="chapter-item expanded affix "><a href="battery_project.html">Battery Project</a></li><li class="chapter-item expanded affix "><a href="battery_traits.html">Battery Traits</a></li><li class="chapter-item expanded affix "><a href="battery_values.html">Battery Values</a></li><li class="chapter-item expanded affix "><a href="battery_service.html">Battery Service</a></li><li class="chapter-item expanded affix "><a href="battery_service_action.html">Service Action</a></li></ol>';
+        this.innerHTML = '<ol class="chapter"><li class="chapter-item expanded affix "><a href="battery_overview.html">Overview</a></li><li class="chapter-item expanded affix "><a href="battery_project.html">Battery Project</a></li><li class="chapter-item expanded affix "><a href="battery_traits.html">Battery Traits</a></li><li class="chapter-item expanded affix "><a href="battery_values.html">Battery Values</a></li><li class="chapter-item expanded affix "><a href="build_embedded.html">Build Embedded</a></li><li class="chapter-item expanded affix "><a href="battery_service_prep.html">Service Prep</a></li><li class="chapter-item expanded affix "><a href="battery_service_registry.html">Service Registry</a></li></ol>';
         // Set the current, active page, and reveal it if it's hidden
         let current_page = document.location.href.toString().split("#")[0].split("?")[0];
         if (current_page.endsWith("/")) {

@@ -171,15 +171,17 @@
 <p>In this sample, we are going to implement a complete battery service subsystem.</p>
 <h2 id="relevant-repositories"><a class="header" href="#relevant-repositories">Relevant Repositories</a></h2>
 <p>We don't need to reinvent any wheels here. The ODP resources include ample template code and examples we can refer to for such a task. It is useful to identify which repositories contain these resources:</p>
-<h3 id="soc-embedded-controller"><a class="header" href="#soc-embedded-controller">soc-embedded-controller</a></h3>
-<p>This repository provides the core EC functionality, which in this case is centered around power policy and regulation.</p>
-<p>Although it includes integration code for an <code>imxrt</code> board, the repository is structured to make portability to other integrations relatively straightforward. We will refer to this often as we work on our own (virtual) battery service implementation.</p>
-<p>We’ll begin with the battery service — one of the embedded services — and later return here to integrate our battery into the broader scope of power management.</p>
 <h3 id="embedded-services"><a class="header" href="#embedded-services">embedded-services</a></h3>
 <p>We've touched on this before in <a href="../embedded_services/index.html">Embedded Services</a>, where we examined a Thermal subsystem implementation and explored variations between secure ARM-based and legacy x86_64-based systems.</p>
 <p>We'll return to both of these concepts later. For now, we’ll focus on implementing a Battery subsystem and related Power Policy services. After that, we’ll fold in Thermal support and revisit the secure vs. non-secure implementations.</p>
 <h3 id="embedded-batteries"><a class="header" href="#embedded-batteries">embedded-batteries</a></h3>
 <p>This repository defines the Hardware Abstraction Layer (HAL) for a battery, tailored to the specific IC hardware being targeted. It builds a layered API chain upward, making most of the code portable and reusable across different integrations.</p>
+<h3 id="embassy"><a class="header" href="#embassy">embassy</a></h3>
+<p>Although our first exercises will be limited to simple desktop tests, we will then be building for an embedded context and that will require us to use features from <a href="https://embassy.dev/">Embassy</a> both directly and indirectly.</p>
+<h3 id="soc-embedded-controller"><a class="header" href="#soc-embedded-controller">soc-embedded-controller</a></h3>
+<p>This repository provides the core EC functionality, which in this case is centered around power policy and regulation.</p>
+<p>We will refer to this later as we work on our own (virtual) battery service implementation.</p>
+<p>We’ll begin with the battery service — one of the embedded services — and later return here to integrate our battery into the broader scope of power management.</p>
 <hr />
 <h3 id="the-smart-battery"><a class="header" href="#the-smart-battery">The Smart Battery</a></h3>
 <p>Batteries are ubiquitous in today’s portable devices. With many types of batteries serving various applications and provided by many vendors, the <a href="https://sbs-forum.org/specs/sbdat110.pdf">Smart Battery Data Specification</a> offers a standard to normalize this diversity.</p>

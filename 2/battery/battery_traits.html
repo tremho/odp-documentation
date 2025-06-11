@@ -363,12 +363,7 @@ We'll unpack what all this is in a moment.  For now, let's verify this Rust code
 <pre><code>cargo build
 </code></pre>
 <p>at the project root.
-This will produce an error saying the build fails because there are no targets specified in the manifest.<br />
-This is because we haven't made our mock_battery public.</p>
-<p>Create a file named <code>lib.rs</code> in the <code>src</code> folder and give it this content</p>
-<pre><code>pub mod mock_battery;
-</code></pre>
-<p>And then try the build again. This time it should build without error.</p>
+This should build without error.</p>
 <h2 id="whats-in-there"><a class="header" href="#whats-in-there">What's in there</a></h2>
 <p>The code in <code>mock_battery.rs</code> starts out with a <code>use</code> statement that imports what we will need from the <code>embedded-batteries::smart_battery</code> crate.</p>
 <p>The next section defines a simple custom error type for use in our mock battery implementation. This MockBatteryError enum currently has no variants — it serves as a placeholder that allows our code to conform to the expected error traits used by the broader embedded_batteries framework.</p>
