@@ -1,4 +1,4 @@
-# Battery Service implementation
+# Battery values
 
 In the previous step, we defined the traits of our mock battery.  In this step, we will begin to implement the service layer that defines the messaging between the battery and the controller controller service.
 
