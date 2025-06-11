@@ -1,0 +1,8 @@
+Later in the battery project, change the panic in fuel gauge registration
+to 
+if let Err(e) = reg {
+    error!("Fuel gauge registration failed: {:?}", e);
+    return;
+}
+so it can handle (e.g.) a removable battery
+

@@ -13,25 +13,26 @@ So, start by finding a suitable location on your local computer and create the w
 ```
 mkdir battery_project
 cd battery_project
-mkdir mock_battery
+git init
 ```
+This will create a workspace root for us and establish it as a git repository (not attached).
 
-Now, we are going to clone the embedded-batteries directory and build the crates it exports.
+Now, we are going to bring the embedded-batteries directory
+into our workspace and build the crates it exports.
 
 _(from the `battery_project` directory):_
 ```
-git clone git@github.com:OpenDevicePartnership/embedded-batteries.git
-cd embedded-batteries
-cargo build
+git submodule add https://github.com/OpenDevicePartnership/embedded-batteries
 ```
 
 
 
-Now, we can go into our project space and start our own work.  Within the battery_project directory, create this project structure:
+Now, we can create our project space and start our own work.  Within the battery_project directory, create a folder named mock_battery and give it this project structure:
 
 ```
 mock_battery/
   src/ 
+   - lib.rs
    - mock_battery.rs
   Cargo.toml 
   
@@ -63,6 +64,11 @@ embedded-batteries = { path = "../embedded-batteries/embedded-batteries" }
 ```
 
 This structure and the `Cargo.toml` definitions just define a minimal skeleton for the dependencies we will be adding to as we continue to build our mock battery implementation and work it into the larger ODP framework.
+
+The `lib.rs` file is used to tell Rust which modules are part of the project. Set it's contents to:
+```
+pub mod mock_battery;
+```
 
 the `mock_battery.rs` file can be empty for now.  We will define its contents in the next section.
 

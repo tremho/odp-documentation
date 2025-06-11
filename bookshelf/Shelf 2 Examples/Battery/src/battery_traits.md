@@ -202,14 +202,7 @@ Type
 cargo build
 ```
 at the project root.
-This will produce an error saying the build fails because there are no targets specified in the manifest.  
-This is because we haven't made our mock_battery public.  
-
-Create a file named `lib.rs` in the `src` folder and give it this content
-```
-pub mod mock_battery;
-```
-And then try the build again. This time it should build without error.
+This should build without error.
 
 ## What's in there
 The code in `mock_battery.rs` starts out with a `use` statement that imports what we will need from the `embedded-batteries::smart_battery` crate.
