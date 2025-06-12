@@ -36,7 +36,7 @@ This file maps an output channel to an ACPI function along with default, min and
 
 ```
 // O_FAN1_ACTIVE_RPM  
-{91F589E0-45F0-4C6E-A17D-24FD8E8CBDCE}_730,2,5,1,60,10,20,2,"\_SB.CIO1"
+{91F589E0-45F0-4C6E-A17D-24FD8E8CBDCE}_730,1,60,10,20,2,"\_SB.CIO1"
 ```
 
 Here the last two parameters maps this output to function 2 in the _DSM function of \_SB.CIO1 device in ACPI.

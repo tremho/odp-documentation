@@ -80,7 +80,7 @@ When compiling embedded-services the structure.rs must be copied under
 
 ## Versioning
 
-Any time a breaking change is made the major version must be updated and if EC and apps don't agree on a major version the fields cannot be interperted. Whever possible we only want to add fields which means we can keep the structure backwards compatible and just the minor version can be updated.
+Any time a breaking change is made the major version must be updated and if EC and apps don't agree on a major version the fields cannot be interpreted. Whenever possible we only want to add fields which means we can keep the structure backwards compatible and just the minor version can be updated.
 
 ## MCU eSPI Service
 

@@ -23,45 +23,11 @@ Sometimes drivers will not load correctly if the MPTF service is not running so 
 
 ## Logging
 
-Both the MPTF Core Driver and Microsoft Customized IO Driver support WPP logging. Make sure you enable the logs from boot so we have a complete picture of what happend. These can be enabled via registry settings with autologger or through windbg using the following commands:
+Logging has moved to EventViewer traces. To view the MPTF events open Event Viewer (eventvwr.msc) and browse to Applications and Services -> Microsoft -> Windows -> MPTF
 
-```
-!wmitrace.stop MptfCore -kd
-!wmitrace.stop MptfIo -kd
-!wmitrace.start MptfCore -kd
-!wmitrace.start MptfIo -kd
-!wmitrace.enable MptfCore {9BBAB94F-A0B0-4F96-8966-A04F9BA72CA0} -level 0x7 -flag 0xFFFF
-!wmitrace.enable MptfIo {D0ABE2A4-A604-4BEE-8987-55C529C06185} -level 0x7 -flag 0xFFFF
-!wmitrace.dynamicprint 1
-```
+You will see the MPTF events here for debugging and tracing behaviors.
 
-<b>Note: </b> You can use `<ctrl>+<alt>+k` in windbg to enable break on connect. For WMI tracing system to be initialized you will need to boot past classpnp till all the boot critical drivers are loaded and logging system is initailized.
-
-dynamicprint will display messages in windbg and sometimes slow down execution so only use this if you want to see your messages printed in real time.
-
-To list your current running loggers
-
-```
-!wmitrace.strdump
-...
-    Logger Id 0x2b @ 0xFFFFD70C4679F040 Named 'MptfCore'
-    Logger Id 0x2e @ 0xFFFFD70C4643A780 Named 'MptfIo'
-```
-
-To dump logger contents to windbg
-
-`!wmitrace.logdump MptfCore`
-
-To save logger contents to file
-
-`!wmitrace.logsave MptfCore c:\temp\mptfcore.log`
-
-When changing input values you should see from the logs it reads the input value and tries to write the corresponding output values. In the log below I changed input value to 3 and this maps to output value of 25 in my PocSpec.txt
-
-```
-[3]0004.0378::04/25/2025-15:32:53.903 [kernel] [DMF_SmfProcessing_DataUpdate]Received data: Id 0x000028F3CCEC08F8, Channel 0, Value 3
-[1]0004.0300::04/25/2025-15:32:53.919 [kernel] [SmfCore_ProcessingOutputUpdate]Preparing send data: Id 0x000028F3CDB8BEC8, Channel 0, Value 25
-```
+![MPTF debugging](media/mptf_log.png)
 
 If using secure EC services and sending commands via FFA these logs are captured to the serial port, in this case you should see the output channel value being written to the variable on the serial port logs
 ```
