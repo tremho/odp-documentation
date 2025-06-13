@@ -28,12 +28,6 @@ jobs:
       - name: Install mdBook
         run: cargo install mdbook
 
-      - name: Install mdBook Extend
-        run: cargo install mdbook-extend        
-
-      - name: Add cargo bin to path
-        run: echo "$HOME/.cargo/bin" >> $GITHUB_PATH   
-
       - name: Install mermaid
         run: cargo install mdbook-mermaid
 
