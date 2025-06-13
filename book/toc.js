@@ -1,0 +1,70 @@
+// Populate the sidebar
+//
+// This is a script, and not included directly in the page, to control the total size of the book.
+// The TOC contains an entry for each page, so if each page includes a copy of the TOC,
+// the total size of the page becomes O(n**2).
+class MDBookSidebarScrollbox extends HTMLElement {
+    constructor() {
+        super();
+    }
+    connectedCallback() {
+        this.innerHTML = '<ol class="chapter"><li class="chapter-item expanded affix "><a href="overview.html">ODP Documentation guide</a></li><li class="chapter-item expanded "><a href="why/why.html"><strong aria-hidden="true">1.</strong> Why ODP?</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="why/secure_trust.html"><strong aria-hidden="true">1.1.</strong> Secure Trust</a></li><li class="chapter-item expanded "><a href="why/modular.html"><strong aria-hidden="true">1.2.</strong> Modularity</a></li><li class="chapter-item expanded "><a href="why/cross_domain_coherence.html"><strong aria-hidden="true">1.3.</strong> Cross-Domain Coherence</a></li><li class="chapter-item expanded "><a href="why/developer_experience.html"><strong aria-hidden="true">1.4.</strong> Developer Experience</a></li><li class="chapter-item expanded "><a href="why/sustainability.html"><strong aria-hidden="true">1.5.</strong> Sustainability and Cost</a></li><li class="chapter-item expanded "><a href="why/standards.html"><strong aria-hidden="true">1.6.</strong> Industry Standards</a></li></ol></li><li class="chapter-item expanded "><a href="intro/welcome.html"><strong aria-hidden="true">2.</strong> Introduction</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="intro/concepts/Concepts.html"><strong aria-hidden="true">2.1.</strong> Concepts</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="intro/concepts/rust_quick_look.html"><strong aria-hidden="true">2.1.1.</strong> A Quick Look at Rust</a></li><li class="chapter-item expanded "><a href="intro/concepts/patina.html"><strong aria-hidden="true">2.1.2.</strong> Patina</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="intro/concepts/patina_evolution.html"><strong aria-hidden="true">2.1.2.1.</strong> Patina Evolution</a></li><li class="chapter-item expanded "><a href="intro/concepts/patina_resources.html"><strong aria-hidden="true">2.1.2.2.</strong> Patina Resources</a></li></ol></li><li class="chapter-item expanded "><a href="intro/concepts/Embedded_controller.html"><strong aria-hidden="true">2.1.3.</strong> Embedded Controller</a></li><li class="chapter-item expanded "><a href="intro/concepts/EC_Services.html"><strong aria-hidden="true">2.1.4.</strong> EC Services</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="intro/concepts/ec_services_example/sample-system-implementation.html"><strong aria-hidden="true">2.1.4.1.</strong> Sample System Implementation</a></li><li class="chapter-item expanded "><a href="intro/concepts/ec_services_example/legacy_ec_interface.html"><strong aria-hidden="true">2.1.4.2.</strong> Legacy EC Interface</a></li><li class="chapter-item expanded "><a href="intro/concepts/ec_services_example/secure-ec-services-overview.html"><strong aria-hidden="true">2.1.4.3.</strong> Secure EC Services</a></li></ol></li></ol></li><li class="chapter-item expanded "><a href="intro/tutorial/tutorial.html"><strong aria-hidden="true">2.2.</strong> Tutorials</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="intro/tutorial/Discovery.html"><strong aria-hidden="true">2.2.1.</strong> Discovery</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="intro/tutorial/UserButton.html"><strong aria-hidden="true">2.2.1.1.</strong> Button</a></li><li class="chapter-item expanded "><a href="intro/tutorial/LEDApi.html"><strong aria-hidden="true">2.2.1.2.</strong> Listener</a></li><li class="chapter-item expanded "><a href="intro/tutorial/Logic.html"><strong aria-hidden="true">2.2.1.3.</strong> Logic</a></li></ol></li></ol></li></ol></li><li class="chapter-item expanded "><a href="tracks.html"><strong aria-hidden="true">3.</strong> Tracks of ODP</a></li><li class="chapter-item expanded "><a href="what/what.html"><strong aria-hidden="true">4.</strong> What is in ODP?</a></li><li class="chapter-item expanded "><a href="laptop/laptop.html"><strong aria-hidden="true">5.</strong> Building a virtual laptop</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="how/setting_up.html"><strong aria-hidden="true">5.1.</strong> Setting up Development</a></li><li class="chapter-item expanded "><a href="how/ec/embedded_controller.html"><strong aria-hidden="true">5.2.</strong> Embedded Controller</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="how/ec/battery/overview.html"><strong aria-hidden="true">5.2.1.</strong> Battery</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="how/ec/battery/project.html"><strong aria-hidden="true">5.2.1.1.</strong> Battery Project</a></li><li class="chapter-item expanded "><a href="how/ec/battery/traits.html"><strong aria-hidden="true">5.2.1.2.</strong> Battery Traits</a></li><li class="chapter-item expanded "><a href="how/ec/battery/values.html"><strong aria-hidden="true">5.2.1.3.</strong> Battery Values</a></li><li class="chapter-item expanded "><a href="how/ec/battery/build_embedded.html"><strong aria-hidden="true">5.2.1.4.</strong> Build Embedded</a></li><li class="chapter-item expanded "><a href="how/ec/battery/service_prep.html"><strong aria-hidden="true">5.2.1.5.</strong> Service Prep</a></li><li class="chapter-item expanded "><a href="how/ec/battery/service_registry.html"><strong aria-hidden="true">5.2.1.6.</strong> Service Registry</a></li></ol></li><li class="chapter-item expanded "><a href="how/ec/charger.html"><strong aria-hidden="true">5.2.2.</strong> Charger</a></li><li class="chapter-item expanded "><a href="how/ec/thermal.html"><strong aria-hidden="true">5.2.3.</strong> Thermal</a></li><li class="chapter-item expanded "><a href="how/ec/connectivity.html"><strong aria-hidden="true">5.2.4.</strong> Connectivity</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="how/ec/usb.html"><strong aria-hidden="true">5.2.4.1.</strong> USB</a></li><li class="chapter-item expanded "><a href="how/ec/wifi.html"><strong aria-hidden="true">5.2.4.2.</strong> WiFi</a></li><li class="chapter-item expanded "><a href="how/ec/bluetooth.html"><strong aria-hidden="true">5.2.4.3.</strong> Bluetooth</a></li></ol></li></ol></li><li class="chapter-item expanded "><a href="how/patina/overview.html"><strong aria-hidden="true">5.3.</strong> Patina</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="how/patina/tree/introduction.html"><strong aria-hidden="true">5.3.1.</strong> Patina Background</a></li><li class="chapter-item expanded "><a href="how/patina/tree/setting_up_for_patina.html"><strong aria-hidden="true">5.3.2.</strong> Setting up for Patina</a></li><li class="chapter-item expanded "><a href="how/patina/tree/patina-dxe-core-qemu_code.html"><strong aria-hidden="true">5.3.3.</strong> Patina-dxe-core-qemu Code</a></li><li class="chapter-item expanded "><a href="how/patina/tree/creating_a_component.html"><strong aria-hidden="true">5.3.4.</strong> Creating_a_Component</a></li><li class="chapter-item expanded "><a href="how/patina/tree/using_patina_fw_patcher.html"><strong aria-hidden="true">5.3.5.</strong> Using the Patina FW Patcher</a></li><li class="chapter-item expanded "><a href="how/patina/security.html"><strong aria-hidden="true">5.3.6.</strong> Security</a></li><li class="chapter-item expanded "><a href="how/patina/dxe.html"><strong aria-hidden="true">5.3.7.</strong> DXE</a></li><li class="chapter-item expanded "><a href="how/patina/runtime.html"><strong aria-hidden="true">5.3.8.</strong> Runtime</a></li><li class="chapter-item expanded "><a href="how/patina/windows.html"><strong aria-hidden="true">5.3.9.</strong> Booting into Windows</a></li></ol></li><li class="chapter-item expanded "><a href="laptop/integrating.html"><strong aria-hidden="true">5.4.</strong> Integrating the Virtual Laptop</a></li></ol></li><li class="chapter-item expanded "><a href="conclusions.html"><strong aria-hidden="true">6.</strong> Summary and Takeaways</a></li><li class="chapter-item expanded "><a href="specs/specifications.html"><strong aria-hidden="true">7.</strong> ODP Specification Documents</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="specs/ec_interface/ec_interface.html"><strong aria-hidden="true">7.1.</strong> EC_Interface</a></li><li><ol class="section"><li class="chapter-item expanded "><a href="specs/ec_interface/ec-soc-interface.html"><strong aria-hidden="true">7.1.1.</strong> EC SOC Interface</a></li><li class="chapter-item expanded "><a href="specs/ec_interface/legacy-ec-interface.html"><strong aria-hidden="true">7.1.2.</strong> Legacy EC Interface</a></li><li class="chapter-item expanded "><a href="specs/ec_interface/secure-ec-services-overview.html"><strong aria-hidden="true">7.1.3.</strong> Secure EC Services Overview</a></li><li class="chapter-item expanded "><a href="specs/ec_interface/ec-firmware-management.html"><strong aria-hidden="true">7.1.4.</strong> EC Firmware Management</a></li><li class="chapter-item expanded "><a href="specs/ec_interface/ec-power-service.html"><strong aria-hidden="true">7.1.5.</strong> EC Power Service</a></li><li class="chapter-item expanded "><a href="specs/ec_interface/battery-service.html"><strong aria-hidden="true">7.1.6.</strong> Battery Service</a></li><li class="chapter-item expanded "><a href="specs/ec_interface/thermal-service.html"><strong aria-hidden="true">7.1.7.</strong> Thermal Service</a></li><li class="chapter-item expanded "><a href="specs/ec_interface/ucsi-interface.html"><strong aria-hidden="true">7.1.8.</strong> UCSI Interface</a></li><li class="chapter-item expanded "><a href="specs/ec_interface/ec-input-management.html"><strong aria-hidden="true">7.1.9.</strong> EC Input Management</a></li><li class="chapter-item expanded "><a href="specs/ec_interface/ec-time-alarm-service.html"><strong aria-hidden="true">7.1.10.</strong> EC Time Alarm Service</a></li><li class="chapter-item expanded "><a href="specs/ec_interface/ec-debug-service.html"><strong aria-hidden="true">7.1.11.</strong> EC Debug Service</a></li><li class="chapter-item expanded "><a href="specs/ec_interface/ec-manufacturing-service.html"><strong aria-hidden="true">7.1.12.</strong> EC Manufacturing Service</a></li><li class="chapter-item expanded "><a href="specs/ec_interface/ec-oem-service.html"><strong aria-hidden="true">7.1.13.</strong> EC OEM Service</a></li></ol></li></ol></li></ol>';
+        // Set the current, active page, and reveal it if it's hidden
+        let current_page = document.location.href.toString().split("#")[0].split("?")[0];
+        if (current_page.endsWith("/")) {
+            current_page += "index.html";
+        }
+        var links = Array.prototype.slice.call(this.querySelectorAll("a"));
+        var l = links.length;
+        for (var i = 0; i < l; ++i) {
+            var link = links[i];
+            var href = link.getAttribute("href");
+            if (href && !href.startsWith("#") && !/^(?:[a-z+]+:)?\/\//.test(href)) {
+                link.href = path_to_root + href;
+            }
+            // The "index" page is supposed to alias the first chapter in the book.
+            if (link.href === current_page || (i === 0 && path_to_root === "" && current_page.endsWith("/index.html"))) {
+                link.classList.add("active");
+                var parent = link.parentElement;
+                if (parent && parent.classList.contains("chapter-item")) {
+                    parent.classList.add("expanded");
+                }
+                while (parent) {
+                    if (parent.tagName === "LI" && parent.previousElementSibling) {
+                        if (parent.previousElementSibling.classList.contains("chapter-item")) {
+                            parent.previousElementSibling.classList.add("expanded");
+                        }
+                    }
+                    parent = parent.parentElement;
+                }
+            }
+        }
+        // Track and set sidebar scroll position
+        this.addEventListener('click', function(e) {
+            if (e.target.tagName === 'A') {
+                sessionStorage.setItem('sidebar-scroll', this.scrollTop);
+            }
+        }, { passive: true });
+        var sidebarScrollTop = sessionStorage.getItem('sidebar-scroll');
+        sessionStorage.removeItem('sidebar-scroll');
+        if (sidebarScrollTop) {
+            // preserve sidebar scroll position when navigating via links within sidebar
+            this.scrollTop = sidebarScrollTop;
+        } else {
+            // scroll sidebar to current active section when navigating via "next/previous chapter" buttons
+            var activeSection = document.querySelector('#sidebar .active');
+            if (activeSection) {
+                activeSection.scrollIntoView({ block: 'center' });
+            }
+        }
+        // Toggle buttons
+        var sidebarAnchorToggles = document.querySelectorAll('#sidebar a.toggle');
+        function toggleSection(ev) {
+            ev.currentTarget.parentElement.classList.toggle('expanded');
+        }
+        Array.from(sidebarAnchorToggles).forEach(function (el) {
+            el.addEventListener('click', toggleSection);
+        });
+    }
+}
+window.customElements.define("mdbook-sidebar-scrollbox", MDBookSidebarScrollbox);

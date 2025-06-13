@@ -1,0 +1,286 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>What is in ODP? - ODP Documentation Guide</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../favicon.svg">
+        <link rel="shortcut icon" href="../favicon.png">
+        <link rel="stylesheet" href="../css/variables.css">
+        <link rel="stylesheet" href="../css/general.css">
+        <link rel="stylesheet" href="../css/chrome.css">
+        <link rel="stylesheet" href="../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">ODP Documentation Guide</h1>
+
+                    <div class="right-buttons">
+                        <a href="../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="what-is-in-odp"><a class="header" href="#what-is-in-odp">What is in ODP?</a></h1>
+<p>There are over 60 repositories that make up the whole of the ODP umbrella.  Many of these are simply HAL definitions for particular hardware, but others define the critical business logic and data traits that comprise the portable and modular framework ODP provides.  Many of the crates defined by these repositories may be interdependent.
+Other repositories represented here define tools and tests that are useful in development.</p>
+<div class="table-wrapper"><table><thead><tr><th>Repository</th><th>Description</th><th>Patina</th><th>EC</th><th>Security</th><th>Tooling</th><th>Other</th></tr></thead><tbody>
+<tr><td><a href="https://sturdy-adventure-nv32gqw.pages.github.io/">Developing UEFI with Rust</a></td><td><em>(Document)</em> An overview of using ODP Patina and Rust, how to contribute to ODP, and how to setup and build DXE Core components.</td><td>✅</td><td></td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/patina?tab=readme-ov-file#patina">patina</a></td><td>This maintains a library of crates that implement UEFI-like code in Rust. This defines all of the reusable</td><td>✅</td><td></td><td></td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/openDevicePartnership/patina-dxe-core-qemu?tab=readme-ov-file#qemu-dxe-core-binaries">patina-dxe-core-qemu</a></td><td>This repository holds the code responsible for pulling in reusable Rust DXE Core components from the Patina SDK, combining these with locally defined custom components, and building the resulting <code>.efi</code> image that may be loaded into the QEMU emulator.</td><td>✅</td><td></td><td></td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/openDevicePartnership/patina-qemu?tab=readme-ov-file#patina-platform-repository">patina-qemu</a></td><td>This repository supplies a platform wrapper that loads the <code>.efi</code> firmware into QEMU using EDK build tools (<code>stuart_build</code>) from the <code>.efi</code> file indicated at build time.</td><td>✅</td><td></td><td></td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/openDevicePartnership/patina-fw-patcher?tab=readme-ov-file#firmware-rust-patcher">patina-fw-patcher</a></td><td>This repository simplifies the iterative turnaround for incremental builds in a workflow, once one has been established, able to forego the full <code>stuart_build</code> process for each code update.</td><td>✅</td><td></td><td></td><td>✅</td><td></td></tr>
+<tr><td><a href="https://github.com/openDevicePartnership/patina-mtrr?tab=readme-ov-file#introduction">patina-mtrr</a></td><td>This repository supports a MTRR(Memory Type Range Registers) API that helps program MTRRs on x86_64 architecture.</td><td>✅</td><td></td><td></td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/openDevicePartnership/patina-paging?tab=readme-ov-file#cpu-paging-support">patina-paging</a></td><td>Common paging support for various architectures such as ARM64 and X64</td><td>✅</td><td></td><td></td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/embedded-services?tab=readme-ov-file#ec-services">embedded_services</a></td><td>Business logic service definitions and code for wrapping and controlling HAL-level component definitions into a service context.</td><td></td><td>✅</td><td></td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/soc-embedded-controller">soc-embedded-controller</a></td><td>Demonstration of EC firmware built using ODP components</td><td></td><td>✅</td><td></td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/embedded-batteries?tab=readme-ov-file#embedded-batteries">embedded-batteries</a></td><td>SmartBattery Specification support defining traits for HAL abstraction.</td><td></td><td>✅</td><td></td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/embedded-sensors?tab=readme-ov-file#embedded-sensors">embedded-sensors</a></td><td>Defines the embedded sensors interface for HAL abstraction. Designed for use with <code>embedded-services</code>.</td><td></td><td>✅</td><td></td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/embedded-fans?tab=readme-ov-file#embedded-fans">embedded-fans</a></td><td>HAL definition for fan control. Designed for use with <code>embedded-services</code>.</td><td></td><td>✅</td><td></td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/embedded-power-sequence?tab=readme-ov-file#embedded-power-sequence">embedded-power-sequence</a></td><td>Abstraction of SoC power on/off via firmware control.</td><td></td><td>✅</td><td></td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/embedded-cfu?tab=readme-ov-file#embedded-cfu">embedded-cfu</a></td><td>Implements commands and responses as structs per the Windows CFU spec.</td><td></td><td>✅</td><td></td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/embedded-usb-pd?tab=readme-ov-file#embedded-usb-pd">embedded-usb-pd</a></td><td>common types for usb pd.  May be necessary as a dependency for several <code>embedded-services</code> builds.</td><td></td><td>✅</td><td></td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/embedded-mcu?tab=readme-ov-file#embedded-mcu">embedded-mcu</a></td><td>an agnostic set of MCU-related traits and libraries for manipulating hardware peripherals in a generic way.</td><td></td><td>✅</td><td></td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/hid-embedded-controller?tab=readme-ov-file#hid-embedded-controller">hid-embedded-controller</a></td><td>Embedded Controller HID library / HID over I2C demo</td><td></td><td>✅</td><td></td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/ec-test-app?tab=readme-ov-file#ec-test-app">ec-test-app</a></td><td>Test application to exercise EC functionality through ACPI from the OS</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/ffa?tab=readme-ov-file#ff-a-firmware-framework-for-armv8-a-profile">ffa</a></td><td>FFA for Rust services running under Hafnium through FF-A</td><td></td><td>✅</td><td>✅</td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/haf-ec-service?tab=readme-ov-file#hafnium-ec-service-in-rust">haf-ec-service</a></td><td>Rust services for Hafnium supported EC architectures.</td><td></td><td>✅</td><td>✅</td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/openDevicePartnership/patina-mtrr?tab=readme-ov-file#introduction">patina-mtrr</a></td><td>This repository supports a MTRR(Memory Type Range Registers) API that helps program MTRRs on x86_64 architecture.</td><td>✅</td><td></td><td>✅</td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/openDevicePartnership/patina-paging?tab=readme-ov-file#cpu-paging-support">patina-paging</a></td><td>Common paging support for various architectures such as ARM64 and X64</td><td>✅</td><td></td><td>✅</td><td></td><td></td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/rust-crate-audits?tab=readme-ov-file#open-device-partnerships-rust-crate-audits">rust_crate_audits</a></td><td>Aggregated audits for Rust crates by the Open Device Partnership</td><td></td><td></td><td>✅</td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/uefi-bds">uefi-bds</a></td><td>UEFI Boot Device Selection DXE driver</td><td>✅</td><td></td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/uefi-corosensei">uefi-corosensei</a></td><td>UEFI fork of the corosensei crate</td><td>✅</td><td></td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/modern-payload">modern-payload</a></td><td>Slimmed down UEFI payload</td><td>✅</td><td></td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/slimloader">slimloader</a></td><td>First stage boot loader for AArch64</td><td>✅</td><td></td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/ec-slimloader">ec-slimloader</a></td><td>A light-weight stage-one bootloader for loading an app image as configured by ec-slimloader-descriptors</td><td>✅</td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/name">ec-slimloader-descriptors</a></td><td>Boot-time application image management descriptors for enabling multi-image firmware boot scenarios, such as those provided by CFU</td><td>✅</td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/odp-utilites">odp-utilites</a></td><td>A collection of Rust utilities focused on embedded systems development.</td><td></td><td></td><td></td><td>✅</td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/systemview-tracing">systemview-tracing</a></td><td>Support for adding Segger SystemView tracing to ODP projects</td><td></td><td></td><td></td><td>✅</td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/nxp-header">nxp-header</a></td><td>CLI utility to modify binary firmware image file to add NXP image header</td><td></td><td></td><td></td><td>✅</td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/bq24773">bq24773</a></td><td>Driver for TI BQ24773 battery charge controller</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/bq25713">bq25713</a></td><td>Driver for TI BQ25713 battery charge controller</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/bq25730">bq25730</a></td><td>Driver for TI BQ25730 battery charge controller</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/bq25770g">bq25770g</a></td><td>Driver for TI BQ2577G battery charge controller</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/bq25773">bq25773</a></td><td>Driver for TI BQ25773 battery charge controller</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/bq40z50">bq40z50</a></td><td>Driver for TI BQ40Z50 Li-ion battery pack manager</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/tmp108">tmp108</a></td><td>Driver for TI TMP108 digital temperature sensor</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/cec17-data">cec17-data</a></td><td>Single meta-PAC supporting all variants within the MEC/CEC family of MCUs produced by Microchip</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/mec17xx-pac">mec17xx-pac</a></td><td>Peripheral Access Crate (PAC) for the Microchip MEC17xx family of MCUs</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/mimxrt633s-pac">mimxrt633s-pac</a></td><td>Embedded PAC for NXP RT633s MCU</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/mimxrt685s-pac">mimxrt685s-pac</a></td><td>Rust PAC created with svd2rust for MIMXRT685s family of MCUs</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/mimxrt685s-examples">mimxrt685s-examples</a></td><td>Collection of examples demonstrating the use of the mimxrt685s-pac crate</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/npcx490m-pac">npcx490m-pac</a></td><td>Embedded PAC for Nuvoton NPCX490M MCU</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/npcx490m-examples">npcx490m-examples</a></td><td>Examples for Nuvoton NPCX490M Embedded PAC</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/embedded-regulator">embedded-regulator</a></td><td>Embedded HAL for system voltage regulators</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/embedded-keyboard-rs">embedded-keyboard-rs</a></td><td>Driver for embedded system matrix keyboards</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/rt4531">rt4531</a></td><td>Driver for Richtek RT4531 keyboard backlight controller</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/tps65994ae">tps65994ae</a></td><td>Driver for TI TPS65994AE USB-C power delivery controller</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/tps6699x">tps6699x</a></td><td>Driver for TI TPS6699x USB-C power delivery controller</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/is31fl3743b">is31fl3743b</a></td><td>Driver for Lumissil IS31FL3743B LED matrix controller</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/pcal6416a">pcal6416a</a></td><td>Rust driver for IO Expander pcal6416a</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/embassy-imxrt">embassy-imxrt</a></td><td>Embassy HAL for NXP IMXRT MCU family</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/embassy-microchip">embassy-microchip</a></td><td>Embassy HAL for Microchip MEC17xx and MEC16xx series MCUs</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/embassy-npcx">embassy-npcx</a></td><td>Embassy HAL for Nuvoton NPCX MCU family</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/lis2dw12-i2c">lis2dw12-i2c</a></td><td>Rust driver for STMicroelectronics LIS2DW12 accelerometer</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/mimxrt600-fcb">mimxrt600-fcb</a></td><td>Flash Control Block for MIMXRT600 MCUs</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+<tr><td><a href="https://github.com/OpenDevicePartnership/MX25U1632FZUI02">MX25U1632FZUI02</a></td><td>Rust based driver for flash part MACRONIX/MX25U1632FZUI02</td><td></td><td>✅</td><td></td><td></td><td>✅</td></tr>
+</tbody></table>
+</div>
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../tracks.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../laptop/laptop.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../tracks.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../laptop/laptop.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../elasticlunr.min.js"></script>
+        <script src="../mark.min.js"></script>
+        <script src="../searcher.js"></script>
+
+        <script src="../clipboard.min.js"></script>
+        <script src="../highlight.js"></script>
+        <script src="../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../mermaid.min.js"></script>
+        <script src="../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>
