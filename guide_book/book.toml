@@ -1,0 +1,17 @@
+[book]
+authors = []
+language = "en"
+multilingual = false
+src = "src"
+title = "ODP Documentation Guide"
+
+[preprocessor]
+
+[preprocessor.mermaid]
+command = "mdbook-mermaid"
+
+[output]
+
+[output.html]
+theme = ".theme"
+additional-js = ["mermaid.min.js", "mermaid-init.js"]
