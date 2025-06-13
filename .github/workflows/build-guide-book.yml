@@ -13,7 +13,7 @@ permissions:
   contents: write
   
 jobs:
-    build-docs:
+  build-docs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -90,16 +90,16 @@ jobs:
       - name: Download site artifact
         uses: actions/download-artifact@v4
         with:
-          name: site
-          path: site
+          name: guide
+          path: guide
 
-      - name: Debug site folder contents
+      - name: Debug guide folder contents
         run: |
-          echo "Contents of site:"
-          find site
+          echo "Contents of guide:"
+          find guide
 
       - name: Publish to GitHub Pages
         uses: peaceiris/actions-gh-pages@v3
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
-          publish_dir: ./site
+          publish_dir: ./guide
