@@ -13,7 +13,7 @@ permissions:
   contents: write
   
 jobs:
-    build-docs:
+  build-docs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout repository
@@ -82,18 +82,18 @@ jobs:
           GH_TOKEN: ${{ github.token }}
         run: |
          gh release upload "$TAG_NAME" dist/*.zip --clobber --repo "$GITHUB_REPOSITORY"
-    
+   
   deploy-pages:
     needs: build-docs
     runs-on: ubuntu-latest
     steps:
-      - name: Download guide_book artifact
+      - name: Download site artifact
         uses: actions/download-artifact@v4
         with:
           name: guide
           path: guide
 
-      - name: Debug site folder contents
+      - name: Debug guide folder contents
         run: |
           echo "Contents of guide:"
           find guide
@@ -103,4 +103,3 @@ jobs:
         with:
           github_token: ${{ secrets.GITHUB_TOKEN }}
           publish_dir: ./guide
-        
