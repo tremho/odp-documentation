@@ -27,6 +27,7 @@ with the __patina-dxe-core-qemu__ and __patina-quemu__ repositories for this.
 
 ## Preparing the workspace environment
 
+
 ---------------
 
 _TODO - Rewrite as a guide to how to read the other docs to set up and then come back here.
