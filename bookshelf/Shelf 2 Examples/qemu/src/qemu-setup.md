@@ -30,7 +30,7 @@ sudo make install
 You can download the Validation OS ISO which is stripped down version of the OS and boots much faster in QEMU
 [Validation OS Windows 11](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/validation-os-overview?view=windows-11_)
 
-When you mount the ISO you will have ValidationOS.vhdx and ValidationOs.wim files. Generally we work with virtual disk files (vhdx) in qemu. Copy the ValidationOS.vhdx file to your WSL file share and convert this to qcow2 image that is used by qemu.
+When you mount the ISO you will have ValidationOS.vhdx and ValidationOs.wim files. Generally we work with virtual disk files (vhdx) in qemu. Copy the ValidationOS.vhdx file to your WSL file share, prepare it by injecting critical CAB file contents (below), and convert this to qcow2 image that is used by qemu.
 
 `qemu-img convert -p -O qcow2 ValidationOS.vhdx winvos.qcow2`
 
@@ -49,4 +49,30 @@ Now you can just port the environment variable to point to your windows image an
 
 You should now be able to boot to windows and connect to the VNC session using your favorite VNC viewer at 127.0.0.1:5900
 
+## Preparing the Windows Validation OS (WinVOS) Image
 
+WinVOS is a pared down Windows OS image that is convenient for basic development while also booting relativley quickly under QEMU.  You'll need access to the [Validation OS Windows 11](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/validation-os-overview?view=windows-11&viewFallbackFrom=windows-11_) VHDX and minimally the following [CAB files](https://learn.microsoft.com/en-us/windows-hardware/manufacture/desktop/validation-os-optional-packages?view=windows-11_) (for keyboard input, connectivity, etc.):
+
+- Microsoft-WinVOS-Connectivity-Package.cab
+- Microsoft-WinVOS-Driver-Support-Package.cab
+- Microsoft-WinVOS-PnP-Package.cab
+
+To mount and install the CAB files into the VHDX:
+
+1. Mount the VHDX image by double clicking on it and noting the drive letter.  Alternatively, from PowerShell:
+
+    `Mount-VHD -Path "C:\Path\To\Your.vhdx"`
+
+2. Inject each CAB file using DISM (replace the drive and paths with actual):
+
+    `dism /Image:D:\ /Add-Package /PackagePath:"C:\temp\Microsoft-WinVOS-Connectivity-Package.cab"`
+
+    `dism /Image:D:\ /Add-Package /PackagePath:"C:\temp\Microsoft-WinVOS-Driver-Support-Package.cab"`
+
+    `dism /Image:D:\ /Add-Package /PackagePath:"C:\temp\Microsoft-WinVOS-PnP-Package.cab"`
+
+3. Unmount your VDHX file to make sure it is saved by right-clicking on the drive in File Explorer and selecting Eject.  Alternatively, from PowerShell:
+
+    `Dismount-VHD -Path "C:\Path\To\Your.vhdx`
+
+At this point, the VHDX can be converted to a qcow2 image and booted in QEMU following the **Running QEMU with Windows** instructions above.
