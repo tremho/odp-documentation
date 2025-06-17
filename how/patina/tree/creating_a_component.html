@@ -168,10 +168,31 @@
                     <main>
                         <h1 id="creating-a-component"><a class="header" href="#creating-a-component">Creating a component</a></h1>
 <p>By this point, we have set up our development workspace between the patina-dxe-core-qemu and the patina-qemu repositories and have them wired together so that the image loaded and run in the QEMU emulator is that which was built from the patina-dxe-core-qemu sources.</p>
-<p>Now let's create our own component that we can add to this set.</p>
-<p>In the <code>src</code> directory we find a <code>component</code> directory and some other small <code>.rs</code> files. The <code>component</code> directory is where we will be adding our new component.</p>
+<h2 id="starting-our-test-component-project"><a class="header" href="#starting-our-test-component-project">Starting our test component project</a></h2>
+<p>In our test component project root, create a new folder for our project space. Call it <code>test_component</code>.</p>
+<p>In this project, we will be mimicking the parts of the code layout that is used in <code>patina-dxe-core-qemu</code>, and adding our own files or replacing those that are represented there with updated versions.</p>
+<p>In your test_component project, create this file structure.  No need for content in any of the files just yet:</p>
+<pre><code>-\
+  - bin\
+    - q35_dxe_core.rs
+  - src\
+    - component\
+        - test_component.rs
+  - q35.rs  
+</code></pre>
+<p>in <code>src/q35.rs</code>, set the content to simply</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>pub mod test_component
+<span class="boring">}</span></code></pre></pre>
+<blockquote>
+<p>👀</p>
+<p>Note that We will not be using the service-related files from the patina-dxe-core-qemu repository in this example. These components implement platform services related to hardware configuration—such as ACPI port address emulation and HOB (Hand-Off Block) population—that are important for more advanced firmware scenarios.</p>
+<p>For our purposes, which focus on demonstrating a basic custom component using Patina’s DXE Core, these services are unnecessary. This allows us to simplify the component setup and focus on the essentials of the registration and dispatch model.</p>
+<p>These service components are useful when simulating realistic platform behavior—like memory-mapped I/O, reset control, or dynamic configuration discovery—and would be valuable when bringing up firmware against specific hardware targets. They can be reintroduced later if needed.</p>
+</blockquote>
 <h3 id="defining-the-component-code"><a class="header" href="#defining-the-component-code">Defining the component code</a></h3>
-<p>Inside the <code>component</code> directory, create a new file named <code>test_component.rs</code> that contains this content:</p>
+<p>for the <code>src/component/test_component.rs</code> file, add this content to define our new test component</p>
 <pre><code>use log::info;
 use patina_sdk::{component::params::Config, error::Result};
 
@@ -190,43 +211,82 @@ pub fn run_test_component(name: Config&lt;Name&gt;) -&gt; Result&lt;()&gt; {
 <p>The function signature for this implementation forms the basis for the dependency injection we will register in the next step.</p>
 <h3 id="registering-the-component"><a class="header" href="#registering-the-component">Registering the component</a></h3>
 <p>The file <code>bin/q35_dxe_core.rs</code> is the main binding and execution point for the manifest of components that will make up the image.</p>
-<p>If we look at this file we will see a Core:default() function is called with a number of <code>with_config()</code> and <code>with_component()</code> calls, along with a few others, chained together. This sets up the components that will be included.
-The chain concludes with <code>.start().unwrap()</code>.  We can add our component just prior to this, by inserting the lines</p>
-<pre><code>.with_component(test_component::run_test_component)
+<p>Find this file in the <code>patina-dxe-core-qemu</code> repository directory and copy it to your project space at <code>bin/q35_dxe_core.rs</code> so we start from the full contents.</p>
+<p>If we look at the patina-dxe-core-qemu version of this file we will see a <code>Core:default()</code> function is called with a number of <code>with_config()</code> and <code>with_component()</code> calls, along with a few others, chained together. This sets up the components that will be included.</p>
+<p>The chain concludes with <code>.start().unwrap()</code>.</p>
+<p>Remove these lines from your copy and between</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>with_section_extractor(patina_section_extractor::CompositeSectionExtractor::default())
+        .init_memory(physical_hob_list) // We can make allocations now!
+<span class="boring">}</span></code></pre></pre>
+<p>and</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>        .start()
+<span class="boring">}</span></code></pre></pre>
+<p>We will want logging, so replace the line</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>        .with_component(adv_logger_component)
+<span class="boring">}</span></code></pre></pre>
+<p>We can add our component just prior after this, by inserting the lines</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>.with_component(test_component::run_test_component)
 .with_config(test_component::Name("World"))
-</code></pre>
+<span class="boring">}</span></code></pre></pre>
 <p>just before the <code>.start()</code> call.</p>
+<p>It should end up looking similar to this:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>    Core::default()
+        .with_section_extractor(patina_section_extractor::CompositeSectionExtractor::default())
+        .init_memory(physical_hob_list) // We can make allocations now!
+        .with_component(adv_logger_component)
+        .with_component(test_component::run_test_component)
+        .with_config(test_component::Name("World"))
+        .start()
+        .unwrap();
+
+    log::info!("Dead Loop Time");
+    loop {}
+
+<span class="boring">}</span></code></pre></pre>
+<p>also, toward the top of that file, remove the line that looks like this, since we are not using the services in this component:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use qemu_resources::q35::component::service as q35_services;
+<span class="boring">}</span></code></pre></pre>
 <h3 id="importing-the-component"><a class="header" href="#importing-the-component">importing the component</a></h3>
 <p>Of course, before this code can register our component, it must know about it.</p>
-<p>We name it as one of the exported components by editing <code>src/q35/component.rs</code> and adding the line <code>pub mod test_component;</code> to this file.</p>
-<p>We can then add our import to the list of 'use<code>statements near the top of the</code>bin/q35_dxe_core.rs` file with the line</p>
-<pre><code>use qemu_resources:q35::component::test_component;
-</code></pre>
-<h3 id="removing-other-samples"><a class="header" href="#removing-other-samples">removing other samples</a></h3>
-<p><em>(optional)</em>
-You may have noticed in the debug.log dispatches to other "hello, world" sample components.  These come from the patina_samples section of the 'patina' repository.  Recall, the 'patina' repository is like a library of prebuilt-crates.  This sample code there is one of these crates, but we don't need to use it.  Let's either comment out or remove the <code>use patina_samples as sc</code> line from the list of <code>use</code> statements and these lines from the Core::default() chain:</p>
-<pre><code>.with_config(sc::Name("World")) // Config knob for sc::log_hello
-</code></pre>
-<pre><code>        .with_component(sc::log_hello) // Example of a function component
-        .with_component(sc::HelloStruct("World")) // Example of a struct component
-        .with_component(sc::GreetingsEnum::Hello("World")) // Example of a struct component (enum)
-        .with_component(sc::GreetingsEnum::Goodbye("World")) // Example of a struct component (enum)
-</code></pre>
-<p>As this will remove some of the clutter from our example build. We will leave the other components there, and verify that we've added our <code>test_component</code> references.</p>
+<p>We've already named it in <code>q35.rs</code> with <code>pub mod test_component</code>;</p>
+<p>We can then add our import to the list of <code>use</code> statements near the top of the <code>bin/q35_dxe_core.rs</code> file with the line</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use qemu_resources::q35::component::test_component;
+<span class="boring">}</span></code></pre></pre>
+<p>You should see a similar line:</p>
+<pre><pre class="playground"><code class="language-rust"><span class="boring">#![allow(unused)]
+</span><span class="boring">fn main() {
+</span>use qemu_resources::q35::component::service as q35_services;
+<span class="boring">}</span></code></pre></pre>
+<p>add our test_component import near here.</p>
 <h2 id="building"><a class="header" href="#building">Building</a></h2>
-<p>We can now build with the command <code>cargo make q35</code></p>
-<p>.</p>
-<p>Once we have built without errors, switch to Z:\ and run
-<code>stuart_build -c Platforms\QemuQ35Pkg\PlatformBuild.py --FlashRom</code></p>
-<p>and check the debug.log after it runs.</p>
-<p>Search for 'test component' and you should find this:</p>
-<pre><code>INFO - DISPATCH_ATTEMPT BEGIN: Id = ["qemu_resources::q35::component::test_component::run_test_component"]
-INFO - ============= Test Component ===============
-INFO - Hello, World!
-INFO - =========================================
-INFO - DISPATCH_ATTEMPT END: Id = ["qemu_resources::q35::component::test_component::run_test_component"] Status = [Success]
+<p>We can now build with the command</p>
+<pre><code class="language-cmd">Z:
+cd patina-dxe-core-qemu
+cargo make q35 Z:\\test_component
 </code></pre>
-<p>Congratulations! you have built and run your first Patina Rust component and executed it as emulated firmware!</p>
+<p>and once that's done, we can build it into QEMU and run it with</p>
+<pre><code class="language-cmd">Z:
+cd patina-qemu
+q35env\Scripts\activate.bat
+stuart_build -c Platforms\QemuQ35Pkg\PlatformBuild.py --flashrom BLD_*_DXE_CORE_BINARY_PATH="Z:\patina-dxe-core-qemu\target\x86_64-unknown-uefi"
+</code></pre>
+<p>Like before, this will take several minutes to build before it starts QEMU and begins logging the output of the execution.</p>
+<p>A large amount of log output is generated by subsystems that trigger before and after our component is run, so it will be tricky to find the output in the scroll-back window of your terminal.</p>
+<p>You should be able to locate your "Hello, World!" output within a section that starts with "Dispatching Local Drivers".  But be aware that the default patina-qemu image has similar "Hello, World" type examples within it, so be sure to look for mention of <code>test_component</code> in the log as well to verify it is running your code.  You can also modify the text of your test message to verify this.  If you only see the "other" samples, then something has gone wrong.  Verify that the <code>BLD_*_DXE_CORE_BINARY_PATH</code> environment variable correctly points to the <code>.efi</code> file built by your test component project. If needed, rebuild your component and re-run the <code>stuart_build</code> command.</p>
 
                     </main>
 

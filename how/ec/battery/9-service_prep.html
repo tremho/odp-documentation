@@ -167,6 +167,12 @@
                 <div id="content" class="content">
                     <main>
                         <h1 id="battery-service-preparation"><a class="header" href="#battery-service-preparation">Battery Service Preparation</a></h1>
+<hr />
+<p><em>TODO:
+This section needs to be revisited and rewritten to support a successful 'standard' build - earlier attempts at
+including some of the dependencies in a std environment failed, and so this was written to build for the embedded target
+at this premature phase.  We want to build the battery complete before switching to the embedded context though.</em></p>
+<hr />
 <p>We've successfully exposed and proven our implementation of battery traits and their values for our mock battery,
 and built for an embedded target.
 In this step, we'll continue our integration by connecting to a battery service, but that requires some setup to cover first.</p>
@@ -403,11 +409,11 @@ serde = { version = "1.0.219", default-features = false, features = ["derive"] }
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../../../how/ec/battery/build_embedded.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../../../how/ec/battery/8-values.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../../../how/ec/battery/service_registry.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../../../how/ec/battery/10-service_registry.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -417,11 +423,11 @@ serde = { version = "1.0.219", default-features = false, features = ["derive"] }
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../../../how/ec/battery/build_embedded.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../../../how/ec/battery/8-values.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../../../how/ec/battery/service_registry.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../../../how/ec/battery/10-service_registry.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>

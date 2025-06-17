@@ -1,0 +1,510 @@
+<!DOCTYPE HTML>
+<html lang="en" class="light sidebar-visible" dir="ltr">
+    <head>
+        <!-- Book generated using mdBook -->
+        <meta charset="UTF-8">
+        <title>ACPI - ODP Documentation Guide</title>
+
+
+        <!-- Custom HTML head -->
+
+        <meta name="description" content="">
+        <meta name="viewport" content="width=device-width, initial-scale=1">
+        <meta name="theme-color" content="#ffffff">
+
+        <link rel="icon" href="../../../../favicon.svg">
+        <link rel="shortcut icon" href="../../../../favicon.png">
+        <link rel="stylesheet" href="../../../../css/variables.css">
+        <link rel="stylesheet" href="../../../../css/general.css">
+        <link rel="stylesheet" href="../../../../css/chrome.css">
+        <link rel="stylesheet" href="../../../../css/print.css" media="print">
+
+        <!-- Fonts -->
+        <link rel="stylesheet" href="../../../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../../../fonts/fonts.css">
+
+        <!-- Highlight.js Stylesheets -->
+        <link rel="stylesheet" id="highlight-css" href="../../../../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../../../../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../../../../ayu-highlight.css">
+
+        <!-- Custom theme stylesheets -->
+
+
+        <!-- Provide site root and default themes to javascript -->
+        <script>
+            const path_to_root = "../../../../";
+            const default_light_theme = "light";
+            const default_dark_theme = "navy";
+        </script>
+        <!-- Start loading toc.js asap -->
+        <script src="../../../../toc.js"></script>
+    </head>
+    <body>
+    <div id="mdbook-help-container">
+        <div id="mdbook-help-popup">
+            <h2 class="mdbook-help-title">Keyboard shortcuts</h2>
+            <div>
+                <p>Press <kbd>←</kbd> or <kbd>→</kbd> to navigate between chapters</p>
+                <p>Press <kbd>S</kbd> or <kbd>/</kbd> to search in the book</p>
+                <p>Press <kbd>?</kbd> to show this help</p>
+                <p>Press <kbd>Esc</kbd> to hide this help</p>
+            </div>
+        </div>
+    </div>
+    <div id="body-container">
+        <!-- Work around some values being stored in localStorage wrapped in quotes -->
+        <script>
+            try {
+                let theme = localStorage.getItem('mdbook-theme');
+                let sidebar = localStorage.getItem('mdbook-sidebar');
+
+                if (theme.startsWith('"') && theme.endsWith('"')) {
+                    localStorage.setItem('mdbook-theme', theme.slice(1, theme.length - 1));
+                }
+
+                if (sidebar.startsWith('"') && sidebar.endsWith('"')) {
+                    localStorage.setItem('mdbook-sidebar', sidebar.slice(1, sidebar.length - 1));
+                }
+            } catch (e) { }
+        </script>
+
+        <!-- Set the theme before any content is loaded, prevents flash -->
+        <script>
+            const default_theme = window.matchMedia("(prefers-color-scheme: dark)").matches ? default_dark_theme : default_light_theme;
+            let theme;
+            try { theme = localStorage.getItem('mdbook-theme'); } catch(e) { }
+            if (theme === null || theme === undefined) { theme = default_theme; }
+            const html = document.documentElement;
+            html.classList.remove('light')
+            html.classList.add(theme);
+            html.classList.add("js");
+        </script>
+
+        <input type="checkbox" id="sidebar-toggle-anchor" class="hidden">
+
+        <!-- Hide / unhide sidebar before it is displayed -->
+        <script>
+            let sidebar = null;
+            const sidebar_toggle = document.getElementById("sidebar-toggle-anchor");
+            if (document.body.clientWidth >= 1080) {
+                try { sidebar = localStorage.getItem('mdbook-sidebar'); } catch(e) { }
+                sidebar = sidebar || 'visible';
+            } else {
+                sidebar = 'hidden';
+            }
+            sidebar_toggle.checked = sidebar === 'visible';
+            html.classList.remove('sidebar-visible');
+            html.classList.add("sidebar-" + sidebar);
+        </script>
+
+        <nav id="sidebar" class="sidebar" aria-label="Table of contents">
+            <!-- populated by js -->
+            <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
+            <noscript>
+                <iframe class="sidebar-iframe-outer" src="../../../../toc.html"></iframe>
+            </noscript>
+            <div id="sidebar-resize-handle" class="sidebar-resize-handle">
+                <div class="sidebar-resize-indicator"></div>
+            </div>
+        </nav>
+
+        <div id="page-wrapper" class="page-wrapper">
+
+            <div class="page">
+                <div id="menu-bar-hover-placeholder"></div>
+                <div id="menu-bar" class="menu-bar sticky">
+                    <div class="left-buttons">
+                        <label id="sidebar-toggle" class="icon-button" for="sidebar-toggle-anchor" title="Toggle Table of Contents" aria-label="Toggle Table of Contents" aria-controls="sidebar">
+                            <i class="fa fa-bars"></i>
+                        </label>
+                        <button id="theme-toggle" class="icon-button" type="button" title="Change theme" aria-label="Change theme" aria-haspopup="true" aria-expanded="false" aria-controls="theme-list">
+                            <i class="fa fa-paint-brush"></i>
+                        </button>
+                        <ul id="theme-list" class="theme-popup" aria-label="Themes" role="menu">
+                            <li role="none"><button role="menuitem" class="theme" id="default_theme">Auto</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="light">Light</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="rust">Rust</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="coal">Coal</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="navy">Navy</button></li>
+                            <li role="none"><button role="menuitem" class="theme" id="ayu">Ayu</button></li>
+                        </ul>
+                        <button id="search-toggle" class="icon-button" type="button" title="Search (`/`)" aria-label="Toggle Searchbar" aria-expanded="false" aria-keyshortcuts="/ s" aria-controls="searchbar">
+                            <i class="fa fa-search"></i>
+                        </button>
+                    </div>
+
+                    <h1 class="menu-title">ODP Documentation Guide</h1>
+
+                    <div class="right-buttons">
+                        <a href="../../../../print.html" title="Print this book" aria-label="Print this book">
+                            <i id="print-button" class="fa fa-print"></i>
+                        </a>
+
+                    </div>
+                </div>
+
+                <div id="search-wrapper" class="hidden">
+                    <form id="searchbar-outer" class="searchbar-outer">
+                        <input type="search" id="searchbar" name="searchbar" placeholder="Search this book ..." aria-controls="searchresults-outer" aria-describedby="searchresults-header">
+                    </form>
+                    <div id="searchresults-outer" class="searchresults-outer hidden">
+                        <div id="searchresults-header" class="searchresults-header"></div>
+                        <ul id="searchresults">
+                        </ul>
+                    </div>
+                </div>
+
+                <!-- Apply ARIA attributes after the sidebar and the sidebar toggle button are added to the DOM -->
+                <script>
+                    document.getElementById('sidebar-toggle').setAttribute('aria-expanded', sidebar === 'visible');
+                    document.getElementById('sidebar').setAttribute('aria-hidden', sidebar !== 'visible');
+                    Array.from(document.querySelectorAll('#sidebar a')).forEach(function(link) {
+                        link.setAttribute('tabIndex', sidebar === 'visible' ? 0 : -1);
+                    });
+                </script>
+
+                <div id="content" class="content">
+                    <main>
+                        <h1 id="acpi-entries-for-mptf"><a class="header" href="#acpi-entries-for-mptf">ACPI Entries for MPTF</a></h1>
+<p>Windows will boot and run without the MPTF driver loading, however it will not provide any inbox default handling of thermal control.</p>
+<p>For any MPTF functionality the Core Driver must be loaded with the following ACPI entry</p>
+<pre><code>// MPTFCore Driver
+Device(MPC0) {
+  Name(_HID, "MSFT000D")
+  Name (_UID, 1)
+}
+</code></pre>
+<p>There is no requirement to define further resources through the core driver those are all controlled by the IO driver entries.</p>
+<h2 id="microsoft-temperature-sensor-driver"><a class="header" href="#microsoft-temperature-sensor-driver">Microsoft Temperature Sensor Driver</a></h2>
+<p>This driver is loaded uner MSFT000A entry, it must always define a _TMP method and _DSM with support for function 0 and function1. If just these two functions are supported function 0 will return 0x3</p>
+<pre><code>  Method (_TMP) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      Name(BUFF, Buffer(24){}) // Create buffer for send/recv data
+      CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
+      CreateField(BUFF,16,128,UUID) // UUID of service
+      CreateByteField(BUFF,18, CMDD) // In – First byte of command
+      CreateByteField(BUFF,19, TMP1) // In – Thermal Zone Identifier
+      CreateField(BUFF,144,32,TMPD) // Out – temperature for TZ
+
+      Store(20, LENG)
+      Store(0x1, CMDD) // EC_THM_GET_TMP
+      Store(1,TMP1)
+      Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID) // Thermal
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        Return (TMPD)
+      }
+    }
+    Return(Zero)
+  }
+
+  // Update Thresholds
+  Method(STMP, 0x2, Serialized) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      Name(BUFF, Buffer(32){}) // Create buffer for send/recv data
+      CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
+      CreateField(BUFF,16,128,UUID) // UUID of service
+      CreateByteField(BUFF,18, CMDD) // In – First byte of command
+      CreateByteField(BUFF,19, TID1) // In – Thermal Zone Identifier
+      CreateDwordField(BUFF,20,THS1) // In – Timeout in ms
+      CreateDwordField(BUFF,24,THS2) // In – Low threshold tenth Kelvin
+      CreateDwordField(BUFF,28,THS3) // In – High threshold tenth Kelvin
+      CreateField(BUFF,144,32,THSD) // Out – Status from EC
+
+      Store(0x30, LENG)
+      Store(0x2, CMDD) // EC_THM_SET_THRS
+      Store(1,TID1)
+      Store(0,THS1) // Timout in ms 0 ignore
+      Store(Arg0,THS2) // Low Threshold
+      Store(Arg1,THS3) // High Threshold
+      Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID) // Thermal
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        Return (THSD)
+      }
+    }
+    Return(Zero)
+  }
+
+
+  // Arg0 GUID
+  //      1f0849fc-a845-4fcf-865c-4101bf8e8d79 - Temperature GUID
+  // Arg1 Revision
+  // Arg2 Function Index
+  // Arg3 Function dependent
+  Method(_DSM, 0x4, Serialized) {
+    // Input Variable
+    If(LEqual(ToUuid("1f0849fc-a845-4fcf-865c-4101bf8e8d79"),Arg0)) {
+        Switch(Arg2) {
+          Case(0) {
+            // We support function 0,1
+            Return (Buffer() {0x03, 0x00, 0x00, 0x00})
+          }
+          // Update Thresholds
+          // Arg3 = Package () { LowTemp, HighTemp }
+          Case(1) {
+            Return(STMP(DeRefOf(Index(Arg3,0)),DeRefOf(Index(Arg3,1)))) // Set Temp low and high threshold
+          }
+        }
+    }
+
+    Return (Ones)
+  }
+</code></pre>
+<h2 id="microsoft-customized-io-signal-driver"><a class="header" href="#microsoft-customized-io-signal-driver">Microsoft Customized IO Signal Driver</a></h2>
+<p>This driver is loaded under MSFT0011 entry, and must always define Function 0 for both input and output devices. Function 0 is a bitmask of all the other variables that are supported on this platform. If you support functions 1,2,3 you would return 0b1111 (0xf) to indicate support for function 0-3.</p>
+<pre><code>  // Arg0 GUID
+  //      07ff6382-e29a-47c9-ac87-e79dad71dd82 - Input
+  //      d9b9b7f3-2a3e-4064-8841-cb13d317669e - Output
+  // Arg1 Revision
+  // Arg2 Function Index
+  // Arg3 Function dependent
+  Method(_DSM, 0x4, Serialized) {
+    // Input Variable
+    If(LEqual(ToUuid("07ff6382-e29a-47c9-ac87-e79dad71dd82"),Arg0)) {
+        Switch(Arg2) {
+          Case(0) {
+            // We support function 0-3
+            Return (Buffer() {0x0f, 0x00, 0x00, 0x00})
+          }
+          Case(1) {
+            Return(GVAR(1,ToUuid("db261c77-934b-45e2-9742-256c62badb7a"))) // MinRPM
+          }
+          Case(2) {
+            Return(GVAR(1,ToUuid("5cf839df-8be7-42b9-9ac5-3403ca2c8a6a"))) // MaxRPM
+          }
+          Case(3) {
+            Return(GVAR(1,ToUuid("adf95492-0776-4ffc-84f3-b6c8b5269683"))) // CurrentRPM
+          }
+        }
+        Return(Ones)
+    }
+    // Output Variable
+    If(LEqual(ToUuid("d9b9b7f3-2a3e-4064-8841-cb13d317669e"),Arg0)) {
+        Switch(Arg2) {
+          Case(0) {
+            // We support function 0-3
+            Return (Buffer() {0x0f, 0x00, 0x00, 0x00})
+          }
+          Case(1) {
+            Return(SVAR(1,ToUuid("db261c77-934b-45e2-9742-256c62badb7a"),Arg3)) // MinRPM
+          }
+          Case(2) {
+            Return(SVAR(1,ToUuid("5cf839df-8be7-42b9-9ac5-3403ca2c8a6a"),Arg3)) // MaxRPM
+          }
+          Case(3) {
+            Return(SVAR(1,ToUuid("adf95492-0776-4ffc-84f3-b6c8b5269683"),Arg3)) // CurrentRPM
+          }
+        }
+        Return(Ones)
+    }
+
+    Return (Ones)
+  }
+</code></pre>
+<p>In this case we've assigned the following meanings to supported functions</p>
+<pre><code>Function 1 --&gt; MinRPM
+Function 2 --&gt; MaxRPM
+Function 3 --&gt; CurrentRPM
+</code></pre>
+<p>The meaning of what Function 1 does is mapped by the configuration Blob for your device, so Function 1 need not always be MinRPM. For communication with the EC we've assigned UUID's to each variable we support on the EC. This allows us to keep the same UUID for MinRPM on all platform implementations even though it may be a different function.</p>
+<p>The following is the list of UUID's and variables we have defined for our reference implementation, but further mappings can be added by OEM's as well.</p>
+<table>
+<thead>
+<tr class="header">
+<th><strong>Variable</strong></th>
+<th><strong>GUID</strong></th>
+<th><strong>Description</strong></th>
+</tr>
+</thead>
+<tbody>
+<td>OnTemp</td>
+<td>ba17b567-c368-48d5-bc6f-a312a41583c1</td>
+<td>Lowest temperature at which the fan is turned on.</td>
+</tr>
+<td>RampTemp</td>
+<td>3a62688c-d95b-4d2d-bacc-90d7a5816bcd</td>
+<td>Temperature at which the fan starts ramping from min speed.</td>
+</tr>
+<td>MaxTemp</td>
+<td>dcb758b1-f0fd-4ec7-b2c0-ef1e2a547b76</td>
+<td>Temperature at top of fan ramp where fan is at maximum speed.</td>
+</tr>
+<td>CrtTemp</td>
+<td>218246e7-baf6-45f1-aa13-07e4845256b8</td>
+<td>Critical temperature at which we need to shut down the system.</td>
+</tr>
+<td>ProcHotTemp</td>
+<td>22dc52d2-fd0b-47ab-95b8-26552f9831a5</td>
+<td>Temperature at which the EC will assert the PROCHOT notification.</td>
+</tr>
+<td>MinRpm</td>
+<td>db261c77-934b-45e2-9742-256c62badb7a</td>
+<td>Minimum RPM FAN speed</td>
+</tr>
+<td>MinDba (Optional)</td>
+<td>0457a722-58f4-41ca-b053-c7088fcfb89d</td>
+<td>Minimum Dba from FAN</td>
+</tr>
+<td><p>MinSones (Optional)</td>
+<td>311668e2-09aa-416e-a7ce-7b978e7f88be</td>
+<td>Minimum Sones from FAN</td>
+</tr>
+<td>MaxRpm</td>
+<td>5cf839df-8be7-42b9-9ac5-3403ca2c8a6a</td>
+<td>Maximum RPM for FAN</td>
+</tr>
+<td>MaxDba (Optional)</td>
+<td>372ae76b-eb64-466d-ae6b-1228397cf374</td>
+<td>Maximum DBA for FAN</td>
+</tr>
+<td>MaxSones (Optional)</td>
+<td>6deb7eb1-839a-4482-8757-502ac31b20b7</td>
+<td>Maximum Sones for FAN</td>
+</tr>
+<td>ProfileType</td>
+<td>23b4a025-cdfd-4af9-a411-37a24c574615</td>
+<td>Set profile for EC, gaming, quiet, lap, etc</td>
+</tr>
+<td>CurrentRpm</td>
+<td>adf95492-0776-4ffc-84f3-b6c8b5269683</td>
+<td>The current RPM of FAN</td>
+</tr>
+<td>CurrentDba (Optional)</td>
+<td>4bb2ccd9-c7d7-4629-9fd6-1bc46300ee77</td>
+<td>The current Dba from FAN</td>
+</tr>
+<td>CurrentSones (Optional)</td>
+<td>7719d686-02af-48a5-8283-20ba6ca2e940</td>
+<td>The current Sones from FAN</td>
+</tr>
+</tbody>
+</table>
+<h2 id="acpi-communication-to-ec"><a class="header" href="#acpi-communication-to-ec">ACPI communication to EC</a></h2>
+<p>MPTF refers to input and output channel values, however these need to be communicated to the EC. Above code refers to GVAR and SVAR to get a variable or set a variable. The following ACPI shows example of how to conver this to an FFA command which is sent to the secure EC service and then communicated to the EC. Further details of how this data is sent to the EC is covered in the EC Service section.</p>
+<pre><code>  // Arg0 Instance ID
+  // Arg1 UUID of variable
+  // Return (Status,Value)
+  Method(GVAR,2,Serialized) {
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+        Name(BUFF, Buffer(52){})
+        CreateField(BUFF, 0, 64, STAT) // Out – Status
+        CreateField(BUFF, 64, 64, RCVD) // ReceiverId(only lower 16-bits are used) 
+        CreateField(BUFF, 128, 128, UUID) // UUID of service
+        CreateField(BUFF, 256, 8, CMDD) // Command register
+        CreateField(BUFF, 264, 8, INST) // In – Instance ID
+        CreateField(BUFF, 272, 16, VLEN) // In – Variable Length in bytes
+        CreateField(BUFF, 288, 128, VUID) // In – Variable UUID
+        CreateField(BUFF, 264, 64, RVAL) // Out – Variable value
+
+        Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID)
+        Store(0x5, CMDD) // EC_THM_GET_VAR
+        Store(Arg0,INST) // Save instance ID
+        Store(4,VLEN) // Variable is always DWORD here
+        Store(Arg1, VUID)
+        Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+    
+        If(LEqual(STAT,0x0) ) // Check FF-A successful?
+        {
+        Return (RVAL)
+        }
+      }
+      Return (Ones)
+    }
+
+  // Arg0 Instance ID
+  // Arg1 UUID of variable
+  // Return (Status,Value)
+  Method(SVAR,3,Serialized) {
+    If(LEqual(\_SB_.FFA0.AVAL,One)) {
+      Name(BUFF, Buffer(56){})
+    
+      CreateField(BUFF, 0, 64, STAT) // Out – Status
+      CreateField(BUFF, 64, 64, RCVD) // ReceiverId(only lower 16-bits are used) 
+      CreateField(BUFF, 128, 128, UUID) // UUID of service
+      CreateField(BUFF, 256, 8, CMDD) // Command register
+      CreateField(BUFF, 264, 8, INST) // In – Instance ID
+      CreateField(BUFF, 272, 16, VLEN) // In – Variable Length in bytes
+      CreateField(BUFF, 288, 128, VUID) // In – Variable UUID
+      CreateField(BUFF, 416, 32, DVAL) // In – Variable Data
+      CreateField(BUFF, 264, 64, RVAL) // Out – Variable value
+
+      Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID)
+      Store(0x6, CMDD) // EC_THM_SET_VAR
+      Store(Arg0,INST) // Save instance ID
+      Store(4,VLEN) // Variable is always DWORD here
+      Store(Arg1, VUID)
+      Store(Arg2,DVAL)
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        Return (RVAL)
+      }
+    }
+    Return (Ones)
+  }
+
+</code></pre>
+
+                    </main>
+
+                    <nav class="nav-wrapper" aria-label="Page navigation">
+                        <!-- Mobile navigation buttons -->
+                            <a rel="prev" href="../../../../how/ec/thermal/mptf/mptf-drivers.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                                <i class="fa fa-angle-left"></i>
+                            </a>
+
+                            <a rel="next prefetch" href="../../../../how/ec/thermal/mptf/blob.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                                <i class="fa fa-angle-right"></i>
+                            </a>
+
+                        <div style="clear: both"></div>
+                    </nav>
+                </div>
+            </div>
+
+            <nav class="nav-wide-wrapper" aria-label="Page navigation">
+                    <a rel="prev" href="../../../../how/ec/thermal/mptf/mptf-drivers.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                        <i class="fa fa-angle-left"></i>
+                    </a>
+
+                    <a rel="next prefetch" href="../../../../how/ec/thermal/mptf/blob.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                        <i class="fa fa-angle-right"></i>
+                    </a>
+            </nav>
+
+        </div>
+
+
+
+
+        <script>
+            window.playground_copyable = true;
+        </script>
+
+
+        <script src="../../../../elasticlunr.min.js"></script>
+        <script src="../../../../mark.min.js"></script>
+        <script src="../../../../searcher.js"></script>
+
+        <script src="../../../../clipboard.min.js"></script>
+        <script src="../../../../highlight.js"></script>
+        <script src="../../../../book.js"></script>
+
+        <!-- Custom JS scripts -->
+        <script src="../../../../mermaid.min.js"></script>
+        <script src="../../../../mermaid-init.js"></script>
+
+
+    </div>
+    </body>
+</html>

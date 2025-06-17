@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Connectivity - ODP Documentation Guide</title>
+        <title>Debugging - ODP Documentation Guide</title>
 
 
         <!-- Custom HTML head -->
@@ -12,33 +12,33 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
-        <link rel="icon" href="../../favicon.svg">
-        <link rel="shortcut icon" href="../../favicon.png">
-        <link rel="stylesheet" href="../../css/variables.css">
-        <link rel="stylesheet" href="../../css/general.css">
-        <link rel="stylesheet" href="../../css/chrome.css">
-        <link rel="stylesheet" href="../../css/print.css" media="print">
+        <link rel="icon" href="../../../../favicon.svg">
+        <link rel="shortcut icon" href="../../../../favicon.png">
+        <link rel="stylesheet" href="../../../../css/variables.css">
+        <link rel="stylesheet" href="../../../../css/general.css">
+        <link rel="stylesheet" href="../../../../css/chrome.css">
+        <link rel="stylesheet" href="../../../../css/print.css" media="print">
 
         <!-- Fonts -->
-        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
-        <link rel="stylesheet" href="../../fonts/fonts.css">
+        <link rel="stylesheet" href="../../../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../../../fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="highlight-css" href="../../highlight.css">
-        <link rel="stylesheet" id="tomorrow-night-css" href="../../tomorrow-night.css">
-        <link rel="stylesheet" id="ayu-highlight-css" href="../../ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="../../../../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../../../../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../../../../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
-            const path_to_root = "../../";
+            const path_to_root = "../../../../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../../toc.js"></script>
+        <script src="../../../../toc.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -102,7 +102,7 @@
             <!-- populated by js -->
             <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
             <noscript>
-                <iframe class="sidebar-iframe-outer" src="../../toc.html"></iframe>
+                <iframe class="sidebar-iframe-outer" src="../../../../toc.html"></iframe>
             </noscript>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -137,7 +137,7 @@
                     <h1 class="menu-title">ODP Documentation Guide</h1>
 
                     <div class="right-buttons">
-                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                        <a href="../../../../print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
 
@@ -166,20 +166,46 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="connectivity"><a class="header" href="#connectivity">Connectivity</a></h1>
-<p><em>TODO</em></p>
-<p>possibly include a USB example
-may also include mentions (probably not examples) of WiFi and Bluetooth integration</p>
+                        <h1 id="debugging"><a class="header" href="#debugging">Debugging</a></h1>
+<p>This section describes the order you should follow when validating the MPTF and log files to capture.</p>
+<h2 id="loading-drivers"><a class="header" href="#loading-drivers">Loading Drivers</a></h2>
+<p>The first step is to make sure the MPTF drivers are loaded successfully in device manager.</p>
+<p>In device manager expand the Thermal devices tab to make sure see the following three devices listed without any yellow bang.</p>
+<p><img src="media/device_manager.png" alt="MPTF Driver" /></p>
+<p>If you don't see the "Thermal devices" in device manager, you are either missing the ACPI entries or the files are not present in your windows folder. Review the sections on ACPI and the MPTF drivers to make sure all the files are present.</p>
+<p>If MPTF Core Driver is present but yellow banged, this is normally because of a failure in parsing the PocIF.txt and PocSpec.txt files in the root folder. Make sure these are present and look valid or try a simpler file. If they are valid collect logs that are listed in the Logging section below and review/share.</p>
+<p>If Microsoft Customized IO Driver is present but yellow banged, this is normally an issue with your configuration files and ACPI _DSM definitions for input and output devices. Review your ACPI entries for MSFT0011 and make sure all functions referenced in the PocIF.txt are present and valid in your ACPI tables. For further debug collect logs and see section on ACPI debugging to debug ACPI</p>
+<p>If MPTF Custom IO Signal Client River is present but yellow banged, this indicates there is normally a problem in your custom input/output driver component. Enable logging in your driver and make sure it is loaded successfully and no failures. Enable all other logs under logging and review content.</p>
+<p>Sometimes drivers will not load correctly if the MPTF service is not running so be sure to make sure in your service manager that MPTF service is running and set to automatically start.</p>
+<p><img src="media/mptf_service.png" alt="MPTF service" /></p>
+<h2 id="logging"><a class="header" href="#logging">Logging</a></h2>
+<p>Logging has moved to EventViewer traces. To view the MPTF events open Event Viewer (eventvwr.msc) and browse to Applications and Services -&gt; Microsoft -&gt; Windows -&gt; MPTF</p>
+<p>You will see the MPTF events here for debugging and tracing behaviors.</p>
+<p><img src="media/mptf_log.png" alt="MPTF debugging" /></p>
+<p>If using secure EC services and sending commands via FFA these logs are captured to the serial port, in this case you should see the output channel value being written to the variable on the serial port logs</p>
+<pre><code>15:29:00.621 : SP 8003: DEBUG - set_variable instance id: 0x1
+15:29:00.622 : SP 8003:                 length: 0x4
+15:29:00.623 : SP 8003:                 uuid: 5cf839df-8be7-42b9-9ac5-3403ca2c8a6a
+15:29:00.623 : SP 8003:                 data: 0x19
+</code></pre>
+<h2 id="acpi-debugging"><a class="header" href="#acpi-debugging">ACPI Debugging</a></h2>
+<p>Since input and output devices go through ACPI calls you may find yourself needing to debug content in ACPI.</p>
+<pre><code>!amli set spewon verboseon traceon dbgbrkon
+!amli bp \_SB.CIO1._DSM
+!amli bl
+!amli dns /s \_SB.CIO1
+</code></pre>
+<p>For further details on ACPI debugging see <a href="https://learn.microsoft.com/en-us/windows-hardware/drivers/debugger/introduction-to-the-amli-debugger">AMLI Debugging</a></p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../../how/ec/thermal/16-embedded_flashing.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../../../../how/ec/thermal/mptf/blob.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../../how/ec/usb.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../../../../how/ec/thermal/mptf/ec-service.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -189,11 +215,11 @@ may also include mentions (probably not examples) of WiFi and Bluetooth integrat
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../../how/ec/thermal/16-embedded_flashing.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../../../../how/ec/thermal/mptf/blob.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../../how/ec/usb.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../../../../how/ec/thermal/mptf/ec-service.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
@@ -208,17 +234,17 @@ may also include mentions (probably not examples) of WiFi and Bluetooth integrat
         </script>
 
 
-        <script src="../../elasticlunr.min.js"></script>
-        <script src="../../mark.min.js"></script>
-        <script src="../../searcher.js"></script>
+        <script src="../../../../elasticlunr.min.js"></script>
+        <script src="../../../../mark.min.js"></script>
+        <script src="../../../../searcher.js"></script>
 
-        <script src="../../clipboard.min.js"></script>
-        <script src="../../highlight.js"></script>
-        <script src="../../book.js"></script>
+        <script src="../../../../clipboard.min.js"></script>
+        <script src="../../../../highlight.js"></script>
+        <script src="../../../../book.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="../../mermaid.min.js"></script>
-        <script src="../../mermaid-init.js"></script>
+        <script src="../../../../mermaid.min.js"></script>
+        <script src="../../../../mermaid-init.js"></script>
 
 
     </div>

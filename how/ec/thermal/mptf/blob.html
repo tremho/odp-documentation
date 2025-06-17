@@ -3,7 +3,7 @@
     <head>
         <!-- Book generated using mdBook -->
         <meta charset="UTF-8">
-        <title>Connectivity - ODP Documentation Guide</title>
+        <title>Configuration Blob - ODP Documentation Guide</title>
 
 
         <!-- Custom HTML head -->
@@ -12,33 +12,33 @@
         <meta name="viewport" content="width=device-width, initial-scale=1">
         <meta name="theme-color" content="#ffffff">
 
-        <link rel="icon" href="../../favicon.svg">
-        <link rel="shortcut icon" href="../../favicon.png">
-        <link rel="stylesheet" href="../../css/variables.css">
-        <link rel="stylesheet" href="../../css/general.css">
-        <link rel="stylesheet" href="../../css/chrome.css">
-        <link rel="stylesheet" href="../../css/print.css" media="print">
+        <link rel="icon" href="../../../../favicon.svg">
+        <link rel="shortcut icon" href="../../../../favicon.png">
+        <link rel="stylesheet" href="../../../../css/variables.css">
+        <link rel="stylesheet" href="../../../../css/general.css">
+        <link rel="stylesheet" href="../../../../css/chrome.css">
+        <link rel="stylesheet" href="../../../../css/print.css" media="print">
 
         <!-- Fonts -->
-        <link rel="stylesheet" href="../../FontAwesome/css/font-awesome.css">
-        <link rel="stylesheet" href="../../fonts/fonts.css">
+        <link rel="stylesheet" href="../../../../FontAwesome/css/font-awesome.css">
+        <link rel="stylesheet" href="../../../../fonts/fonts.css">
 
         <!-- Highlight.js Stylesheets -->
-        <link rel="stylesheet" id="highlight-css" href="../../highlight.css">
-        <link rel="stylesheet" id="tomorrow-night-css" href="../../tomorrow-night.css">
-        <link rel="stylesheet" id="ayu-highlight-css" href="../../ayu-highlight.css">
+        <link rel="stylesheet" id="highlight-css" href="../../../../highlight.css">
+        <link rel="stylesheet" id="tomorrow-night-css" href="../../../../tomorrow-night.css">
+        <link rel="stylesheet" id="ayu-highlight-css" href="../../../../ayu-highlight.css">
 
         <!-- Custom theme stylesheets -->
 
 
         <!-- Provide site root and default themes to javascript -->
         <script>
-            const path_to_root = "../../";
+            const path_to_root = "../../../../";
             const default_light_theme = "light";
             const default_dark_theme = "navy";
         </script>
         <!-- Start loading toc.js asap -->
-        <script src="../../toc.js"></script>
+        <script src="../../../../toc.js"></script>
     </head>
     <body>
     <div id="mdbook-help-container">
@@ -102,7 +102,7 @@
             <!-- populated by js -->
             <mdbook-sidebar-scrollbox class="sidebar-scrollbox"></mdbook-sidebar-scrollbox>
             <noscript>
-                <iframe class="sidebar-iframe-outer" src="../../toc.html"></iframe>
+                <iframe class="sidebar-iframe-outer" src="../../../../toc.html"></iframe>
             </noscript>
             <div id="sidebar-resize-handle" class="sidebar-resize-handle">
                 <div class="sidebar-resize-indicator"></div>
@@ -137,7 +137,7 @@
                     <h1 class="menu-title">ODP Documentation Guide</h1>
 
                     <div class="right-buttons">
-                        <a href="../../print.html" title="Print this book" aria-label="Print this book">
+                        <a href="../../../../print.html" title="Print this book" aria-label="Print this book">
                             <i id="print-button" class="fa fa-print"></i>
                         </a>
 
@@ -166,20 +166,51 @@
 
                 <div id="content" class="content">
                     <main>
-                        <h1 id="connectivity"><a class="header" href="#connectivity">Connectivity</a></h1>
-<p><em>TODO</em></p>
-<p>possibly include a USB example
-may also include mentions (probably not examples) of WiFi and Bluetooth integration</p>
+                        <h1 id="configuration-blob"><a class="header" href="#configuration-blob">Configuration Blob</a></h1>
+<p>The configuration blob data is owned by the OEM and allows custom actions to be taken on output paramters based on input channels and settings.</p>
+<p>There are two files used to define configuration of the blob:</p>
+<ul>
+<li>PocSpec.txt -  Defines Input and Output GUID's and actions to map input to outputs</li>
+<li>PocIF.txt - For a given GUID maps valid ranges and mapping to ACPI output functions</li>
+</ul>
+<p>Both these files live directly under the root folder, but will likely move in the future.
+<br><b>Note: </b> If these files are not present or found the MPTF Core driver will yellow bang.</p>
+<h2 id="pocspectxt"><a class="header" href="#pocspectxt">PocSpec.txt</a></h2>
+<p>This file defines UUID's for input and output devices. If using an input or output from the OS you must use the existing UUID definitions found in the MPTF documentation.</p>
+<p>In this case the output device is defined in the PocIF.txt but must be unique UUID if you are creating your own output channels.</p>
+<pre><code>//
+// INPUT
+   #macro I_OS_PWR_MODE_MPTF         {8945AB0A-35DD-4BEE-82A5-8138892C280D}_1
+//
+// OUTPUT
+   #macro O_FAN1_ACTIVE_RPM           	{91F589E0-45F0-4C6E-A17D-24FD8E8CBDCE}_730
+
+//
+// DEMO-B - OS Power Mode Driven Fan RPM
+//		Will monitor the OS PWR MODE and then in a lookup TABLE output a target RPM stored in O_FAN1_ACTIVE_RPM
+1,0,0,%A_TABLE%,1,1,1,%I_OS_PWR_MODE_MPTF%,%O_FAN1_ACTIVE_RPM%,4,0,0,1,3,5,7,2,4,6,7,15,25,35,45
+</code></pre>
+<p>The last line monitors the input values selected in the OS from the power mode and maps this to output values for O_FAN1_ACTIVE_RPM. The last 4 values are the output values in this case in percentage for the fan speed 15,25,35,45.</p>
+<p>@Douglas to fill in further details on the meaning of these other mapping bits</p>
+<h2 id="pociftxt"><a class="header" href="#pociftxt">PocIF.txt</a></h2>
+<p>This file maps an output channel to an ACPI function along with default, min and max values</p>
+<pre><code>// O_FAN1_ACTIVE_RPM  
+{91F589E0-45F0-4C6E-A17D-24FD8E8CBDCE}_730,1,60,10,20,2,"\_SB.CIO1"
+</code></pre>
+<p>Here the last two parameters maps this output to function 2 in the _DSM function of _SB.CIO1 device in ACPI.</p>
+<p>The value before (20) is the default value set if no value is set by the OS.</p>
+<p>Previous two values 60,10 are the maximum and minimum valid values.</p>
+<p>@Douglas to provide further details on the spec</p>
 
                     </main>
 
                     <nav class="nav-wrapper" aria-label="Page navigation">
                         <!-- Mobile navigation buttons -->
-                            <a rel="prev" href="../../how/ec/thermal/16-embedded_flashing.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                            <a rel="prev" href="../../../../how/ec/thermal/mptf/mptf-acpi.html" class="mobile-nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                                 <i class="fa fa-angle-left"></i>
                             </a>
 
-                            <a rel="next prefetch" href="../../how/ec/usb.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                            <a rel="next prefetch" href="../../../../how/ec/thermal/mptf/mptf-debugging.html" class="mobile-nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                                 <i class="fa fa-angle-right"></i>
                             </a>
 
@@ -189,11 +220,11 @@ may also include mentions (probably not examples) of WiFi and Bluetooth integrat
             </div>
 
             <nav class="nav-wide-wrapper" aria-label="Page navigation">
-                    <a rel="prev" href="../../how/ec/thermal/16-embedded_flashing.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
+                    <a rel="prev" href="../../../../how/ec/thermal/mptf/mptf-acpi.html" class="nav-chapters previous" title="Previous chapter" aria-label="Previous chapter" aria-keyshortcuts="Left">
                         <i class="fa fa-angle-left"></i>
                     </a>
 
-                    <a rel="next prefetch" href="../../how/ec/usb.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
+                    <a rel="next prefetch" href="../../../../how/ec/thermal/mptf/mptf-debugging.html" class="nav-chapters next" title="Next chapter" aria-label="Next chapter" aria-keyshortcuts="Right">
                         <i class="fa fa-angle-right"></i>
                     </a>
             </nav>
@@ -208,17 +239,17 @@ may also include mentions (probably not examples) of WiFi and Bluetooth integrat
         </script>
 
 
-        <script src="../../elasticlunr.min.js"></script>
-        <script src="../../mark.min.js"></script>
-        <script src="../../searcher.js"></script>
+        <script src="../../../../elasticlunr.min.js"></script>
+        <script src="../../../../mark.min.js"></script>
+        <script src="../../../../searcher.js"></script>
 
-        <script src="../../clipboard.min.js"></script>
-        <script src="../../highlight.js"></script>
-        <script src="../../book.js"></script>
+        <script src="../../../../clipboard.min.js"></script>
+        <script src="../../../../highlight.js"></script>
+        <script src="../../../../book.js"></script>
 
         <!-- Custom JS scripts -->
-        <script src="../../mermaid.min.js"></script>
-        <script src="../../mermaid-init.js"></script>
+        <script src="../../../../mermaid.min.js"></script>
+        <script src="../../../../mermaid-init.js"></script>
 
 
     </div>

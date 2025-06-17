@@ -171,11 +171,39 @@
 <p>An Embedded Controller is typically a single SOC (System on Chip) design capable of managing a number of low-level tasks.</p>
 <p>These individual tasked components of the SOC are represented by the gold boxes in the diagram. The ODP Support for Embedded Controller development is represented in the diagram in the green boxes, whereas third party support libraries are depicted in blue.</p>
 <h2 id="component-modularity"><a class="header" href="#component-modularity">Component modularity</a></h2>
-<p>A Component can be thought of as a stack of functionality defined by traits (A trait in Rust is analogous to an interface in other comon languages).
+<p>A Component can be thought of as a stack of functionality defined by traits (A trait in Rust is analogous to an interface in other common languages).
 For the functionality defined by the trait definition to interact with the hardware, there must be a HAL (hardware abstraction layer) defined that implements key actions required by the hardware to conduct these tasks.  These HAL actions are then controlled by the functional interface of the component definition.<br />
 The component definition is part of a <em>Subsystem</em> of functionality that belongs to a <em>Service</em>.
 For example, a Power Policy Service may host several related Subsystems for Battery, Charger, etc.  Each of these Subsystems have Controllers to interact with their corresponding components.  These Controllers are commanded by the Service their Subsystem belongs to, so for example, the power policy service may interrogate the current charge state of the battery. It does so by interrogating the Subsystem Controller which in turn relies upon the interface defined by the component Trait, which finally calls upon the hardware HAL to retrieve the necessary data from the hardware.  This chain of stacked concerns forms a common pattern that allows for agile modularity and flexible portability of components between target contexts.</p>
-<p><img src="..." alt="TODO: Diagram of the above" /></p>
+<pre class="mermaid">flowchart TD
+    A[e.g. Power Policy Service&lt;br&gt;&lt;i&gt;Service initiates query&lt;/i&gt;]
+    B[Subsystem Controller&lt;br&gt;&lt;i&gt;Orchestrates component behavior&lt;/i&gt;]
+    C[Component Trait Interface&lt;br&gt;&lt;i&gt;Defines the functional contract&lt;/i&gt;]
+    D[HAL Implementation&lt;br&gt;&lt;i&gt;Implements trait using hardware-specific logic&lt;/i&gt;]
+    E[EC / Hardware Access&lt;br&gt;&lt;i&gt;Performs actual I/O operations&lt;/i&gt;]
+
+    A --&gt; B
+    B --&gt; C
+    C --&gt; D
+    D --&gt; E
+
+    subgraph Service Layer
+        A
+    end
+
+    subgraph Subsystem Layer
+        B
+    end
+
+    subgraph Component Layer
+        C
+        D
+    end
+
+    subgraph Hardware Layer
+        E
+    end
+</pre>
 <h2 id="secure-vs-non-secure"><a class="header" href="#secure-vs-non-secure">Secure vs Non-Secure</a></h2>
 <p>Communication between Subsystems may be considered to be either a "Secure" channel for data communication or a "Non-Secure" channel. An implementation may use more than one transport for different controller and controller service needs.</p>
 <p>Data communication with the embedded controller can be considered an <em>owned interface</em> because it is implemented within the EC architecture itself.  It may also tie into an external communication bus such as SPI or I2C for data exhanges between other MCUs or the host, but for purposes of communicating between its own subsystems, it is an internally implemented construct.</p>
