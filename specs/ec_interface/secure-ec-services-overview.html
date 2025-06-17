@@ -316,7 +316,7 @@ Device entry in ACPI</p>
       If(LEqual(Arg2, One))
       {
         // Arg3 - Package {UUID, Cookie}
-        Store(Index(Arg3,1), \_SB.ECT0.NEVT )
+        Store(DeRefOf(Index(Arg3,1)), \_SB.ECT0.NEVT )
         Return(Zero) 
       }
     } Else {
@@ -506,7 +506,7 @@ The UUID is stored in Arg0 and the notification cookie is stored in Arg3 when Ar
       If(LEqual(Arg2, One))
       {
         // Arg3 - Package {UUID, Cookie}
-        Store(Index(Arg3,1), \_SB.ECT0.NEVT )
+        Store(DeRefOf(Index(Arg3,1)), \_SB.ECT0.NEVT )
         Return(Zero) 
       }
     } Else {

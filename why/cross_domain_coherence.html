@@ -170,7 +170,25 @@
 <p>ODP is not just a patch atop of old layers.  It is explicitly aligning system layers to reduce duplication, ambiguity, and failure points.</p>
 <p>ODP is not just a firmware stack, but a vision that unites the embedded controller, main firmware, and even secure services under a coherent design and tooling approach.</p>
 <h2 id="common-patterns-with-clearly-defined-lanes"><a class="header" href="#common-patterns-with-clearly-defined-lanes">Common patterns with clearly defined lanes</a></h2>
+<blockquote>
+<p><em>“Secure systems require secure interfaces — everywhere.”</em></p>
+</blockquote>
 <p>Shared services and conventions allow clear division of responsibility between firmware, EC, and OS—while promoting reuse and coordination.</p>
+<pre class="mermaid">graph LR
+    Host[Host Domain] --&gt; HostServiceA
+  Host --&gt; HostServiceB
+
+  HostServiceA --&gt; HostDriverA
+  HostServiceB --&gt; HostDriverB
+
+  EC[Embedded Controller Domain] --&gt; ECServiceA
+  EC --&gt; ECServiceB
+
+  subgraph Shared Interface
+    HostServiceA &lt;---&gt; ECServiceA
+    HostServiceB &lt;---&gt; ECServiceB
+  end
+</pre>
 
                     </main>
 

@@ -172,9 +172,19 @@
 who have created magic at the application layer. As such, this portion of the development community has seen exponential advances in the tooling and languages at their disposal.  This has provided a high level of modulariy and with it, agility, that has become synonymous with the market responsiveness we see in the evolution of our favorite applications.</p>
 <p>Firmware development, on the other hand, has generally been mired in the processes of the past, and has
 not enjoyed this same level of modularity and agility.</p>
+<blockquote>
+<p><em>“Systems scale better when their parts can evolve independently.”</em></p>
+</blockquote>
 <h2 id="composable-and-portable-component-modules"><a class="header" href="#composable-and-portable-component-modules">Composable and portable component modules</a></h2>
 <p>ODP changes that paradigm and raises the tide. It is inspired by modern software engineering practices: composability, dependency injection, testability.</p>
 <p>Components (e.g., battery service, serial logging, boot policies) are decoupled and swappable, enabling faster iteration and better maintainability.</p>
+<pre class="mermaid">graph LR
+  PowerPolicy --&gt; BatteryService
+  PowerPolicy --&gt; ChargerService
+  PowerPolicy --&gt; ThermalService
+  BatteryService --&gt; MockBattery
+  ChargerService --&gt; SMbusDriver
+</pre>
 <p>Because Rust enforces its memory and safety management guarantees at compile time, tooling such as that found in ODP Patina for example will build a DXE Core monolithically, without the need for an RTOS, and supports a composed modularity paradigm by design, streamlining certification and troubleshooting.</p>
 
                     </main>

@@ -180,16 +180,40 @@
 <p>Computer technology seemingly lept from its cradle a half century ago and never slowed its pace. It is easy to take much of it for granted.</p>
 <p>We marvel as the new applications show us increasingly amazing opportunities.  We also recognize and guard against the threats these applications pose to ourselves and society.</p>
 <p>And in this heady environment, it is sometimes easy to forget that the "hidden parts" of these computers we use -- the lower-level hardware and firmware -- is often built upon languages and processes that, although having evolved to meet the demands of the time, are reaching the end of their practical sustainability for keeping up with the accelerating pace of the world around us.</p>
-<p>What was originally just a "boot layer" and a few K of code for key hardware interfacing is now shouldering the responsibility of securing personal information and behavior patterns that a malicious intruder could use for nefarious purposes.  High-value proprietary algorithms and Artificial Intelligence models are now built into the firmware and must be locked down. An increasing number of "always ready" peripherals, such as the battery and charger, biometric identification mechanisms, network connections, and other concerns are being increasingly handled by independent MCUs that must coordinate with one another and with the host system in a responsive, increasingly complex, yet highly secure manner.</p>
+<p>What was originally just a "boot layer" and a few K of code for key hardware interfacing is now shouldering the responsibility of securing personal information and behavior patterns that a malicious intruder could use for nefarious purposes.</p>
+<p>High-value proprietary algorithms and Artificial Intelligence models are now built into the firmware and must be locked down. An increasing number of "always ready" peripherals, such as the battery and charger, biometric identification mechanisms, network connections, and other concerns are being increasingly handled by independent MCUs that must coordinate with one another and with the host system in a responsive, increasingly complex, yet highly secure manner.</p>
 <p>Trying to manage all of this with what has been the status-quo for these concerns in past decades, without memory-safe languages and with a loosely-federated collection of standards and patterns agreed upon by an ad-hoc consortium of vendors is increasingly dangerous and costly.</p>
+<hr />
+<div class="table-wrapper"><table><thead><tr><th><strong>Legacy Approach</strong></th><th><strong>ODP Approach</strong></th></tr></thead><tbody>
+<tr><td>🐜 Many vendor-specific hacks ❌</td><td>🧩 Cross-platform modularity 🔒</td></tr>
+<tr><td>❄️ Weak component isolation 🩸</td><td>🔐 Secure runtime services 🤖</td></tr>
+<tr><td>🔩 Proprietary tool building ⚔️</td><td>🛠️ Rust-based build tools, Stuart 🧑‍🔧</td></tr>
+</tbody></table>
+</div>
+<blockquote>
+<p><em>The firmware we once almost ignored is now the front line of platform security</em></p>
+</blockquote>
+<hr />
 <p>The Open Device Partnership offers an alternative and a way forward to a more sustainable future that, while still built upon the proven paradigms of the past, boldly rejects the patterns that are known to be costly and ineffective in favor of future-ready, portable, sustainable, and expandable alternatives.</p>
 <p>Key to this is the adoption of the programming language Rust as the successor to C. This immediately brings confidence that the code will not be susceptible to programming-error related vulnerabilities that may lead to either costly performance behaviors or be maliciously exploited by opportunistic bad actors. Furthermore, it provides the confidence that code from outside of one's immediate provenance of control may be audited and trusted and ready to join into a firmware construction built upon industry standards.</p>
 <p>In the pages ahead, we'll look a little more closely at the advantages of ODP one at a time.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="security"><a class="header" href="#security">Security</a></h1>
 <p>Reduce firmware attack surface significantly, and meet modern security expectations using proven tools and patterns.</p>
 <h2 id="security-and-trustworthiness-from-the-ground-up"><a class="header" href="#security-and-trustworthiness-from-the-ground-up">Security and Trustworthiness from the Ground Up</a></h2>
+<blockquote>
+<p><em>“If the foundation is weak, nothing built on top can be trusted.”</em></p>
+</blockquote>
 <p>Rust is a modern, memory-safe language that mitigates entire classes of vulnerabilities endemic to C memory management, buffer overflows, use-after-free, and so forth by detecting and addressing these issues at compile time -- so there are few if any unpleasant surprises at runtime.</p>
 <p>ODP is foundationally centered around Rust and not only embraces these philosophies, it defines patterns that further enhance the memory-safe paradigm, by preventing unauthorized access between ownership domains and guarding against possible malicious intrusions while implementing the proven industry-standard patterns proven in the industry.</p>
+<pre class="mermaid">flowchart LR
+  Start[Power On] --&gt; ROM
+  ROM --&gt; FirmwareCheck[Validate Firmware Signature]
+  FirmwareCheck --&gt; DXECore[Load DXE Core]
+  DXECore --&gt; OSLoader[Invoke Bootloader]
+  OSLoader --&gt; OSVerify[Validate OS Signature]
+  OSVerify --&gt; OSBoot[Launch OS]
+  OSBoot --&gt; Ready[Platform Ready]
+</pre>
 <p>Adoption of standards and patterns of DICE and EL2 Hypervisor supported architectures -- from a Rust-driven baseline - enables a hardware-rooted chain of trust across boot phases, aligning with NIST and platform security goals and requirements.</p>
 <p>ODP makes component modularity and portability with a transparent provenance a practical and safe proposition by making it feasiable to audit and verify firmware behavior in specifically constrained ways.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="modular-and-composable-firmware-architecture"><a class="header" href="#modular-and-composable-firmware-architecture">Modular and Composable Firmware Architecture</a></h1>
@@ -198,33 +222,130 @@
 who have created magic at the application layer. As such, this portion of the development community has seen exponential advances in the tooling and languages at their disposal.  This has provided a high level of modulariy and with it, agility, that has become synonymous with the market responsiveness we see in the evolution of our favorite applications.</p>
 <p>Firmware development, on the other hand, has generally been mired in the processes of the past, and has
 not enjoyed this same level of modularity and agility.</p>
+<blockquote>
+<p><em>“Systems scale better when their parts can evolve independently.”</em></p>
+</blockquote>
 <h2 id="composable-and-portable-component-modules"><a class="header" href="#composable-and-portable-component-modules">Composable and portable component modules</a></h2>
 <p>ODP changes that paradigm and raises the tide. It is inspired by modern software engineering practices: composability, dependency injection, testability.</p>
 <p>Components (e.g., battery service, serial logging, boot policies) are decoupled and swappable, enabling faster iteration and better maintainability.</p>
+<pre class="mermaid">graph LR
+  PowerPolicy --&gt; BatteryService
+  PowerPolicy --&gt; ChargerService
+  PowerPolicy --&gt; ThermalService
+  BatteryService --&gt; MockBattery
+  ChargerService --&gt; SMbusDriver
+</pre>
 <p>Because Rust enforces its memory and safety management guarantees at compile time, tooling such as that found in ODP Patina for example will build a DXE Core monolithically, without the need for an RTOS, and supports a composed modularity paradigm by design, streamlining certification and troubleshooting.</p>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="cross-domain-coherence"><a class="header" href="#cross-domain-coherence">Cross-Domain Coherence</a></h1>
 <p>ODP is not just a patch atop of old layers.  It is explicitly aligning system layers to reduce duplication, ambiguity, and failure points.</p>
 <p>ODP is not just a firmware stack, but a vision that unites the embedded controller, main firmware, and even secure services under a coherent design and tooling approach.</p>
 <h2 id="common-patterns-with-clearly-defined-lanes"><a class="header" href="#common-patterns-with-clearly-defined-lanes">Common patterns with clearly defined lanes</a></h2>
+<blockquote>
+<p><em>“Secure systems require secure interfaces — everywhere.”</em></p>
+</blockquote>
 <p>Shared services and conventions allow clear division of responsibility between firmware, EC, and OS—while promoting reuse and coordination.</p>
+<pre class="mermaid">graph LR
+    Host[Host Domain] --&gt; HostServiceA
+  Host --&gt; HostServiceB
+
+  HostServiceA --&gt; HostDriverA
+  HostServiceB --&gt; HostDriverB
+
+  EC[Embedded Controller Domain] --&gt; ECServiceA
+  EC --&gt; ECServiceB
+
+  subgraph Shared Interface
+    HostServiceA &lt;---&gt; ECServiceA
+    HostServiceB &lt;---&gt; ECServiceB
+  end
+</pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="improved-developer-experience"><a class="header" href="#improved-developer-experience">Improved Developer Experience</a></h1>
 <p>ODP reduces developer friction and increases confidence, thus shortening the time to value for the development effort.</p>
+<blockquote>
+<p><em>"Firmware development shouldn’t feel like archaeology."</em></p>
+</blockquote>
 <p>Developers can build and test components in isolation (e.g., battery, GPIO, boot timer), aided by QEMU emulation, mocks, and test harnesses.</p>
-<p>With tools like patina-fw-patcher, even embedded iterations feel fast and accessible — no need to flash hardware with each development change.</p>
+<p><img src="why/./media/dev-then-now.png" alt="Then and Now" /></p>
+<p>ODP can improve developer engagement and productivity by:</p>
+<ul>
+<li>🚀 Reducing developer friction</li>
+<li>🛠️ Supporting tooling that’s approachable and efficient</li>
+<li>🧪 Enabling fast iteration and confident change</li>
+<li>💬 Reinforcing that firmware development is not arcane magic, just solid coding.</li>
+</ul>
 <p>The Rust ecosystem brings built-in unit testing, logging, dependency control (Cargo), and static analysis.</p>
+<pre class="mermaid">timeline
+  title Developer Workflow Evolution
+  2000 : Edit ASM/C, guess BIOS behavior
+  2010 : Use UEFI drivers, painful debug cycle
+  2023 : Rust-based firmware prototypes emerge
+  2024 : ODP introduces modular build + Stuart tools
+  2025 : Fully testable DXE + EC code in Rust with shared tooling
+</pre>
+<pre class="mermaid">flowchart LR
+  Idea[&quot;💡 Idea&quot;] --&gt; Dev[&quot;🧩 Create Service Component&quot;]
+  Dev --&gt; Test[&quot;🧪 Unit &amp; Desktop Test&quot;]
+  Test --&gt; Build[&quot;🔧 Cross-target Build&lt;br/&gt;(host &amp; EC)&quot;]
+</pre>
+<pre class="mermaid">flowchart LR
+  Build --&gt; Sim[&quot;🖥️ Simulate with Mock Devices&quot;]
+  Sim --&gt; Flash[&quot;🚀 Build &amp; Flash&quot;]
+  Flash --&gt; Log[&quot;📄 Review Logs / Debug&quot;]
+  Log --&gt; Iterate[&quot;🔁 Iterate with Confidence&quot;]
+</pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="sustainability-and-long-term-cost-reduction"><a class="header" href="#sustainability-and-long-term-cost-reduction">Sustainability and Long-Term Cost Reduction</a></h1>
 <p>ODP can help cut tech debt at its root by investing in sustainable design by enabling leaner teams and cleaner codebases.</p>
+<blockquote>
+<p><em>“Technical debt is financial debt — just hidden in your firmware.”</em></p>
+</blockquote>
 <h2 id="build-right-and-reuse"><a class="header" href="#build-right-and-reuse">Build right and reuse</a></h2>
 <p>Replacing legacy code with safer, testable, and reusable modules means lower maintenance costs over time.</p>
+<pre class="mermaid">flowchart LR
+  Legacy[&quot;Legacy Stack&quot;] --&gt; Duplication[&quot;💥 Code Duplication&quot;]
+  Legacy --&gt; Debugging[&quot;🐛 Opaque Bugs&quot;]
+  Legacy --&gt; Porting[&quot;🔧 Costly Platform Bring-up&quot;]
+  Legacy --&gt; Compliance[&quot;⚖️ Expensive Security Reviews&quot;]
+  Legacy --&gt; Waste[&quot;🗑️ Rewrite Instead of Reuse&quot;]
+</pre>
 <h3 id="hal-separation"><a class="header" href="#hal-separation">HAL separation</a></h3>
 <p>The ability to reuse and recompose across product lines (via ODP libraries) reduces the need to "reinvent the wheel" for each board/platform, as Hardware Abstraction Layers can be cleanly isolated from the business logic of a component design, and easily expanded upon for new features.</p>
+<h4 id="more-than-hal"><a class="header" href="#more-than-hal">More than HAL</a></h4>
+<p>This component philosophy extends much further than replaceable HAL layers -- it permeates throughout the component and service structure patterns ODP exposes. This allows agile modularity, greater re-useability, and shorter development cycles.</p>
+<pre class="mermaid">sequenceDiagram
+  participant Dev as Developer
+  participant Repo as Shared Component Repo
+  participant DeviceA as Platform A
+  participant DeviceB as Platform B
+
+  Dev-&gt;&gt;Repo: Build &amp; Test Component
+  DeviceA-&gt;&gt;Repo: Pull Component A
+  DeviceB-&gt;&gt;Repo: Pull Component A
+  Dev-&gt;&gt;DeviceA: Customize Config
+  Dev-&gt;&gt;DeviceB: Customize Config
+  Note right of Dev: One codebase, many targets
+</pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="alignment-with-industry-trends-and-standards"><a class="header" href="#alignment-with-industry-trends-and-standards">Alignment with Industry Trends and Standards</a></h1>
 <p>ODP is forward-facing from its original concept, and embodied in its design.  Adoption of ODP positions you at the forefront of secure, future-facing firmware innovation.</p>
+<blockquote>
+<p><em>“ODP doesn’t rewrite the rules — it implements them with confidence.”</em></p>
+</blockquote>
 <h3 id="perfectly-timed"><a class="header" href="#perfectly-timed">Perfectly Timed</a></h3>
 <p>ODP taps into the growing ecosystem momentum around Rust and embedded standards. Rust adoption at Microsoft, Google, and the Linux kernel reflects a broader industry shift.</p>
 <h3 id="open-source-and-collaborative"><a class="header" href="#open-source-and-collaborative">Open Source and Collaborative</a></h3>
 <p>ODP Encourages upstream contributions and compliance with modern firmware interfaces (UEFI, ACPI, DICE).</p>
-<p>An open collaboration model invites cross-vendor reuse and innovation.</p>
+<p>An open collaboration model invites cross-vendor reuse and innovation while building upon existing standards known to the industry.</p>
+<pre class="mermaid">graph TD
+  A1[UEFI Spec] --&gt; B1[DXE Core]
+  A2[ACPI] --&gt; B2[Runtime Services]
+  A3[DICE] --&gt; B3[Secure Boot]
+  A4[SPDM] --&gt; B3
+  A5[DMTF] --&gt; B4[Mgmt Layer]
+
+  B1 --&gt; C[ODP Framework]
+  B2 --&gt; C
+  B3 --&gt; C
+  B4 --&gt; C
+</pre>
 <div style="break-before: page; page-break-before: always;"></div><h1 id="getting-started"><a class="header" href="#getting-started">Getting Started</a></h1>
 <p>Welcome! If you're new to the Open Device Partnership, this is the right place to begin.</p>
 <p>If you're also new to the world of Embedded Controllers and the software that drives them, don't worry—you're still in the right place.</p>
@@ -5982,7 +6103,7 @@ Device entry in ACPI</p>
       If(LEqual(Arg2, One))
       {
         // Arg3 - Package {UUID, Cookie}
-        Store(Index(Arg3,1), \_SB.ECT0.NEVT )
+        Store(DeRefOf(Index(Arg3,1)), \_SB.ECT0.NEVT )
         Return(Zero) 
       }
     } Else {
@@ -6172,7 +6293,7 @@ The UUID is stored in Arg0 and the notification cookie is stored in Arg3 when Ar
       If(LEqual(Arg2, One))
       {
         // Arg3 - Package {UUID, Cookie}
-        Store(Index(Arg3,1), \_SB.ECT0.NEVT )
+        Store(DeRefOf(Index(Arg3,1)), \_SB.ECT0.NEVT )
         Return(Zero) 
       }
     } Else {
@@ -7469,15 +7590,14 @@ integer 3000.</p>
 <pre><code>Method (_TMP) {
   // Check to make sure FFA is available and not unloaded
   If(LEqual(\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(24){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateByteField(BUFF,19, TMP1) // In – Thermal Zone Identifier
-    CreateField(BUFF,144,32,TMPD) // Out – temperature for TZ
+    Name(BUFF, Buffer(38){})
+    CreateField(BUFF, 0, 64, STAT) // Out – Status
+    CreateField(BUFF, 64, 64, RCVD) // ReceiverId(only lower 16-bits are used) 
+    CreateField(BUFF, 128, 128, UUID) // UUID of service
+    CreateField(BUFF, 256, 8, CMDD) // Command register
+    CreateField(BUFF, 264, 8, TMP1) // In – Thermal Zone Identifier
+    CreateField(BUFF, 264, 32, TMPD) // Out – temperature for TZ
 
-    Store(20, LENG)
     Store(0x1, CMDD) // EC_THM_GET_TMP
     Store(1,TMP1)
     Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID) // Thermal
@@ -7541,34 +7661,34 @@ below conditions is met: </p>
   If(LEqual(Arg2,One)) {
     // Check to make sure FFA is available and not unloaded
     If(LEqual(\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(32){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateByteField(BUFF,19, TID1) // In – Thermal Zone Identifier
-    CreateDwordField(BUFF,20,THS1) // In – Timeout in ms
-    CreateDwordField(BUFF,24,THS2) // In – Low threshold tenth Kelvin
-    CreateDwordField(BUFF,28,THS3) // In – High threshold tenth Kelvin
-    CreateField(BUFF,144,32,THSD) // Out – Status from EC
+      Name(BUFF, Buffer(46){})
+      CreateField(BUFF, 0, 64, STAT) // Out – Status
+      CreateField(BUFF, 64, 64, RCVD) // ReceiverId(only lower 16-bits are used) 
+      CreateField(BUFF, 128, 128, UUID) // UUID of service
+      CreateField(BUFF, 256, 8, CMDD) // Command register
+      CreateField(BUFF, 264, 8, TID1) // In – Thermal Zone Identifier
+      CreateField(BUFF, 272, 32, THS1) // In – Timeout in ms
+      CreateField(BUFF, 304, 32, THS2) // In – Low threshold tenth Kelvin
+      CreateField(BUFF, 336, 32, THS3) // In – High threshold tenth Kelvin
+      CreateField(BUFF, 264, 32, THSD) // Out – Status from EC
 
-    Store(0x30, LENG)
-    Store(0x2, CMDD) // EC_THM_SET_THRS
-    Store(1,TID1)
-    Store(Arg0,THS1)
-    Store(Arg1,THS2)
-    Store(Arg2,THS3)
-    Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID) // Thermal
-    Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      Store(0x2, CMDD) // EC_THM_SET_THRS
+      Store(1,TID1)
+      Store(Arg0,THS1)
+      Store(Arg1,THS2)
+      Store(Arg2,THS3)
+      Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID) // Thermal
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
 
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-      Return (THSD)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        Return (THSD)
+      } else {
+        Return(Zero)
+      }
     } else {
       Return(Zero)
     }
-  } else {
-    Return(Zero)
   }
 }
 </code></pre>
@@ -7592,15 +7712,14 @@ thresholds for</p>
     If(LEqual(Arg2,Two)) {
       // Check to make sure FFA is available and not unloaded
       If(LEqual(\_SB.FFA0.AVAL,One)) {
-        Name(BUFF, Buffer(34){}) // Create buffer for send/recv data
-        CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-        CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-        CreateField(BUFF,16,128,UUID) // UUID of service
-        CreateByteField(BUFF,18, CMDD) // In – First byte of command
-        CreateByteField(BUFF,19, TID1) // In – Thermal Zone Identifier
-        CreateField(BUFF,144,128,THSD) // Out – Includes status, timeout, low/high
-        
-        Store(20, LENG)
+        Name(BUFF, Buffer(50){})
+        CreateField(BUFF, 0, 64, STAT) // Out – Status
+        CreateField(BUFF, 64, 64, RCVD) // ReceiverId(only lower 16-bits are used) 
+        CreateField(BUFF, 128, 128, UUID) // UUID of service
+        CreateField(BUFF, 256, 8, CMDD) // Command register
+        CreateField(BUFF, 264, 8, TID1) // In – Thermal Zone Identifier
+        CreateField(BUFF, 264, 128, THSD) // Out – Status from EC
+
         Store(0x3, CMDD) // EC_THM_GET_THRS
         Store(1,TID1)
         Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID) // Thermal
@@ -7649,20 +7768,19 @@ platform’s cooling mode policy setting. </p>
 <pre><code>Method (_SCP) {
   // Check to make sure FFA is available and not unloaded
   If(LEqual(\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(32){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateByteField(BUFF,19, SCP0) // In – Thermal Zone Identifier
-    CreateDwordField(BUFF,20, SCP1) // In – Cooling mode policy
-    CreateDwordField(BUFF,24, SCP2) // In – Acoustic Limit
-    CreateDwordField(BUFF,28, SCP3) // In – Power Limit
-    CreateField(BUFF,144,32, SCPD) // Out – temperature for TZ
+    Name(BUFF, Buffer(46){})
+    CreateField(BUFF, 0, 64, STAT) // Out – Status
+    CreateField(BUFF, 64, 64, RCVD) // ReceiverId(only lower 16-bits are used) 
+    CreateField(BUFF, 128, 128, UUID) // UUID of service
+    CreateField(BUFF, 256, 8, CMDD) // Command register
+    CreateField(BUFF, 264, 8, TID1) // In – Thermal Zone Identifier
+    CreateField(BUFF, 272, 32, SCP1) // In – Timeout in ms
+    CreateField(BUFF, 304, 32, SCP2) // In – Low threshold tenth Kelvin
+    CreateField(BUFF, 336, 32, SCP3) // In – High threshold tenth Kelvin
+    CreateField(BUFF, 264, 32, SCPD) // Out – Status from EC
 
-    Store(0x30, LENG)
     Store(0x4, CMDD) // EC_THM_SET_SCP
-    Store(1,SCP0)
+    Store(1,TID1)
     Store(Arg0,SCP1)
     Store(Arg1,SCP2)
     Store(Arg2,SCP3)
@@ -7711,18 +7829,17 @@ return error code</p>
 <h3 id="ffa-acpi-example-21"><a class="header" href="#ffa-acpi-example-21">FFA ACPI Example</a></h3>
 <pre><code>Method(GVAR,2,Serialized) {
   If(LEqual(\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(38){})
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18,CMDD) // Command register
-    CreateByteField(BUFF,19,INST) // Instance ID
-    CreateWordField(BUFF,20,VLEN) // 16-bit variable length
-    CreateField(BUFF,176,128,VUID) // UUID of variable to read
-    CreateField(BUFF,208,64,RVAL) // Output Data
-  
+    Name(BUFF, Buffer(52){})
+    CreateField(BUFF, 0, 64, STAT) // Out – Status
+    CreateField(BUFF, 64, 64, RCVD) // ReceiverId(only lower 16-bits are used) 
+    CreateField(BUFF, 128, 128, UUID) // UUID of service
+    CreateField(BUFF, 256, 8, CMDD) // Command register
+    CreateField(BUFF, 264, 8, INST) // In – Instance ID
+    CreateField(BUFF, 272, 16, VLEN) // In – Variable Length in bytes
+    CreateField(BUFF, 288, 128, VUID) // In – Variable UUID
+    CreateField(BUFF, 264, 64, RVAL) // Out – Variable value
+
     Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID)
-    Store(38, LENG)
     Store(0x5, CMDD) // EC_THM_GET_VAR
     Store(Arg0,INST) // Save instance ID
     Store(4,VLEN) // Variable is always DWORD here
@@ -7767,19 +7884,18 @@ case of default MPTF interface it is expecting a 32-bit variable.</p>
 <h3 id="ffa-acpi-example-22"><a class="header" href="#ffa-acpi-example-22">FFA ACPI Example</a></h3>
 <pre><code>Method(SVAR,3,Serialized) {
   If(LEqual(\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(42){})
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18,CMDD) // Command register
-    CreateByteField(BUFF,19,INST) // Instance ID
-    CreateWordField(BUFF,20,VLEN) // 16-bit variable length
-    CreateField(BUFF,176,128,VUID) // UUID of variable to read
-    CreateDwordField(BUFF,38,DVAL) // Data value
-    CreateField(BUFF,208,32,RVAL) // Ouput Data
+    Name(BUFF, Buffer(60){})
+    CreateField(BUFF, 0, 64, STAT) // Out – Status
+    CreateField(BUFF, 64, 64, RCVD) // ReceiverId(only lower 16-bits are used) 
+    CreateField(BUFF, 128, 128, UUID) // UUID of service
+    CreateField(BUFF, 256, 8, CMDD) // Command register
+    CreateField(BUFF, 264, 8, INST) // In – Instance ID
+    CreateField(BUFF, 272, 16, VLEN) // In – Variable Length in bytes
+    CreateField(BUFF, 288, 128, VUID) // In – Variable UUID
+    CreateField(BUFF, 416, 64, DVAL) // In – Variable UUID
+    CreateField(BUFF, 264, 64, RVAL) // Out – status
 
     Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID)
-    Store(42, LENG)
     Store(0x6, CMDD) // EC_THM_SET_VAR
     Store(Arg0,INST) // Save instance ID
     Store(4,VLEN) // Variable is always DWORD here

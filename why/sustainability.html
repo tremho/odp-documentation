@@ -168,10 +168,35 @@
                     <main>
                         <h1 id="sustainability-and-long-term-cost-reduction"><a class="header" href="#sustainability-and-long-term-cost-reduction">Sustainability and Long-Term Cost Reduction</a></h1>
 <p>ODP can help cut tech debt at its root by investing in sustainable design by enabling leaner teams and cleaner codebases.</p>
+<blockquote>
+<p><em>“Technical debt is financial debt — just hidden in your firmware.”</em></p>
+</blockquote>
 <h2 id="build-right-and-reuse"><a class="header" href="#build-right-and-reuse">Build right and reuse</a></h2>
 <p>Replacing legacy code with safer, testable, and reusable modules means lower maintenance costs over time.</p>
+<pre class="mermaid">flowchart LR
+  Legacy[&quot;Legacy Stack&quot;] --&gt; Duplication[&quot;💥 Code Duplication&quot;]
+  Legacy --&gt; Debugging[&quot;🐛 Opaque Bugs&quot;]
+  Legacy --&gt; Porting[&quot;🔧 Costly Platform Bring-up&quot;]
+  Legacy --&gt; Compliance[&quot;⚖️ Expensive Security Reviews&quot;]
+  Legacy --&gt; Waste[&quot;🗑️ Rewrite Instead of Reuse&quot;]
+</pre>
 <h3 id="hal-separation"><a class="header" href="#hal-separation">HAL separation</a></h3>
 <p>The ability to reuse and recompose across product lines (via ODP libraries) reduces the need to "reinvent the wheel" for each board/platform, as Hardware Abstraction Layers can be cleanly isolated from the business logic of a component design, and easily expanded upon for new features.</p>
+<h4 id="more-than-hal"><a class="header" href="#more-than-hal">More than HAL</a></h4>
+<p>This component philosophy extends much further than replaceable HAL layers -- it permeates throughout the component and service structure patterns ODP exposes. This allows agile modularity, greater re-useability, and shorter development cycles.</p>
+<pre class="mermaid">sequenceDiagram
+  participant Dev as Developer
+  participant Repo as Shared Component Repo
+  participant DeviceA as Platform A
+  participant DeviceB as Platform B
+
+  Dev-&gt;&gt;Repo: Build &amp; Test Component
+  DeviceA-&gt;&gt;Repo: Pull Component A
+  DeviceB-&gt;&gt;Repo: Pull Component A
+  Dev-&gt;&gt;DeviceA: Customize Config
+  Dev-&gt;&gt;DeviceB: Customize Config
+  Note right of Dev: One codebase, many targets
+</pre>
 
                     </main>
 

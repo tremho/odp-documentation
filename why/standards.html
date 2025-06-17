@@ -168,11 +168,26 @@
                     <main>
                         <h1 id="alignment-with-industry-trends-and-standards"><a class="header" href="#alignment-with-industry-trends-and-standards">Alignment with Industry Trends and Standards</a></h1>
 <p>ODP is forward-facing from its original concept, and embodied in its design.  Adoption of ODP positions you at the forefront of secure, future-facing firmware innovation.</p>
+<blockquote>
+<p><em>“ODP doesn’t rewrite the rules — it implements them with confidence.”</em></p>
+</blockquote>
 <h3 id="perfectly-timed"><a class="header" href="#perfectly-timed">Perfectly Timed</a></h3>
 <p>ODP taps into the growing ecosystem momentum around Rust and embedded standards. Rust adoption at Microsoft, Google, and the Linux kernel reflects a broader industry shift.</p>
 <h3 id="open-source-and-collaborative"><a class="header" href="#open-source-and-collaborative">Open Source and Collaborative</a></h3>
 <p>ODP Encourages upstream contributions and compliance with modern firmware interfaces (UEFI, ACPI, DICE).</p>
-<p>An open collaboration model invites cross-vendor reuse and innovation.</p>
+<p>An open collaboration model invites cross-vendor reuse and innovation while building upon existing standards known to the industry.</p>
+<pre class="mermaid">graph TD
+  A1[UEFI Spec] --&gt; B1[DXE Core]
+  A2[ACPI] --&gt; B2[Runtime Services]
+  A3[DICE] --&gt; B3[Secure Boot]
+  A4[SPDM] --&gt; B3
+  A5[DMTF] --&gt; B4[Mgmt Layer]
+
+  B1 --&gt; C[ODP Framework]
+  B2 --&gt; C
+  B3 --&gt; C
+  B4 --&gt; C
+</pre>
 
                     </main>
 

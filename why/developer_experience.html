@@ -168,9 +168,38 @@
                     <main>
                         <h1 id="improved-developer-experience"><a class="header" href="#improved-developer-experience">Improved Developer Experience</a></h1>
 <p>ODP reduces developer friction and increases confidence, thus shortening the time to value for the development effort.</p>
+<blockquote>
+<p><em>"Firmware development shouldn’t feel like archaeology."</em></p>
+</blockquote>
 <p>Developers can build and test components in isolation (e.g., battery, GPIO, boot timer), aided by QEMU emulation, mocks, and test harnesses.</p>
-<p>With tools like patina-fw-patcher, even embedded iterations feel fast and accessible — no need to flash hardware with each development change.</p>
+<p><img src="./media/dev-then-now.png" alt="Then and Now" /></p>
+<p>ODP can improve developer engagement and productivity by:</p>
+<ul>
+<li>🚀 Reducing developer friction</li>
+<li>🛠️ Supporting tooling that’s approachable and efficient</li>
+<li>🧪 Enabling fast iteration and confident change</li>
+<li>💬 Reinforcing that firmware development is not arcane magic, just solid coding.</li>
+</ul>
 <p>The Rust ecosystem brings built-in unit testing, logging, dependency control (Cargo), and static analysis.</p>
+<pre class="mermaid">timeline
+  title Developer Workflow Evolution
+  2000 : Edit ASM/C, guess BIOS behavior
+  2010 : Use UEFI drivers, painful debug cycle
+  2023 : Rust-based firmware prototypes emerge
+  2024 : ODP introduces modular build + Stuart tools
+  2025 : Fully testable DXE + EC code in Rust with shared tooling
+</pre>
+<pre class="mermaid">flowchart LR
+  Idea[&quot;💡 Idea&quot;] --&gt; Dev[&quot;🧩 Create Service Component&quot;]
+  Dev --&gt; Test[&quot;🧪 Unit &amp; Desktop Test&quot;]
+  Test --&gt; Build[&quot;🔧 Cross-target Build&lt;br/&gt;(host &amp; EC)&quot;]
+</pre>
+<pre class="mermaid">flowchart LR
+  Build --&gt; Sim[&quot;🖥️ Simulate with Mock Devices&quot;]
+  Sim --&gt; Flash[&quot;🚀 Build &amp; Flash&quot;]
+  Flash --&gt; Log[&quot;📄 Review Logs / Debug&quot;]
+  Log --&gt; Iterate[&quot;🔁 Iterate with Confidence&quot;]
+</pre>
 
                     </main>
 
