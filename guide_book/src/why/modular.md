@@ -8,11 +8,21 @@ who have created magic at the application layer. As such, this portion of the de
 Firmware development, on the other hand, has generally been mired in the processes of the past, and has
 not enjoyed this same level of modularity and agility.
 
+> _“Systems scale better when their parts can evolve independently.”_
+
 ## Composable and portable component modules
 
 ODP changes that paradigm and raises the tide. It is inspired by modern software engineering practices: composability, dependency injection, testability.
 
 Components (e.g., battery service, serial logging, boot policies) are decoupled and swappable, enabling faster iteration and better maintainability.
 
+```mermaid
+graph LR
+  PowerPolicy --> BatteryService
+  PowerPolicy --> ChargerService
+  PowerPolicy --> ThermalService
+  BatteryService --> MockBattery
+  ChargerService --> SMbusDriver
+ ``` 
 Because Rust enforces its memory and safety management guarantees at compile time, tooling such as that found in ODP Patina for example will build a DXE Core monolithically, without the need for an RTOS, and supports a composed modularity paradigm by design, streamlining certification and troubleshooting.
 
