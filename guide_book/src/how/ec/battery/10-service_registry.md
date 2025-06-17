@@ -1,4 +1,11 @@
 # Battery Service Registry
+
+-----------------------------
+_TODO: as noted, this content was written assuming an embedded (no-std) target, but we want to make sure we get through this while still able to build for std on the local machine.  Some details of this as written will likely need change._
+
+------------------------------
+
+
 So far, we've defined our mock battery and wrapped it in Device wrapper so that it is ready to be included in a Service registry.
 
 To do so meant committing to an embedded target build and a no-std environment compatible with the ODP crates and dependencies.

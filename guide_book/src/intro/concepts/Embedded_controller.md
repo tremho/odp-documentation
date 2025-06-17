@@ -7,12 +7,41 @@ An Embedded Controller is typically a single SOC (System on Chip) design capable
 These individual tasked components of the SOC are represented by the gold boxes in the diagram. The ODP Support for Embedded Controller development is represented in the diagram in the green boxes, whereas third party support libraries are depicted in blue.
 
 ## Component modularity
-A Component can be thought of as a stack of functionality defined by traits (A trait in Rust is analogous to an interface in other comon languages).
+A Component can be thought of as a stack of functionality defined by traits (A trait in Rust is analogous to an interface in other common languages).
 For the functionality defined by the trait definition to interact with the hardware, there must be a HAL (hardware abstraction layer) defined that implements key actions required by the hardware to conduct these tasks.  These HAL actions are then controlled by the functional interface of the component definition.  
 The component definition is part of a _Subsystem_ of functionality that belongs to a _Service_.
 For example, a Power Policy Service may host several related Subsystems for Battery, Charger, etc.  Each of these Subsystems have Controllers to interact with their corresponding components.  These Controllers are commanded by the Service their Subsystem belongs to, so for example, the power policy service may interrogate the current charge state of the battery. It does so by interrogating the Subsystem Controller which in turn relies upon the interface defined by the component Trait, which finally calls upon the hardware HAL to retrieve the necessary data from the hardware.  This chain of stacked concerns forms a common pattern that allows for agile modularity and flexible portability of components between target contexts.
 
-![_TODO_: Diagram of the above](...)
+```mermaid
+flowchart TD
+    A[e.g. Power Policy Service<br><i>Service initiates query</i>]
+    B[Subsystem Controller<br><i>Orchestrates component behavior</i>]
+    C[Component Trait Interface<br><i>Defines the functional contract</i>]
+    D[HAL Implementation<br><i>Implements trait using hardware-specific logic</i>]
+    E[EC / Hardware Access<br><i>Performs actual I/O operations</i>]
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+
+    subgraph Service Layer
+        A
+    end
+
+    subgraph Subsystem Layer
+        B
+    end
+
+    subgraph Component Layer
+        C
+        D
+    end
+
+    subgraph Hardware Layer
+        E
+    end
+```
 
 
 ## Secure vs Non-Secure

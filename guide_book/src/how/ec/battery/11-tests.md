@@ -1,6 +1,6 @@
 # Unit Tests
 
-In the previous exercises, we have built an implementation of a SmartBattery for our Mock Battery, and targeted it at an embedded context.
+In the previous exercises, we have built an implementation of a SmartBattery for our Mock Battery, and shown we can implement it into a service registry where it can be called upon by a service.
 
 The next step is to test our implementation through a series of Unit Tests.
 Unit Tests will insure the implementation produces the results we expect.  Early on, we had simply printed some values to the console to verify certain values.  This is not a good method of testing because the print action cannot be part of the final build.  Instead, we want to use a Unit Test harness that will allow us to inspect our otherwise silent build and report the values within it.

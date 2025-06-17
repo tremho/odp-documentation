@@ -5,6 +5,5 @@ The Patina-FW-Patcher is maintained in a repository of the same name: [patina-fw
 
 There are a couple of ways to efficiently update the firmware build, depending upon the circumstances.
 
-(TODO practical examples)
+_(TODO practical examples)_
 
-[Return to Library](../../../library.html)

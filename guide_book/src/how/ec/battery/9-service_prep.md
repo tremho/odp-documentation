@@ -1,5 +1,14 @@
 # Battery Service Preparation
 
+
+---------------
+_TODO: 
+This section needs to be revisited and rewritten to support a successful 'standard' build - earlier attempts at 
+including some of the dependencies in a std environment failed, and so this was written to build for the embedded target
+at this premature phase.  We want to build the battery complete before switching to the embedded context though._
+
+-----------------
+
 We've successfully exposed and proven our implementation of battery traits and their values for our mock battery,
 and built for an embedded target.
 In this step, we'll continue our integration by connecting to a battery service, but that requires some setup to cover first.

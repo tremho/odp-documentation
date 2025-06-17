@@ -1,34 +1,7 @@
-# Battery and Power Management
+# How we will build the Battery Component
 
-This example shows how to implement a mock battery service as part of the Embedded Controller (EC) power management system.
 
-In this sample, we are going to implement a complete battery service subsystem.
-
-## Relevant Repositories
-
-We don't need to reinvent any wheels here. The ODP resources include ample template code and examples we can refer to for such a task. It is useful to identify which repositories contain these resources:
-
-### embedded-services
-
-We've touched on this before in [Embedded Services](../embedded_services/index.html), where we examined a Thermal subsystem implementation and explored variations between secure ARM-based and legacy x86_64-based systems.
-
-We'll return to both of these concepts later. For now, we’ll focus on implementing a Battery subsystem and related Power Policy services. After that, we’ll fold in Thermal support and revisit the secure vs. non-secure implementations.
-
-### embedded-batteries
-
-This repository defines the Hardware Abstraction Layer (HAL) for a battery, tailored to the specific IC hardware being targeted. It builds a layered API chain upward, making most of the code portable and reusable across different integrations.
-
-### embassy
-
-Although our first exercises will be limited to simple desktop tests, we will then be building for an embedded context and that will require us to use features from [Embassy](https://embassy.dev/) both directly and indirectly.
-
-### soc-embedded-controller
-
-This repository provides the core EC functionality, which in this case is centered around power policy and regulation.
-
-We will refer to this later as we work on our own (virtual) battery service implementation.
-
-We’ll begin with the battery service — one of the embedded services — and later return here to integrate our battery into the broader scope of power management.
+Like most components, the battery starts with a definition, or specification.  Most common components have industry-standard specifications associated with them.  For the battery, we have the Smart Battery Specification (SBS).
 
 ---
 
@@ -88,14 +61,10 @@ Some systems may support removable batteries, and such conditions must be accoun
 
 ---
 
-## A Mock Battery
+In the next steps, we will use the ODP published crates that expose this SBS defnition as a Trait and build our implementation on top of that starting point.
 
-In our example, we will use a microcontroller board as our EC but will not focus on real battery or charger hardware at this stage.
+We will implement the mock values and behaviors of our simulated battery - instead of defining and building a HAL layer - 
+and then we will walk through the process of attaching this component definition to a Device wrapper and registering it
+as a component with a Controller that can be manipulated by a service layer - in this case, the Power Policy Service.
 
-This allows us to begin development without sourcing specific hardware while still implementing nearly all of the system’s behavior. In the end, we will have a fully functional—albeit artificial—battery subsystem.
 
-Once complete, this mock can be replaced with hardware-specific IO bindings, without requiring changes to the higher-level system logic.
-
-Next we will look at what resources in the ODP repositories we will be working with as we build our battery implementation.
-
-<!--[Return to Library](../../Library.html) -->

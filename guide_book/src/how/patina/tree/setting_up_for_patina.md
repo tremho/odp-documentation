@@ -27,135 +27,93 @@ with the __patina-dxe-core-qemu__ and __patina-quemu__ repositories for this.
 
 ## Preparing the workspace environment
 
+To explore how to create a component for Patina, we will build and test a simple "hello, world" type test component.
+In this example, we will not be building for a host target board, but will be targeting the QEMU emulator instead.
 
----------------
+Create a project space for your test component, and in this space, clone the necessary ODP repositories:
 
-_TODO - Rewrite as a guide to how to read the other docs to set up and then come back here.
-
-Note that we'll need to clone or submodule the two repos we need.
-
-Include a note about making sure windows has long path support turned on or alternately creating an alias
-
-Some of the qemu mentions here can go up to the overview_
-
-
----------------
-
-Much of the steps shown here are restructured from the [patina-qemu README](https://github.com/OpenDevicePartnership/patina-qemu?tab=readme-ov-file#first-time-tool-setup-instructions-for-this-repository), but contains a few additional clarifications.
-
-The end result will be a set of Patina rust-based firmware running as a QEMU hosted emulated platform.  Once this is established, we can work with the firmware ourselves and/or we can target an actual platform board instead of the emulator.  But let's not get ahead of ourselves just yet.  First we need to get things into place.
+```
+git clone https://github.com/OpenDevicePartnership/patina-qemu
+git clone https://github.com/OpenDevicePartnership/patina-dxe-core-qemu
+```
+ You will be working with these repositories and their examples as you create your own component.
 
 ## Qemu Q35 package
-In these steps, we will be building an emulated platform based on the Intel Q35 chipset. This will demonstrate the Patina UEFI firmware development for x86/64.  The patina-qemu repository also has support for an ARM architecture. Refer there for more information.
-
-## Preparing for "Stuart"
-The EDK II build tool, `Stuart`, is duplicated in the patina-qemu repository and further leveraged by specific platform build scripts.
-
-### Python
-But before we go there, we need to make sure we have Python installed.
-For Windows, download the [official Python installer]( https://www.python.org/downloads/windows/)
-
-(For Linux or MacOS, consult available sources for installing Python for your platform).
-
-The installer should install both `python` and `py` (python launcher).  Test your installation with
-
-```
-py -0
-```
-This should list the available python versions, and
-
-```
-python --version
-```
-should verify your default python version is available.
-
-### patina-qemu
-Now to get on with building the "Stuart" tools:
-
-Start by cloning the patina-quemu repository to your workspace.  
-
-```
-git clone git@github.com:OpenDevicePartnership/patina-qemu.git
-```
+In these steps, we will be building an emulated platform based on the Intel Q35 chipset. This will demonstrate the Patina UEFI firmware development for x86_64.  The patina-qemu repository also has support for an ARM architecture. Refer there for more information on that approach.  We will focus for now on the x86_64 option.
 
 
-and then we are going to establish a virtual python environment in this space and use it to build the tools.
 
-(Windows)
-```
-cd edk2
-py -m venv .venv
-.venv\Scripts\activate.bat
-pip install -r pip-requirements.txt --upgrade
-stuart_setup -c .pytool/CISettings.py
-```
+### 👉 Follow the instructions👈
+Your next step is to look at the `README` of `patina-qemu`. ___It contains detailed information on how to properly set up a workspace for the QemuQ35Pkg project___ we will be working with.
 
-## Patina-qemu
-Now we are equipped to build from the patina-qemu repository.
-Start by cloning the patina-quemu repository to your workspace.  
+Follow the prompts in the `workspace_setup.py` script wizard, and accept the recommended options which will result in establishing a python virtual environment and then prompting you to run the script again to build an image for QEMU.
+
+Once you have followed these setup instructions and all has gone well, carefully follow all the steps in the `Build and Run` section for the __X64 Target__.
+
+
+>Acquaint yourself with these steps. Note that as we work through our example component project, the normal 
+development routine will be to switch to the patina-qemu directory, then execute `q35env\Scripts\activate.bat` to put us  into our Python Virtual Environment (if we aren't already in one).  Then, we will be regularly executing the `stuart_build`  command as shown in the "Stuart Build and Launch UEfi Shell" section as we move through the example steps.
+
+#### Pointing to the qemu-dxe-core
+Note that the path passed for `BLD_*_DXE_CORE_BINARY_PATH` is shown in that example as something like:  "C:\r\patina-dxe-core-qemu\target\x86_64-unknown-uefi".  
+Unless you happened to create your patina test component project root folder at `C:\r` (or wish to move it there) this path will have to be changed.
+Change the "C:\r" portion of that example path to be the 
+absolute path to your workspace directory (where you have cloned the repositories).  
+
+##### Oops -- too long a path
+When you build, if you subsequently get an error from NMAKE that the path is too long, you can:
+
+##### Use the Windows Group Policy Editor to enable long path support.
+Find and run the Group Policy Editor application (`gpedit.exe`) from the Windows Command Prompt.
+Navigate to `Computer Configuration` -> `Administrative Templates` -> `System` -> `Filesystem` -> `Enable Win32 long paths`.  Open this policy setting and select `enable`.
+
+##### Other solutions to the long path problem include:
+- relocating your project directory to a shorter path (e.g. `C:\r`)
+- using `subst` to map this directory to a drive letter (e.g. `Z:\`)
+
+##### Using `subst` for our example
+For these examples, we will adopt the last option and use `subst` to remain consistent with the instructions to follow.
 
 ```
-git clone git@github.com:OpenDevicePartnership/patina-qemu.git
-```
-
-### Shorten the path
-On Windows, the build commands reference pathnames that when combined can exceed the maximum allowed path length, so to prevent issues here, we will redirect where we work so that our paths are shorter.
-
-Do this from within the patina-quemu repository root directory:
+subst Z: <your absolute path to your patina project directory>
+``` 
+So that Z:\ is now your pantina component project root that contains the two cloned repositories:
 
 ```
-cd
-<this will show you the full path of the repository root, where you are>
-subst z: <full path shown above>
+Z:\>dir
+ Volume in drive Z is Local Disk
+ Volume Serial Number is 0A87-D98F
 
-cd z:\
-z:
+ Directory of Z:\
+
+06/16/2025  09:59 AM    <DIR>          .
+06/16/2025  09:58 AM    <DIR>          ..
+06/16/2025  10:37 AM    <DIR>          patina-dxe-core-qemu
+06/16/2025  11:04 AM    <DIR>          patina-qemu
+               0 File(s)              0 bytes
+  
 ```
 
-now you should be able to treat your Z:\ location the same as your repository root, but the resulting path names will be shorter.
 
-
-### Preparing and Building
-(from within your new Z:\ location)
+Now, you should be able to follow the steps from "Build and Run", and it should look something like this:
 
 ```
-# Create a Python virtual environment for this workspace
-py -e -m venv patina.venv 
-# and then activate it
-.\patina.venv\Scripts\activate.bat
-```
-Note that there is `activate.bat` (for cmd) and `Activate.ps1` (for PowerShell).  Use the one that matches your console shell.
+Z:\>cd patina-qemu
 
-Now install the python dependencies:
-```
-pip install --upgrade -r pip-requirements.txt
-```
-Then use the Stuart tools to setup and build:
-```
-stuart_setup -c Platforms\QemuQ35Pkg\PlatformBuild.py
-stuart_upgrade -c Platforms\QemuQ35Pkg\PlatformBuild.py
+Z:\patina-qemu>q35env\Scripts\activate.bat
 
-```
-### First and subsequent setup 
-The steps above will create a virtual python environment and install the stuart tools into it.
-You should only need to do these steps the one time for your workspace.
-On subsequent visits, simply activate the virtual environment again (`.\patina.venv\Scripts\activate.bat`) 
-and then proceed with the build and/or run steps.
-
-To build and install into QEMU, include the --FlashRom argument:
-```
-stuart_build -c Platforms\QemuQ35Pkg\PlatformBuild.py --FlashRom
+(q35env) Z:\patina-qemu>stuart_build -c Platforms\QemuQ35Pkg\PlatformBuild.py --flashrom BLD_*_DXE_CORE_BINARY_PATH="Z:\patina-dxe-core-qemu\target\x86_64-unknown-uefi"
 ```
 
-building will take several minutes.  At the end of this you should see a QEMU window that shows a brief splash graphic and then a shell prompt and output showing success.
+
+Building will take several minutes.  At the end of this you should see a QEMU window that shows a brief splash graphic and then a shell prompt and output showing success.
 
 You will also see a long train of runtime debug output to the console window.  This will exceed the scroll-back buffer of the window so you won't be able to see the first portion of it.  The tail end of this runtime log will likely contain a number of TRACE level warnings at this stage.  We can ignore this output at this time.
 
-To build without running on QEMU, leave off the `--FlashRom` flag.
+To build without running on QEMU, leave off the `--flashrom` flag and the path assignment.
 
 ### What did we just build?
 The Patina DXE Core was successfully installed into your QEMU emulator!  But the actual Rust code for that is contained within a prebuilt .efi binary.  Next we will look at the steps you will need to take to update that .efi binary so that _your_ firmware development can be set into place.
 
-Now that the QEMU tooling is ready, let's look at getting a customized Patina core and your own component code onto it with the next steps.
-
+Now that the QEMU tooling is ready, let's look at getting a customized Patina core with your own component code onto it with the next steps.
 
