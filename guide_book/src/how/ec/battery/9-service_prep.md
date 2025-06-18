@@ -1,37 +1,26 @@
 # Battery Service Preparation
 
-
----------------
-_TODO: 
-This section needs to be revisited and rewritten to support a successful 'standard' build - earlier attempts at 
-including some of the dependencies in a std environment failed, and so this was written to build for the embedded target
-at this premature phase.  We want to build the battery complete before switching to the embedded context though._
-
------------------
-
 We've successfully exposed and proven our implementation of battery traits and their values for our mock battery,
 and built for an embedded target.
 In this step, we'll continue our integration by connecting to a battery service, but that requires some setup to cover first.
 
 ## Battery-service
-The ODP repository `embedded-services` has the `battery-service` we need for this, as well as the power-policy infracture support that uses it.
+The ODP repository `embedded-services` has the `battery-service` we need for this, as well as the power-policy infrastructure support that uses it.
 
-The ODP repository `embedded-cfu` is also needed here,
-as is `embedded-usb-pd`.
+We already have our `embedded-batteries` submodule in our project space from the first steps. We'll do the same thing to bring in what we need from `embedded-services`.
 
-We will bring these into our scope now.
+In the `battery_project` directory:
 
-In the `battery_project`, we'll bring these in with the commands:
-
-```
+```cmd
 git submodule add https://github.com/OpenDevicePartnership/embedded-services
-
-git submodule add git@github.com:OpenDevicePartnership/embedded-cfu
-
-git submodule add git@github.com:OpenDevicePartnership/embedded-usb-pd
-
 ```
 
+### Checking the repository examples
+Within the `embedded-services` repository files, you will find a directory named `examples`.  We can find files in the `examples/std/src/bin/` folder that speak to battery and power_policy impllementations, as well as other concerns.  You should familiarize yourself with these examples.
+
+In this exercise we will be borrowing from those designs in a curated fashion.
+If at any time there is question about the implementation presented in this exercise, please consult the examples in the repository, as they may contain
+updated information.
 
 ### A Mock Battery Device
 To fit the design of the ODP battery service, we first need to create a wrapper that contains our MockBattery and a Device Trait.  We need to implement `DeviceContainer` for this wrapper and reference that `Device`.
@@ -40,18 +29,84 @@ Then we will register the wrapper with `register_device(...)` and we will have a
 #### Import the battery-service from the ODP crate
 One of the service definitions from the `embedded-services` repository we brought into scope is the `battery-service`. 
 We now need to update our Cargo.toml to know where to find it.
-Open the `Cargo.toml` file of your mock-battery project and add the dependency to the battery-service path to our Cargo.toml.  We will also need a reference to `embedded-services` itself for various support needs.  Update your `mock_battery/Cargo.toml` so that your `[dependencies]` section now looks like this:
+Open the `Cargo.toml` file of your mock-battery project and add the dependency to the battery-service path to our Cargo.toml.  We will also need a reference to `embedded-services` itself for various support needs.  Update your `mock_battery/Cargo.toml` so that your `[dependencies]` section now looks like this to include references we will need.  Note that in addition to our existing `embedded-batteries` crate, we also will need the `embadded-batteries-async` crate for the next steps.
 
-```
+Your new `[dependencies]` section should now look like this:
+
+```toml
 [dependencies]
-cortex-m-rt = "0.7.3"
-static_cell = "2.0.0"
 embedded-batteries = { path = "../embedded-batteries/embedded-batteries" }
 embedded-batteries-async = { path = "../embedded-batteries/embedded-batteries-async" }
 battery-service = { path = "../embedded-services/battery-service" }
 embedded-services = { path = "../embedded-services/embedded-service" }
 ```
 This will allow us to import what we need for the next steps.
+
+### Top-level Cargo.toml
+If we execute `cargo build` at this point, we will likely get an error that says there was an "error inheriting `defmt` from workspace root manifest's `workspace.dependencies.defmt`" and "`workspace.dependencies` was not defined".
+
+This is because these dependencies are used by the dependencies that we have included, even if we aren't using them ourselves.  In many cases, such as those dependencies that are relying on packages like `embassy` for embedded support, we won't be using at all in our 'std' build environment, and these will be compiled out of our build as a result, but they must still be referenced to satisfy the dependency chain.
+
+To remedy this, we must edit the top-level Cargo.toml (`battery_project/cargo.toml`) to include a reference to `defmt`, such as 
+```toml
+[workspace.dependencies]
+defmt = "1.0"
+```
+and when you try again, you will get another error specifying the next missing dependency reference.  Add these placeholder references in the same way.  For now, don't worry about the version.  Make each reference = "1.0".
+
+For references to dependencies we _are_ using in our project (`embedded-batteries`, `embedded-batteries-async`, `embedded-services`, `battery-service`), specify these by providing their path, as in:
+```toml
+embedded-batteries = { path = "embedded-batteries/embedded-batteries" }
+embedded-batteries-async = { path = "embedded-batteries/embedded-batteries-async" }
+embedded-services = { path = "embedded-services/embedded-service" }
+battery-service = { path = "embedded-services/battery-service" }    
+```
+Once all the dependencies have been named, `cargo build` will start to complain about acceptable version numbers for those where the "1.0" placeholder will not suffice.  For example:
+
+```
+error: failed to select a version for the requirement `embassy-executor = "^1.0"`
+candidate versions found which didn't match: 0.7.0, 0.6.3, 0.6.2, ...
+```
+So in these cases, change the "1.0" to one of the versions from the list ("0.7.0")
+
+After doing all of this, your `[workspace.dependencies]` section will look something like this:
+```toml
+[workspace.dependencies]
+defmt = "1.0"
+embassy-executor = "1.0"
+embassy-futures = "0.1.0"
+embassy-sync = "0.7.0"
+embassy-time = "0.4.0"
+embassy-time-driver = "1.0"
+embedded-hal = "1.0"
+embedded-hal-async = "1.0"
+log = "0.4.27"
+bitfield = "0.19.1"
+bitflags = "1.0"
+bitvec = "1.0"
+cfg-if = "1.0"
+chrono = "0.4.41"
+critical-section = "1.0"
+document-features = "0.2.11"
+embedded-cfu-protocol = "1.0"
+embedded-hal-nb = "1.0"
+embedded-io = "1.0"
+embedded-io-async = "1.0"
+embedded-storage = "1.0"
+embedded-storage-async = "1.0"
+embedded-usb-pd = "1.0"
+fixed = "1.0"
+heapless = "1.0"
+postcard = "1.0"
+rand_core = "1.0"
+serde = "1.0"
+cortex-m = "1.0"
+cortex-m-rt = "1.0"
+embedded-batteries = { path = "embedded-batteries/embedded-batteries" }
+embedded-batteries-async = { path = "embedded-batteries/embedded-batteries-async" }
+embedded-services = { path = "embedded-services/embedded-service" }
+battery-service = { path = "embedded-services/battery-service" }    
+```
 
 ### Define the MockBatteryDevice wrapper
 

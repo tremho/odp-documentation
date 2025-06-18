@@ -209,11 +209,26 @@ The code in `mock_battery.rs` starts out with a `use` statement that imports wha
 
 The next section defines a simple custom error type for use in our mock battery implementation. This MockBatteryError enum currently has no variants — it serves as a placeholder that allows our code to conform to the expected error traits used by the broader embedded_batteries framework.
 
-By implementing core::fmt::Display, we ensure that error messages can be printed in a readable form (here, just "MockBatteryError"). Then, by implementing the embedded_batteries::smart_battery::Error trait, we allow this error to be returned in contexts where the smart battery interface expects a well-formed error object. The .kind() method returns ErrorKind::Other to indicate a generic error category.
+By implementing core::fmt::Display, we ensure that error messages can be printed in a readable form (here, just "MockBatteryError") while we are building and running from our local machine in a std environment. Then, by implementing the embedded_batteries::smart_battery::Error trait, we allow this error to be returned in contexts where the smart battery interface expects a well-formed error object. The .kind() method returns ErrorKind::Other to indicate a generic error category.
 
 This scaffolding allows our mock implementation to slot into the service framework cleanly, even if the actual logic is still forthcoming.
 
 Finally, we get to the SmartBattery implementation for our MockBattery.  As you might guess, this simply implements each of the functions of the trait as declared, by simply returning an arbitrary representative return value for each.  We'll make these values more meaningful later, but for now, it's pretty minimalist.
+
+> ### Implementing a HAL layer
+> In our virtual Mock Battery, we will not be attaching to any actual hardware.
+> But if we were, this would be the place to do it.
+>
+> A brief overview of what these steps would be include:
+> - Consulting the specifications of our hardware to explore its features
+> - Determine which of these features would be necessary to fulfill each trait from the SBS specification we wish to implement
+> - Define the traits that name these features or feature sequences.
+> - Implement these traits in hardware (GPIO / MMIO, etc)
+> - Use this to fulfill the SBS traits for the values required.
+>
+> For our mock battery, we will simply return coded values for the SBS traits directly.
+>
+> ------
 
 ## Now to expose this to the service
 

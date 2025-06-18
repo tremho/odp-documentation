@@ -1,9 +1,9 @@
 # A Mock Battery Project
 
-In the previous section, we saw how the _Smart Battery Specification (SBS)_ defines a set of functions that a Smart Battery service should implement.
+In previous pages, we saw how the _Smart Battery Specification (SBS)_ defines a set of functions that a Smart Battery service should implement.
 
-In this section, we are going to review how these traits are defined in Rust within the [embedded-services repository](https://github.com/OpenDevicePartnership/embedded-services/), and we are going to import these structures into our own workspace as we build our mock battery.
-In subsequent sections we'll connect the battery into the supporting upstream EC service framwork.
+In the next pages, we are going to review how these traits are defined in Rust within the [embedded-services repository](https://github.com/OpenDevicePartnership/embedded-services/), and we are going to import these structures into our own workspace as we build our mock battery.
+In subsequent steps we'll connect the battery into the supporting upstream EC service framwork.
 
 ## Setting up for development
 We are going to create a project space that contains a folder for our battery code, and the dependent repository clones.
@@ -70,5 +70,5 @@ The `lib.rs` file is used to tell Rust which modules are part of the project. Se
 pub mod mock_battery;
 ```
 
-the `mock_battery.rs` file can be empty for now.  We will define its contents in the next section.
+the `mock_battery.rs` file can be empty for now.  We will define its contents in the next step.
 
