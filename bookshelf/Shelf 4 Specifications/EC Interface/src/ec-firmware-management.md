@@ -75,27 +75,21 @@ None
 Method (TFWS) {
   // Check to make sure FFA is available and not unloaded
   If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(32){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateField(BUFF,144,32,FWSD) // Out – Raw data response (overlaps with CMDD)
+    CreateQwordField(BUFF,0,STAT) // Out – Status for req/rsp
+    CreateField(BUFF,128,128,UUID) // UUID of service
+    CreateByteField(BUFF,32, CMDD) // In – First byte of command
+    CreateDwordField(BUFF,32,FWSD) // Out – Raw data response (overlaps with CMDD)
 
     Store(ToUUID("330c1273-fde5-4757-9819-5b6539037502"), UUID) // Management
-    Store(20, LENG)
     Store(0x1, CMDD) // EC_CAP_GET_FW_STATE
     Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
 
     If(LEqual(STAT,0x0) ) // Check FF-A successful?
     {
       Return (FWSD)
-    } else {
-      Return(Zero)
-    }
-  } else {
-    Return(Zero)
+    } 
   }
+  Return(Zero)
 }
 ```
 
@@ -111,88 +105,38 @@ None
 
 ### Output Parameters
 
-<table>
-<thead>
-<tr class="header">
-<th>Field</th>
-<th>Bits</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<tr class="odd">
-<td>DebugMask</td>
-<td>16</td>
-<td><p>0 – Supports reset reason</p>
-<p>1 – Supports debug tracing</p></td>
-</tr>
-<tr class="even">
-<td>BatteryMask</td>
-<td>8</td>
-<td><p>0 – Battery 0 present</p>
-<p>1 – Battery 1 present</p>
-<p>…</p></td>
-</tr>
-<tr class="odd">
-<td>FanMask</td>
-<td>8</td>
-<td><p>0 – FAN 0 present</p>
-<p>1 – FAN 1 present</p>
-<p>…</p></td>
-</tr>
-<tr class="even">
-<td>ThermalMask</td>
-<td>8</td>
-<td>0 – Skin TZ present</td>
-</tr>
-<tr class="odd">
-<td>HIDMask</td>
-<td>8</td>
-<td><p>0 – HID0 present</p>
-<p>1 – HID1 present</p>
-<p>…</p></td>
-</tr>
-<tr class="even">
-<td>KeyMask</td>
-<td>16</td>
-<td><p>0 – Power key present</p>
-<p>1 – LID switch present</p>
-<p>2 – VolUp Key Present</p>
-<p>3 – VolDown Key Present</p>
-<p>4 – Camera Key Present</p></td>
-</tr>
-<tr class="odd">
-<td></td>
-<td></td>
-<td></td>
-</tr>
-</tbody>
-</table>
+| Field         | Bits  | Description
+|---------------|-------|-------------------------
+| DebugMask     | 16    | 0 - Supports reset reason<br>1 - Supports debug tracing
+| BatteryMask   | 8     | 0 - Battery 0 present<br>1 - Battery 1 present<br>...
+| FanMask       | 8     | 0 - Fan 0 present<br>1 - Fan 1 present<br>...
+| ThermalMask   | 8     | 0 - Skin TZ present
+| HIDMask       | 8     | 0 - HID0 present<br>1 - HID1 present<br>...
+| KeyMask       | 16    | 0 - Power key present<br>1 - LID switch present<br>2 - VolUp key present<br>3 - VolDown key present<br>4 - Camera key present
 
 ### FFA ACPI Example
 ```
 Method(TFET, 0x0, Serialized) {
   If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(24){})
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18,CMDD) // Command register
-    CreateField(BUFF,144,48,FETD) // Output Data
+    CreateQwordField(BUFF,0,STAT) // Out – Status for req/rsp
+    CreateField(BUFF,128,128,UUID) // UUID of service
+    CreateByteField(BUFF,32, CMDD) // In – First byte of command
+    CreateWordField(BUFF,32,FET0) // DebugMask
+    CreateByteField(BUFF,34,FET1) // BatteryMask
+    CreateByteField(BUFF,35,FET2) // FanMask
+    CreateByteField(BUFF,36,FET3) // ThermalMask
+    CreateByteField(BUFF,37,FET4) // HIDMask
+    CreateWordField(BUFF,38,FET5) // KeyMask
 
-    Store(20, LENG)
     Store(0x2, CMDD) // EC_CAP_GET_SVC_LIST
     Store(ToUUID("330c1273-fde5-4757-9819-5b6539037502"), UUID)
     Store(Store(BUFF, \\_SB_.FFA0.FFAC), BUFF)
 
     If(LEqual(STAT,0x0) ) {
-      Return (FETD)
-    } else {
-      Return(Zero)
+      Return (package () {FET0,FET1,FET2,FET3,FET4,FET5})
     }
-  } else {
-    Return(Zero)
   }
+  Return(package () {0,0,0,0,0,0,0})
 }
 ```
 
@@ -216,13 +160,11 @@ None
 ```
 Method(TBID, 0x0, Serialized) {
   If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(32){})
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18,CMDD) // Command register
-    CreateDwordField(BUFF,18,BIDD) // Output Data
-    Store(20, LENG)
+    CreateQwordField(BUFF,0,STAT) // Out – Status for req/rsp
+    CreateField(BUFF,128,128,UUID) // UUID of service
+    CreateByteField(BUFF,32, CMDD) // In – First byte of command
+    CreateDwordField(BUFF,32,BIDD) // Output Data
+
     Store(0x3, CMDD) // EC_CAP_GET_BID
     Store(ToUUID("330c1273-fde5-4757-9819-5b6539037502"), UUID)
     Store(Store(BUFF, \\_SB_.FFA0.FFAC), BUFF)
@@ -230,11 +172,8 @@ Method(TBID, 0x0, Serialized) {
     If(LEqual(STAT,0x0) ) {
       Return (BIDD)
     } else {
-      Return(Zero)
-    }
-  } else {
-    Return(Zero)
   }
+  Return(Zero)
 }
 ```
 
