@@ -1,16 +1,22 @@
 # Battery Service Registry
 
------------------------------
-_TODO: as noted, this content was written assuming an embedded (no-std) target, but we want to make sure we get through this while still able to build for std on the local machine.  Some details of this as written will likely need change._
-
-------------------------------
-
-
 So far, we've defined our mock battery and wrapped it in Device wrapper so that it is ready to be included in a Service registry.
 
 To do so meant committing to an embedded target build and a no-std environment compatible with the ODP crates and dependencies.
 
 Now it is time to prepare the code we need to put this MockBatteryDevice to work.
+
+### Another import for our std environment
+The async model used in embassy is not available in our std environment,
+so we need to make some adjustments to account for that until we get to the 
+point of actually building for embedded.
+
+Perhaps the most seamless option is to use the crate `tokio` for this solution.
+
+To prepare for this, add the following to the `[dependencies]` section of `mock_battery/Cargo.toml`:
+```toml
+tokio = { version = "1", features = ["rt", "macros", "sync"] }
+```
 
 ### Looking at the examples
 The `embedded-services` repository has some examples for us to consider already.  In the `embedded-services/examples/std` folder, particularly in `battery.rs` and `power_policy.rs` we can see how devices are created and then registered, and also how they are executed via per-device tasks.  The system is initialized and a runtime `Executor` is used to spawn the tasks.
@@ -21,98 +27,51 @@ We need to create a device `Registry` as defined by `embedded-services` to wire 
 
 To do this, let's replace our current `mock_battery/main.rs` with this:
 
-```
-#![no_std]
-#![no_main]
-
-use embassy_executor::Spawner;
+```rust
+use mock_battery::mock_battery_device::MockBatteryDevice;
 use embedded_services::init;
 use embedded_services::power::policy::{register_device, DeviceId};
+
 use static_cell::StaticCell;
-use mock_battery::mock_battery_device::MockBatteryDevice;
+use tokio::task::LocalSet;
 
-use battery_service::{self, device::Device, wrapper::Wrapper};
-use mock_battery::mock_battery_controller::MockBatteryController;
+static BATTERY: StaticCell<MockBatteryDevice> = StaticCell::new();
 
-#[embassy_executor::main]
-async fn async_main(spawner: Spawner) {
-    // Required by embedded-services to initialize internals
-    init().await;
+#[tokio::main(flavor = "current_thread")]
+async fn main() {
+    println!("🔋 Launching battery service (single-threaded)");
 
-    // Initialize and register our battery device
-    static BATTERY: StaticCell<MockBatteryDevice> = StaticCell::new();
-    let battery = BATTERY.init(MockBatteryDevice::new(DeviceId(0)));
-    register_device(battery).await.unwrap();
-    spawner.must_spawn(battery_run_task(battery));
+    let local = LocalSet::new();
 
-    static WRAPPER: StaticCell<Wrapper<'static, &'static mut MockBatteryController>> = StaticCell::new();
+    local.run_until(async {
+        init().await;
 
+        let battery_device = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
 
-    // Initialize our fuel gauge controller
-    static CONTROLLER: StaticCell<MockBatteryController> = StaticCell::new();
-    let controller = CONTROLLER.init(MockBatteryController::new());
-    
-    // Initialize the device used by the battery service wrapper
-    static DEVICE: StaticCell<Device> = StaticCell::new();
-    let dev = DEVICE.init(Device::new(battery_service::device::DeviceId(1)));
+        println!("🧩 Registering battery device...");
+        let _ = register_device(battery_device).await;
 
-    // Create a wrapper that can process battery service messages
-    let wrapper = WRAPPER.init(Wrapper::new(dev, controller));
-    // must_spawn will panic if the task fails to spawn, suitable for no_std
-    spawner.must_spawn(wrapper_task(wrapper));
+        println!("▶️ Spawning battery runtime loop...");
+        tokio::task::spawn_local(battery_device.run());
 
-    
-}
+        println!("✅ Battery service is up and running.");
 
-#[embassy_executor::task]
-async fn battery_run_task(battery: &'static MockBatteryDevice) {
-    battery.run().await;
-}
-
-
-#[embassy_executor::task]
-async fn wrapper_task(wrapper: &'static Wrapper<'static, &'static mut MockBatteryController>) {
-    loop {
-        wrapper.process().await;
-    }
-}
-
-/// Required by embedded targets for panic handling
-use core::panic::PanicInfo;
-
-#[panic_handler]
-fn panic(_info: &PanicInfo) -> ! {
-    loop {}
+        // Wait forever
+        std::future::pending::<()>().await;
+    }).await;
 }
 ```
-When you execute `cargo build --target thumbv7em-none-eabihf` you will receive errors, such as
-"error: No architecture selected for embassy-executor. Make sure you've enabled one of the `arch-*` features in your Cargo.toml."
-
-We still have some configuration to do.
-
-`embassy-executor` requires specific selection of the MCU architecture via features.
-
-In your `mock_battery/Cargo.toml`, remove the line
-from the `[dependencies]` section
-```
-embassy-executor = { path = "../embassy/embassy-executor", optional = true }
-```
-
-and add this section:
-```
-[dependencies.embassy-executor]
-path = "../embassy/embassy-executor"
-features = ["arch-cortex-m", "executor-thread"]
-optional = true
-```
-also, add these lines to the `[dependencies]` section (these references will come up soon):
+With everything in place, you should type `cargo run` and after it builds you should see this output:
 
 ```
-embassy-time = { path = "../embassy/embassy-time" }
-embassy-sync = { path = "../embassy/embassy-sync" }
+      Running `target\debug\mock_battery.exe`
+🔋 Launching battery service (single-threaded)
+🧩 Registering battery device...
+▶️ Spawning battery runtime loop...
+✅ Battery service is up and running.
 ```
 
-and then try again: `cargo build --target thumbv7em-none-eabihf`
+_TODO: This is where we left off_ 
 
 ## The Battery Service
 Now we have registered our battery device as a device for the embedded-services power policy,
@@ -122,7 +81,7 @@ but the `battery_service` knows how to use a battery specifically, so we need to
 The battery service `Controller` is the trait interface used to control a battery connected via the SmartBattery trait interface at a slightly higher level.  
 
 Create a new file in `mock_battery` named `mock_battery_controller.rs` and give it this content:
-```
+```rust
 use battery_service::controller::{Controller, ControllerEvent};
 use battery_service::device::{DynamicBatteryMsgs, StaticBatteryMsgs};
 use embassy_time::{Duration, Timer};
@@ -334,8 +293,7 @@ This just implements the SmartBattery traits with stubs for now.  We will connec
 #### add to `lib.rs`
 Don't forget that we need to include this new file in our `lib.rs` declarations:
 
-```
-#![no_std]
+```rust
 pub mod mock_battery;
 pub mod mock_battery_device;
 pub mod mock_battery_controller;

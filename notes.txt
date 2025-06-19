@@ -52,7 +52,4 @@ This log line is emitted from the `bin/q35_dxe_core.rs` file of the patina-dxe-c
 We will create and install our own component in the next exercise.
 
 
-
-
-
-
+------------------------

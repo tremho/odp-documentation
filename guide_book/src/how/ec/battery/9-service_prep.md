@@ -9,10 +9,17 @@ The ODP repository `embedded-services` has the `battery-service` we need for thi
 
 We already have our `embedded-batteries` submodule in our project space from the first steps. We'll do the same thing to bring in what we need from `embedded-services`.
 
+We will also need the repositories `embedded-cfu`, and `embedded-usb-pd` although we won't really be using the features of these while we are in a non-embedded (std) build environment, the dependencies are still needed for reference by the other dependencies.
+
+The same is also true for Embassy, since some of the embassy_time traits are used by ODP signatures we will be attaching to.
+
 In the `battery_project` directory:
 
 ```cmd
 git submodule add https://github.com/OpenDevicePartnership/embedded-services
+git submodule add https://github.com/OpenDevicePartnership/embedded-cfu
+git submodule add https://github.com/OpenDevicePartnership/embedded-usb-pd
+git submodule add https://github.com/embassy-rs/embassy.git 
 ```
 
 ### Checking the repository examples
@@ -39,6 +46,7 @@ embedded-batteries = { path = "../embedded-batteries/embedded-batteries" }
 embedded-batteries-async = { path = "../embedded-batteries/embedded-batteries-async" }
 battery-service = { path = "../embedded-services/battery-service" }
 embedded-services = { path = "../embedded-services/embedded-service" }
+embedded-cfu = { path = "../embedded-cfu}
 ```
 This will allow us to import what we need for the next steps.
 
@@ -59,7 +67,9 @@ For references to dependencies we _are_ using in our project (`embedded-batterie
 embedded-batteries = { path = "embedded-batteries/embedded-batteries" }
 embedded-batteries-async = { path = "embedded-batteries/embedded-batteries-async" }
 embedded-services = { path = "embedded-services/embedded-service" }
-battery-service = { path = "embedded-services/battery-service" }    
+battery-service = { path = "embedded-services/battery-service" }
+embedded-cfu-protocol = { path = "embedded-cfu" }
+embedded-usb-pd = { path = "embedded-usb-pd" }
 ```
 Once all the dependencies have been named, `cargo build` will start to complain about acceptable version numbers for those where the "1.0" placeholder will not suffice.  For example:
 
@@ -73,11 +83,11 @@ After doing all of this, your `[workspace.dependencies]` section will look somet
 ```toml
 [workspace.dependencies]
 defmt = "1.0"
-embassy-executor = "1.0"
+embassy-executor = "0.7.0"
 embassy-futures = "0.1.0"
 embassy-sync = "0.7.0"
 embassy-time = "0.4.0"
-embassy-time-driver = "1.0"
+embassy-time-driver = "0.2.0"
 embedded-hal = "1.0"
 embedded-hal-async = "1.0"
 log = "0.4.27"
@@ -86,33 +96,35 @@ bitflags = "1.0"
 bitvec = "1.0"
 cfg-if = "1.0"
 chrono = "0.4.41"
-critical-section = "1.0"
+critical-section = {version = "1.0", features = ["std"] }
 document-features = "0.2.11"
-embedded-cfu-protocol = "1.0"
 embedded-hal-nb = "1.0"
-embedded-io = "1.0"
-embedded-io-async = "1.0"
-embedded-storage = "1.0"
-embedded-storage-async = "1.0"
-embedded-usb-pd = "1.0"
+embedded-io = "0.6.1"
+embedded-io-async = "0.6.1"
+embedded-storage = "0.3.1"
+embedded-storage-async = "0.4.1"
 fixed = "1.0"
-heapless = "1.0"
+heapless = "0.8.0"
 postcard = "1.0"
-rand_core = "1.0"
+rand_core = "0.9.3"
 serde = "1.0"
-cortex-m = "1.0"
-cortex-m-rt = "1.0"
+cortex-m = "0.7.7"
+cortex-m-rt = "0.7.5"
 embedded-batteries = { path = "embedded-batteries/embedded-batteries" }
 embedded-batteries-async = { path = "embedded-batteries/embedded-batteries-async" }
 embedded-services = { path = "embedded-services/embedded-service" }
-battery-service = { path = "embedded-services/battery-service" }    
+battery-service = { path = "embedded-services/battery-service" }
+embedded-cfu-protocol = { path = "embedded-cfu" }
+embedded-usb-pd = { path = "embedded-usb-pd" }
 ```
+
+Insure `cargo build` succeeds with your dependencies referenced accordingly before proceeding to the next step.
 
 ### Define the MockBatteryDevice wrapper
 
 In your mock_battery project `src` folder, create a new file named `mock_battery_device.rs` and give it this content:
 
-```
+```rust
 use crate::mock_battery::MockBattery;
 use embedded_services::power::policy::DeviceId;
 use embedded_services::power::policy::action::device::AnyState;
@@ -148,19 +160,19 @@ impl MockBatteryDevice {
             let request = &cmd.command; 
 
             match request {
-                CommandData::ConnectConsumer(_cap) => {
-                    // println!("Received ConnectConsumer for {}mA @ {}mV", cap.current_ma, cap.voltage_mv);
+                CommandData::ConnectAsConsumer(cap) => {
+                    println!("Received ConnectConsumer for {}mA @ {}mV", cap.current_ma, cap.voltage_mv);
 
                     // Safe placeholder: detach any existing state
                     match self.device.device_action().await {
                         AnyState::ConnectedProvider(dev) => {
-                            if let Err(_e) = dev.detach().await {
-                                // println!("Detach failed: {:?}", e);
+                            if let Err(e) = dev.detach().await {
+                                println!("Detach failed: {:?}", e);
                             }
                         }
                         AnyState::ConnectedConsumer(dev) => {
-                            if let Err(_e) = dev.detach().await {
-                                // println!("Detach failed: {:?}", e);
+                            if let Err(e) = dev.detach().await {
+                                println!("Detach failed: {:?}", e);
                             }
                         }
                         _ => (),
@@ -169,18 +181,18 @@ impl MockBatteryDevice {
                     cmd.respond(Ok(ResponseData::Complete));
                 }
 
-                CommandData::ConnectProvider(_cap) => {
-                    // println!("Received ConnectProvider for {}mA @ {}mV", cap.current_ma, cap.voltage_mv);
+                CommandData::ConnectAsProvider(cap) => {
+                    println!("Received ConnectProvider for {}mA @ {}mV", cap.current_ma, cap.voltage_mv);
 
                     match self.device.device_action().await {
                         AnyState::ConnectedProvider(dev) => {
-                            if let Err(_e) = dev.detach().await {
-                                // println!("Detach failed: {:?}", e);
+                            if let Err(e) = dev.detach().await {
+                                println!("Detach failed: {:?}", e);
                             }
                         }
                         AnyState::ConnectedConsumer(dev) => {
-                            if let Err(_e) = dev.detach().await {
-                                // println!("Detach failed: {:?}", e);
+                            if let Err(e) = dev.detach().await {
+                                println!("Detach failed: {:?}", e);
                             }
                         }
                         _ => (),
@@ -190,21 +202,21 @@ impl MockBatteryDevice {
                 }
 
                 CommandData::Disconnect => {
-                    // println!("Received Disconnect");
+                    println!("Received Disconnect");
 
                     match self.device.device_action().await {
                         AnyState::ConnectedProvider(dev) => {
-                            if let Err(_e) = dev.detach().await {
-                                // println!("Detach failed: {:?}", e);
+                            if let Err(e) = dev.detach().await {
+                                println!("Detach failed: {:?}", e);
                             }
                         }
                         AnyState::ConnectedConsumer(dev) => {
-                            if let Err(_e) = dev.detach().await {
-                                // println!("Detach failed: {:?}", e);
+                            if let Err(e) = dev.detach().await {
+                                println!("Detach failed: {:?}", e);
                             }
                         }
                         _ => {
-                            // println!("Already disconnected or idle");
+                            println!("Already disconnected or idle");
                         }
                     }
 
@@ -232,90 +244,14 @@ Note also there are some commented-out `println!` macros. We can't use `println!
 
 #### Including mock_battery_device
 Just like we had to inform the build of our mock_battery, we need to do likewise with mock_battery_device.  So edit `lib.rs` and to this:
-```
-#![no_std]
+```rust
 pub mod mock_battery;
 pub mod mock_battery_device;
 ```
 
-__Important__: Note that we also added `#![no_std]` at the top of this `lib.rs` file.  This is necessary to insure that our build is not expecting the defaults from std to be available.
-
-#### Updating the dependencies
-We now must make some edits to our top-level `battery_project/Cargo.toml` file to reflect the new dependencies.
-
-Add the references to our embedded-services dependencies to `members` list of the `[workspace]` section so it now has all our new members:
-```
-members = [
-    "mock_battery",
-    "embedded-batteries/embedded-batteries",
-    "embedded-batteries/embedded-batteries-async",
-    "embedded-services/embedded-service",
-    "embedded-services/battery-service",
-    "embedded-cfu",
-    "embedded-usb-pd",
-    "embassy/embassy-executor",
-    "embassy/embassy-futures",
-    "embassy/embassy-sync",
-    "embassy/embassy-time",
-    "embassy/embassy-time-driver"
-]
-```
-and create a new `[workspace.depedencies]` section in this file as well:
-```
-[workspace.dependencies]
-embedded-services = { path = "embedded-services/embedded-service" }
-```
-This reconciles the name from 'embedded-service' to 'embedded-services'.
-
-## 🛠️🧩 Dependency Detour: Manual Overrides Required 🧩 🛠️
-At this point, you'll encounter a wall of configuration. 
-If you try to build here you will get an error about an failure to inherit a workspace dependency or else a dependency not found.  This is due to the need to match the configurations for the crates we are importing.  You can use tools like `cargo search` to show the current version of dependencies, for example, and tackle these one at a time, but in the interest of efficiency, just copy what is shown here, because there is a lot.
-
-Unfortunately, the current structure of the service crates requires us to explicitly patch and align many transitive dependencies to avoid conflicts—especially around async runtime and HAL crates.
-
-This may feel excessive, but it’s a one-time setup step to align everything cleanly for builds targeting either desktop or embedded systems. Once it’s in place, the rest of the work proceeds smoothly.
-
-Your top-level Cargo.toml at `battery_project/Cargo.toml` should have a full `[workspace.dependencies]` section that looks like this:
-
-```
-[workspace.dependencies]
-embedded-services = { path = "embedded-services/embedded-service" }
-defmt = "1.0"
-embassy-executor = { path = "embassy/embassy-executor" }
-embassy-futures = { path = "embassy/embassy-futures" }
-embassy-sync = { path = "embassy/embassy-sync" }
-embassy-time = { path = "embassy/embassy-time" }
-embassy-time-driver = { path = "embassy/embassy-time-driver" }
-embedded-batteries-async = { path = "embedded-batteries/embedded-batteries-async" }
-embedded-cfu-protocol = { path = "embedded-cfu" }
-embedded-usb-pd = { path = "embedded-usb-pd" }
-
-embedded-hal = "1.0.0"
-embedded-hal-async = "1.0.0"
-log = "0.4"
-bitfield = "0.17.0"
-bitflags = "2.8.0"
-bitvec = { version = "1.0.1", default-features = false }
-cfg-if = "1.0.0"
-chrono = { version = "0.4", default-features = false }
-cortex-m = "0.7.6"
-cortex-m-rt = "0.7.5"
-critical-section = "1.1"
-document-features = "0.2.7"                    
-embedded-hal-nb = "1.0.0"
-embedded-io = "0.6.1"
-embedded-io-async = "0.6.1"
-embedded-storage = "0.3.0"
-embedded-storage-async = "0.3.0"
-rand_core = "0.9.3"
-heapless = { version = "0.7.16", default-features = false }
-fixed = { version = "1.23.1", default-features = false }
-postcard = { version = "1.1.1", default-features = false }
-serde = { version = "1.0.219", default-features = false, features = ["derive"] }
-```
 After you've done all that,  you should be able to build with 
 ```
-cargo build --target thumbv7em-none-eabihf
+cargo build
 ```
 and get a clean result
 
