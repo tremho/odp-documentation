@@ -6,20 +6,11 @@ To do so meant committing to an embedded target build and a no-std environment c
 
 Now it is time to prepare the code we need to put this MockBatteryDevice to work.
 
-### Another import for our std environment
-The async model used in embassy is not available in our std environment,
-so we need to make some adjustments to account for that until we get to the 
-point of actually building for embedded.
-
-Perhaps the most seamless option is to use the crate `tokio` for this solution.
-
-To prepare for this, add the following to the `[dependencies]` section of `mock_battery/Cargo.toml`:
-```toml
-tokio = { version = "1", features = ["rt", "macros", "sync"] }
-```
 
 ### Looking at the examples
 The `embedded-services` repository has some examples for us to consider already.  In the `embedded-services/examples/std` folder, particularly in `battery.rs` and `power_policy.rs` we can see how devices are created and then registered, and also how they are executed via per-device tasks.  The system is initialized and a runtime `Executor` is used to spawn the tasks.
+
+There are a few tricks involved, though, because Embassy is normally designed to run in an embedded context, and we are using it in a std local machine environment.  That's fine.  In the end, we will build in such a way that we can define, build, and test our component completely before committing to an embedded target, and when we do there will only be minor changes required.
 
 
 ## 🔌 Wiring Up the Battery Service
@@ -28,39 +19,70 @@ We need to create a device `Registry` as defined by `embedded-services` to wire 
 To do this, let's replace our current `mock_battery/main.rs` with this:
 
 ```rust
-use mock_battery::mock_battery_device::MockBatteryDevice;
+mod time_driver;
+
+use embassy_executor::Executor;
+use static_cell::StaticCell;
+use std::future::pending;
+
+
 use embedded_services::init;
 use embedded_services::power::policy::{register_device, DeviceId};
 
-use static_cell::StaticCell;
-use tokio::task::LocalSet;
+use mock_battery::mock_battery_device::MockBatteryDevice;
 
+static EXECUTOR: StaticCell<Executor> = StaticCell::new();
 static BATTERY: StaticCell<MockBatteryDevice> = StaticCell::new();
 
-#[tokio::main(flavor = "current_thread")]
-async fn main() {
+fn main() {
+    let executor = EXECUTOR.init(Executor::new());
+    executor.run(|spawner| {
+        spawner.spawn(init_task()).unwrap();
+        spawner.spawn(battery_service::task()).unwrap();
+    });
+}
+
+
+#[embassy_executor::task]
+async fn init_task() {
     println!("🔋 Launching battery service (single-threaded)");
 
-    let local = LocalSet::new();
+    init().await;
 
-    local.run_until(async {
-        init().await;
+    let battery_device = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
 
-        let battery_device = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
+    println!("🧩 Registering battery device...");
+    register_device(battery_device).await.unwrap();
 
-        println!("🧩 Registering battery device...");
-        let _ = register_device(battery_device).await;
+    println!("✅ Battery service is up and running.");
 
-        println!("▶️ Spawning battery runtime loop...");
-        tokio::task::spawn_local(battery_device.run());
-
-        println!("✅ Battery service is up and running.");
-
-        // Wait forever
-        std::future::pending::<()>().await;
-    }).await;
+    pending::<()>().await;
 }
 ```
+
+At the top of this file you see the line `mod time_driver;`  This is because we need to create a mock time driver for Embassy that
+we can use in this environment.
+
+Create a new file named `time_driver.rs` with this content:
+```rust
+
+use std::thread;
+use std::time::Instant;
+
+static START: once_cell::sync::Lazy<Instant> = once_cell::sync::Lazy::new(Instant::now);
+
+#[unsafe(no_mangle)]
+unsafe extern "C" fn _embassy_time_now() -> u64 {
+    START.elapsed().as_micros() as u64
+}
+
+#[unsafe(no_mangle)]
+unsafe extern "C" fn _embassy_time_schedule_wake(_timestamp: u64) {
+    // No-op for std simulation
+    thread::yield_now();
+}
+``` 
+
 With everything in place, you should type `cargo run` and after it builds you should see this output:
 
 ```
@@ -70,8 +92,6 @@ With everything in place, you should type `cargo run` and after it builds you sh
 ▶️ Spawning battery runtime loop...
 ✅ Battery service is up and running.
 ```
-
-_TODO: This is where we left off_ 
 
 ## The Battery Service
 Now we have registered our battery device as a device for the embedded-services power policy,
@@ -308,27 +328,29 @@ We'll hook that up now.
 
 Add this task to your `main.rs` file, nearby the other tasks found there:
 
-```
+```rust
 #[embassy_executor::task]
-async fn battery_service_init_task(dev: &'static Device) {
-    let reg = battery_service::register_fuel_gauge(dev).await;
-    if reg.is_err() {
-        // Handle registration failure as needed
-        panic!("Failed to register fuel gauge device");
-    }
+async fn battery_service_init_task(dev: &'static MockBatteryDevice) {
+    println!("🔋 Initializing battery fuel gauge service...");
+    let fuel_device = BATTERY_FUEL.init(BatteryDevice::new(BatteryDeviceId(dev.device().id().0)));
+    battery_service::register_fuel_gauge(fuel_device).await.unwrap();
 }
+```
+and we'll call upon it just after registering the device, so at the end of your `main` function, in the `executor.run(...)` block.
+add 
+```rust
+        spawner.spawn(battery_service_init_task(battery_ref)).unwrap(); 
+```
+to join the other spawned tasks in this group.
 
+Verify you can still build cleanly.  When you execute `cargo run` now, you should see output verifying our tasks have been run
 ```
-and we'll call upon it just after registering the device, so at the end of your `async main` function, just after `spawner.must_spawn(wrapper_task(wrapper));`, add this:
-```
- 
-    // Register the fuel gauge device with the battery service
-    spawner.must_spawn(battery_service_init_task(dev));
-```
+     Running `target\debug\mock_battery.exe`
+🔋 Initializing battery fuel gauge service...
+🔋 Launching battery service (single-threaded)
+🧩 Registering battery device...
+✅ Battery service is up and running.
 
-Verify you can still build cleanly
-```
-cargo build --target thumbv7em-none-eabihf
 ```
 
 ### Implementing "comms"
@@ -344,7 +366,7 @@ We'll follow a pattern exhibited by the ODP `embedded-services/examples/std/src/
 
 Create a file for a module named `espi_service.rs` inside your `mock_battery/src` folder and give it this content:
 
-```
+```rust
 use battery_service::context::{BatteryEvent, BatteryEventInner};
 use battery_service::device::DeviceId;
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
@@ -431,74 +453,39 @@ Before the loop, the DoInit message is sent which will cause `Controller::initia
 
 and, by now I'm sure you know the drill, remember to add this module to your `lib.rs` file:
 
-```
-#![no_std]
+```rust
 pub mod mock_battery;
 pub mod mock_battery_device;
 pub mod mock_battery_controller;
 pub mod espi_service;
 ```
 
-Now we will attach it in our `main.rs` file.
+We also have to add the following line to the `[dependencies]` of our `mock_battery/Cargo.toml` file, since we are using `embassy-sync` here, and even though it is declared in our top-level toml, we need to bring it forward to this crate context.
+```toml
+embassy-sync = { workspace = true }
+```
+
+Now we will use this code in our `main.rs` file:
 
 Add this `use` statement to import it:
 
-```
+```rust
 use mock_battery::espi_service;
 ```
-and these lines at the end of your `async main` to initialize it and spin it up:
-```
-    // Start up our comms
+
+We need to call espi_service::init() asynchronously, so we need to create a task for this we can spawn in our main startup, so add this task:
+```rust
+#[embassy_executor::task]
+async fn espi_init_task() {
     espi_service::init().await;
-    spawner.must_spawn(espi_service::task());
+}
+```
+We can spawn the task for `espi_service::task()` after initialization.  So in your main `executor.run(...)` block, add these lines to the end of the other spawn instructions:
+```rust
+    // Start up our comms
+    spawner.spawn(espi_init_task()).unwrap();
+    spawner.spawn(espi_service::task()).unwrap();
  ```           
-
-### Adding some logging support
-We are now in a position to get data from our battery.  But how will we know? We need some logging in place first.  Let's hook that up now.
-
-In your `mock_battery/Cargo.toml`, add or update these values in their respective sections:
-```
-[dependencies]
-defmt = "1.0"
-defmt-rtt = "0.4"
-panic-probe = { version = "0.3", features = ["print-defmt"] }
-
-# Add the log shim for libraries using `log` crate
-log = { version = "0.4", features = ["release_max_level_debug"], optional = true }
-defmt-log = { version = "0.3", optional = true }
-
-[features]
-default = ["embedded", "defmt-log", "log"]
-
-[package.metadata.cargo-xbuild]
-linker = "rust-lld"
-
-```
-We can now remove the `#![panic_handler] block in `main.rs` altogether and replace it with:
-
-```
-/// Required by embedded targets for panic handling
-use panic_probe as _; // This provides a defmt-compatible panic handler
-```
-The panic-probe crate, when built with the print-defmt feature, automatically installs the right panic handler for you — no need to write one manually.
-
-Using the logging is straightforward.  Examples of log statements would be like:
-
-```
-info!("Starting wrapper task");
-warn!("Something unusual");
-error!("Something failed: {:?}", err);
-```
-<!-- 
-Note - this setup for logging is incomplete and turns out to be much more of a rabbit-hole than I could have imagined.
-Additionally, major revisions to memory.x and
-some of the cargo settings are needed, plus some
-stubs for the cortex-m that need to be put into place that are not documented yet before anything
-will build correctly to flash to the hardware. 
-This is the current WIP and may require a separate section before continuing here.
--->
-### Getting the dynamic data
-So now that we have logging in place,
 
 
 

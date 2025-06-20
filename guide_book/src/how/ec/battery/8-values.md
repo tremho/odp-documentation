@@ -8,7 +8,7 @@ Before we implement the actual service, however, let's write a quick test/exampl
 
 In your mock_battery project create `src/main.rs` with this content:
 
-```
+```rust
 use mock_battery::mock_battery::MockBattery;
 use embedded_batteries::smart_battery::SmartBattery;
 

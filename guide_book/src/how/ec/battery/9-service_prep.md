@@ -26,8 +26,7 @@ git submodule add https://github.com/embassy-rs/embassy.git
 Within the `embedded-services` repository files, you will find a directory named `examples`.  We can find files in the `examples/std/src/bin/` folder that speak to battery and power_policy impllementations, as well as other concerns.  You should familiarize yourself with these examples.
 
 In this exercise we will be borrowing from those designs in a curated fashion.
-If at any time there is question about the implementation presented in this exercise, please consult the examples in the repository, as they may contain
-updated information.
+If at any time there is question about the implementation presented in this exercise, please consult the examples in the repository, as they may contain updated information.
 
 ### A Mock Battery Device
 To fit the design of the ODP battery service, we first need to create a wrapper that contains our MockBattery and a Device Trait.  We need to implement `DeviceContainer` for this wrapper and reference that `Device`.
@@ -83,10 +82,10 @@ After doing all of this, your `[workspace.dependencies]` section will look somet
 ```toml
 [workspace.dependencies]
 defmt = "1.0"
-embassy-executor = "0.7.0"
+embassy-executor = { path = "embassy/embassy-executor", features = ["arch-std", "executor-thread", "log"], default-features = false }
+embassy-time = { path = "embassy/embassy-time" }
 embassy-futures = "0.1.0"
 embassy-sync = "0.7.0"
-embassy-time = "0.4.0"
 embassy-time-driver = "0.2.0"
 embedded-hal = "1.0"
 embedded-hal-async = "1.0"
@@ -103,6 +102,7 @@ embedded-io = "0.6.1"
 embedded-io-async = "0.6.1"
 embedded-storage = "0.3.1"
 embedded-storage-async = "0.4.1"
+once_cell = "1.19"
 fixed = "1.0"
 heapless = "0.8.0"
 postcard = "1.0"
@@ -118,6 +118,16 @@ embedded-cfu-protocol = { path = "embedded-cfu" }
 embedded-usb-pd = { path = "embedded-usb-pd" }
 ```
 
+We also want to insure that all references to embassy are pulling from the same submodule version we have placed in our workspace,
+so you will also want to add this section as well:
+```toml
+[patch.crates-io]
+embassy-executor = { path = "embassy/embassy-executor"}
+embassy-time = { path = "embassy/embassy-time" }
+embassy-time-driver = { path = "embassy/embassy-time-driver" }
+embassy-time-queue-utils = { path = "embassy/embassy-time-queue-utils" }
+```
+
 Insure `cargo build` succeeds with your dependencies referenced accordingly before proceeding to the next step.
 
 ### Define the MockBatteryDevice wrapper
@@ -131,7 +141,6 @@ use embedded_services::power::policy::action::device::AnyState;
 use embedded_services::power::policy::device::{
     Device, DeviceContainer, CommandData, ResponseData//, State
 };
-// use embedded_services::intrusive_list::Node;
 
 
 pub struct MockBatteryDevice {
@@ -237,10 +246,10 @@ What we've done here is:
 
 - Imported what we need from the ODP repositories for both the SmartBattery definition from `embedded-batteries` and the battery service components from `embedded-services` crates as as our own local MockBattery definition.
 
-- Define and implement our MockBatteryDevice
-- implement a run loop for our MockBatteryDevice
+- Defined and implemented our MockBatteryDevice
+- implemented a run loop for our MockBatteryDevice
 
-Note also there are some commented-out `println!` macros. We can't use `println!` in our embedded context, but we'll deal with that later. For now these comments serve as placeholders.
+Note we have some `println!` statements here to echo when certain events occur.  These won't be seen until later, but we want feedback when we do hook things up in our pre-test example.
 
 #### Including mock_battery_device
 Just like we had to inform the build of our mock_battery, we need to do likewise with mock_battery_device.  So edit `lib.rs` and to this:

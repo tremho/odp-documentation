@@ -10,7 +10,7 @@ If we look through the `embedded-batteries` repository, we will see the SmartBat
 So our job now is to implement these functions with data that comes from our battery - our Mock Battery.
 
 We'll start off our `mock_battery.rs` file with this:
-```
+```rust
 use embedded_batteries::smart_battery::{
     SmartBattery, CapacityModeValue, CapacityModeSignedValue, BatteryModeFields,
     BatteryStatusFields, SpecificationInfoFields, ManufactureDate, ErrorType, 
@@ -192,7 +192,6 @@ impl SmartBattery for MockBattery {
         Ok(())
     }
 }
-
 ```
 Yes, that's a bit long, but it's not particularly complex.
 We'll unpack what all this is in a moment.  For now, let's verify this Rust code is valid and that we've imported from the ODP repository properly.
@@ -209,7 +208,7 @@ The code in `mock_battery.rs` starts out with a `use` statement that imports wha
 
 The next section defines a simple custom error type for use in our mock battery implementation. This MockBatteryError enum currently has no variants — it serves as a placeholder that allows our code to conform to the expected error traits used by the broader embedded_batteries framework.
 
-By implementing core::fmt::Display, we ensure that error messages can be printed in a readable form (here, just "MockBatteryError") while we are building and running from our local machine in a std environment. Then, by implementing the embedded_batteries::smart_battery::Error trait, we allow this error to be returned in contexts where the smart battery interface expects a well-formed error object. The .kind() method returns ErrorKind::Other to indicate a generic error category.
+By implementing `core::fmt::Display`, we ensure that error messages can be printed in a readable form (here, just "MockBatteryError") while we are building and running from our local machine in a std environment. Then, by implementing the `embedded_batteries::smart_battery::Error` trait, we allow this error to be returned in contexts where the smart battery interface expects a well-formed error object. The `.kind()` method returns `ErrorKind::Other` to indicate a generic error category.
 
 This scaffolding allows our mock implementation to slot into the service framework cleanly, even if the actual logic is still forthcoming.
 
@@ -233,8 +232,5 @@ Finally, we get to the SmartBattery implementation for our MockBattery.  As you 
 ## Now to expose this to the service
 
 We have defined the battery traits and given our simulated placeholder values for our mock battery here.
-If we were implementing a real battery, the process would follow the same pattern except that instead of the literal values we've assigned, we would
-call upon our Hardware Abstraction Layer (HAL) implementation modules to pull these values from the actual hardware circuitry, per manufacturer design (i.e. GPIO or MMIO).
+If we were implementing a real battery, the process would follow the same pattern except that instead of the literal values we've assigned, we would call upon our Hardware Abstraction Layer (HAL) implementation modules to pull these values from the actual hardware circuitry, per manufacturer design (i.e. GPIO or MMIO).
 But before any of this is useful, it needs to be exposed to the service layer.  In the next step, we'll do a simple test that shows we can expose these values, and then we'll implement the service layer that conveys these up the chain in response to service messages.
-
-
