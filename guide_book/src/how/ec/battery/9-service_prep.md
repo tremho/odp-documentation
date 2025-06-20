@@ -65,7 +65,6 @@ use embedded_services::power::policy::action::device::AnyState;
 use embedded_services::power::policy::device::{
     Device, DeviceContainer, CommandData, ResponseData//, State
 };
-// use embedded_services::intrusive_list::Node;
 
 
 pub struct MockBatteryDevice {
@@ -171,10 +170,10 @@ What we've done here is:
 
 - Imported what we need from the ODP repositories for both the SmartBattery definition from `embedded-batteries` and the battery service components from `embedded-services` crates as as our own local MockBattery definition.
 
-- Define and implement our MockBatteryDevice
-- implement a run loop for our MockBatteryDevice
+- Defined and implemented our MockBatteryDevice
+- implemented a run loop for our MockBatteryDevice
 
-Note also there are some commented-out `println!` macros. We can't use `println!` in our embedded context, but we'll deal with that later. For now these comments serve as placeholders.
+Note we have some `println!` statements here to echo when certain events occur.  These won't be seen until later, but we want feedback when we do hook things up in our pre-test example.
 
 #### Including mock_battery_device
 Just like we had to inform the build of our mock_battery, we need to do likewise with mock_battery_device.  So edit `lib.rs` and to this:
