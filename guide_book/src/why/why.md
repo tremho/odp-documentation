@@ -19,7 +19,7 @@ Trying to manage all of this with what has been the status-quo for these concern
 
 | __Legacy Approach__ | __ODP Approach__ |
 | --------------------| -----------------|
-| 🐜 Many vendor-specific hacks ❌ | 🧩 Cross-platform modularity 🔒|
+| 🐜 Many vendor-specific changesets ❌ | 🧩 Cross-platform modularity 🔒|
 | ❄️ Weak component isolation 🩸 | 🔐 Secure runtime services 🤖 |
 | 🔩 Proprietary tool building ⚔️ | 🛠️ Rust-based build tools, Stuart 🧑‍🔧|
 
@@ -31,7 +31,7 @@ Trying to manage all of this with what has been the status-quo for these concern
 
 The Open Device Partnership offers an alternative and a way forward to a more sustainable future that, while still built upon the proven paradigms of the past, boldly rejects the patterns that are known to be costly and ineffective in favor of future-ready, portable, sustainable, and expandable alternatives.
 
-Key to this is the adoption of the programming language Rust as the successor to C. This immediately brings confidence that the code will not be susceptible to programming-error related vulnerabilities that may lead to either costly performance behaviors or be maliciously exploited by opportunistic bad actors. Furthermore, it provides the confidence that code from outside of one's immediate provenance of control may be audited and trusted and ready to join into a firmware construction built upon industry standards.
+Key to this is the adoption of the programming language Rust as the successor to C. This immediately brings greater confidence that the code will not be susceptible to programming-error related vulnerabilities that may lead to either costly performance behaviors or be maliciously exploited by opportunistic bad actors. Code may be marked `unsafe` to allow certain difficult-to-static-analyze behaviors that can be asserted to be risk-free, so potentially dangerous area must be carefully justified.  Furthermore, the patterns adopted by ODP provides the confidence that code from outside of one's immediate provenance of control may be audited and trusted and ready to join into a firmware construction built upon industry standards.
 
 In the pages ahead, we'll look a little more closely at the advantages of ODP one at a time.
 

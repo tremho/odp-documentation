@@ -6,9 +6,9 @@ Reduce firmware attack surface significantly, and meet modern security expectati
 
 > _“If the foundation is weak, nothing built on top can be trusted.”_
 
-Rust is a modern, memory-safe language that mitigates entire classes of vulnerabilities endemic to C memory management, buffer overflows, use-after-free, and so forth by detecting and addressing these issues at compile time -- so there are few if any unpleasant surprises at runtime.
+Rust is a modern, memory-safe language that mitigates entire classes of vulnerabilities endemic to C memory management, buffer overflows, use-after-free, and so forth by detecting and addressing these issues at compile time -- so there are few, if any, unpleasant surprises at runtime.
 
-ODP is foundationally centered around Rust and not only embraces these philosophies, it defines patterns that further enhance the memory-safe paradigm, by preventing unauthorized access between ownership domains and guarding against possible malicious intrusions while implementing the proven industry-standard patterns proven in the industry.
+ODP is foundationally centered around Rust and not only embraces these philosophies, it defines patterns that further enhance the memory-safe paradigm, by preventing unauthorized access between ownership domains and guarding against possible malicious intrusions while implementing proven industry-standard patterns.
 
 ```mermaid
 flowchart LR
