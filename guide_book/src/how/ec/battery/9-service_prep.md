@@ -35,17 +35,22 @@ Then we will register the wrapper with `register_device(...)` and we will have a
 #### Import the battery-service from the ODP crate
 One of the service definitions from the `embedded-services` repository we brought into scope is the `battery-service`. 
 We now need to update our Cargo.toml to know where to find it.
-Open the `Cargo.toml` file of your mock-battery project and add the dependency to the battery-service path to our Cargo.toml.  We will also need a reference to `embedded-services` itself for various support needs.  Update your `mock_battery/Cargo.toml` so that your `[dependencies]` section now looks like this to include references we will need.  Note that in addition to our existing `embedded-batteries` crate, we also will need the `embadded-batteries-async` crate for the next steps.
+Open the `Cargo.toml` file of your mock-battery project and add the dependency to the battery-service path to our Cargo.toml.  We will also need a reference to `embedded-services` itself for various support needs.
+We will no longer be requiring `tokio`, so you can remove that dependency, but we do need to import crate references from `embassy`.
+Update your `mock_battery/Cargo.toml` so that your `[dependencies]` section now looks like this to include references we will need.
 
 Your new `[dependencies]` section should now look like this:
 
 ```toml
 [dependencies]
-embedded-batteries = { path = "../embedded-batteries/embedded-batteries" }
 embedded-batteries-async = { path = "../embedded-batteries/embedded-batteries-async" }
 battery-service = { path = "../embedded-services/battery-service" }
 embedded-services = { path = "../embedded-services/embedded-service" }
-embedded-cfu = { path = "../embedded-cfu}
+embassy-executor = { workspace = true }
+embassy-time = { workspace = true, features=["std"] }
+embassy-sync = { workspace = true }
+static_cell = "1.0"
+once_cell = { workspace = true }
 ```
 This will allow us to import what we need for the next steps.
 
@@ -63,7 +68,6 @@ and when you try again, you will get another error specifying the next missing d
 
 For references to dependencies we _are_ using in our project (`embedded-batteries`, `embedded-batteries-async`, `embedded-services`, `battery-service`), specify these by providing their path, as in:
 ```toml
-embedded-batteries = { path = "embedded-batteries/embedded-batteries" }
 embedded-batteries-async = { path = "embedded-batteries/embedded-batteries-async" }
 embedded-services = { path = "embedded-services/embedded-service" }
 battery-service = { path = "embedded-services/battery-service" }
@@ -128,7 +132,9 @@ embassy-time-driver = { path = "embassy/embassy-time-driver" }
 embassy-time-queue-utils = { path = "embassy/embassy-time-queue-utils" }
 ```
 
-Insure `cargo build` succeeds with your dependencies referenced accordingly before proceeding to the next step.
+_(Note: the entries above also include dependencies for items we will need in upcoming steps and haven't encountered yet)_
+
+Insure `cargo clean` and `cargo build` succeeds with your dependencies referenced accordingly before proceeding to the next step.
 
 ### Define the MockBatteryDevice wrapper
 
@@ -160,6 +166,10 @@ impl MockBatteryDevice {
     pub fn device(&self) -> &Device {
         &self.device
     }
+
+    pub fn inner_battery(&mut self) -> &mut MockBattery {
+        &mut self.battery
+    }   
 
     pub async fn run(&self) {
         loop {
@@ -244,7 +254,7 @@ impl DeviceContainer for MockBatteryDevice {
 ```
 What we've done here is:
 
-- Imported what we need from the ODP repositories for both the SmartBattery definition from `embedded-batteries` and the battery service components from `embedded-services` crates as as our own local MockBattery definition.
+- Imported what we need from the ODP repositories for both the SmartBattery definition from `embedded-batteries_async` and the battery service components from `embedded-services` crates as as our own local MockBattery definition.
 
 - Defined and implemented our MockBatteryDevice
 - implemented a run loop for our MockBatteryDevice

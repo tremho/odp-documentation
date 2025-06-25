@@ -19,29 +19,30 @@ We need to create a device `Registry` as defined by `embedded-services` to wire 
 To do this, let's replace our current `mock_battery/main.rs` with this:
 
 ```rust
-mod time_driver;
-
 use embassy_executor::Executor;
 use static_cell::StaticCell;
-use std::future::pending;
-
+use std::sync::OnceLock;
 
 use embedded_services::init;
 use embedded_services::power::policy::{register_device, DeviceId};
-
 use mock_battery::mock_battery_device::MockBatteryDevice;
 
 static EXECUTOR: StaticCell<Executor> = StaticCell::new();
 static BATTERY: StaticCell<MockBatteryDevice> = StaticCell::new();
+static BATTERY_REF: OnceLock<usize> = OnceLock::new();
 
 fn main() {
     let executor = EXECUTOR.init(Executor::new());
+
+    // Safe one-time init, then store a reference to use elsewhere
+    let battery_ref = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
+    BATTERY_REF.set(battery_ref as *const _ as usize).unwrap_or_else(|_| panic!("BATTERY_REF already initialized"));
+
     executor.run(|spawner| {
         spawner.spawn(init_task()).unwrap();
         spawner.spawn(battery_service::task()).unwrap();
     });
 }
-
 
 #[embassy_executor::task]
 async fn init_task() {
@@ -49,58 +50,349 @@ async fn init_task() {
 
     init().await;
 
-    let battery_device = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
+    let battery_ptr = BATTERY_REF.get().copied().expect("BATTERY_REF not initialized");
+    let battery_ref: &'static MockBatteryDevice = unsafe { &*(battery_ptr as *const MockBatteryDevice) };
 
     println!("🧩 Registering battery device...");
-    register_device(battery_device).await.unwrap();
+    register_device(battery_ref).await.unwrap();
 
-    println!("✅ Battery service is up and running.");
-
-    pending::<()>().await;
+    println!("✅🔋 Battery service is up and running.");
 }
-```
+``
 
-At the top of this file you see the line `mod time_driver;`  This is because we need to create a mock time driver for Embassy that
-we can use in this environment.
-
-Create a new file named `time_driver.rs` with this content:
-```rust
-
-use std::thread;
-use std::time::Instant;
-
-static START: once_cell::sync::Lazy<Instant> = once_cell::sync::Lazy::new(Instant::now);
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn _embassy_time_now() -> u64 {
-    START.elapsed().as_micros() as u64
-}
-
-#[unsafe(no_mangle)]
-unsafe extern "C" fn _embassy_time_schedule_wake(_timestamp: u64) {
-    // No-op for std simulation
-    thread::yield_now();
-}
-``` 
-
-With everything in place, you should type `cargo run` and after it builds you should see this output:
+You should type `cargo run` and after it builds you should see this output:
 
 ```
-      Running `target\debug\mock_battery.exe`
+     Running `target\debug\mock_battery.exe`
 🔋 Launching battery service (single-threaded)
 🧩 Registering battery device...
-▶️ Spawning battery runtime loop...
-✅ Battery service is up and running.
+✅🔋 Battery service is up and running.
 ```
 
 ## The Battery Service
 Now we have registered our battery device as a device for the embedded-services power policy,
 but the `battery_service` knows how to use a battery specifically, so we need to register our battery as a 'fuel gauge' by that definition.
 
-### The Battery Controller
-The battery service `Controller` is the trait interface used to control a battery connected via the SmartBattery trait interface at a slightly higher level.  
+### The fuel gauge
+The battery service has the concept of a 'fuel gauge' that calls into the SmartBattery traits to monitor charge / discharge. 
 
-Create a new file in `mock_battery` named `mock_battery_controller.rs` and give it this content:
+We'll hook that up now.
+
+Add these `use` statement near the top of your `main.rs` file:
+```rust
+use embassy_executor::Spawner;
+use battery_service::device::{Device as BatteryDevice, DeviceId as BatteryDeviceId};
+```
+
+Then add this static declaration for our fuel gauge device service. Place it near the other statics for `EXECUTOR`, `BATTERY` and `BATTERY_REF`. 
+
+```rust
+static BATTERY_FUEL: StaticCell<BatteryDevice> = StaticCell::new();
+static BATTERY_FUEL_REF: OnceLock<usize> = OnceLock::new();
+```
+
+add this task at the end of the file:
+```rust
+#[embassy_executor::task]
+async fn battery_service_init_task(dev: &'static MockBatteryDevice) {
+    println!("🔋 Initializing battery fuel gauge service...");
+    let fuel_device = BATTERY_FUEL.init(BatteryDevice::new(BatteryDeviceId(dev.device().id().0)));
+    battery_service::register_fuel_gauge(fuel_device).await.unwrap();
+}
+```
+and we'll call it by placing this at the end of the `run` block in `main()`, below the other two task spawns.
+
+```rust
+    spawner.spawn(battery_service_init_task(battery_ref)).unwrap(); 
+```
+
+Verify you can still build cleanly.  When you execute `cargo run` now, you should see output verifying our tasks have been run,
+including our new fuel gauge service initialization task, with the line "🔌 Initializing battery fuel gauge service..."
+```
+     Running `target\debug\mock_battery.exe`
+🔌 Initializing battery fuel gauge service...
+🔋 Launching battery service (single-threaded)
+🧩 Registering battery device...
+✅🔋 Battery service is up and running.
+
+```
+
+### Implementing "comms"
+
+The battery service is one of several services that may reside within the Embedded Controller (EC) microcontroller. In a fully integrated system, messages between the EC and other components — such as a host CPU or companion chips — are typically carried over physical transports like SPI or I²C.
+
+However, within the EC firmware itself, services communicate through an internal message routing layer known as comms. This abstraction allows us to test and exercise service logic without needing external hardware.
+
+At this point, we’ll establish a simple comms setup that allows messages to reach our battery service from other parts of the EC — particularly the power policy manager. The overall comms architecture can expand later to handle actual buses, security paging, or multi-core domains, but for now, a minimal local implementation will suffice.
+
+#### The "espi" comms
+We'll follow a pattern exhibited by the ODP `embedded-services/examples/std/src/bin/battery.rs`, but trimmed for our uses.
+
+Create a file for a module named `espi_service.rs` inside your `mock_battery/src` folder and give it this content:
+
+```rust
+use battery_service::context::{BatteryEvent, BatteryEventInner};
+use battery_service::device::DeviceId;
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_sync::signal::Signal;
+use embedded_services::comms::{self, EndpointID, External, MailboxDelegate, MailboxDelegateError, Message};
+use embedded_services::ec_type::message::BatteryMessage;
+
+
+use core::sync::atomic::{AtomicBool, Ordering};
+use static_cell::StaticCell;
+
+pub struct EspiService {
+    pub endpoint: comms::Endpoint,
+    _signal: Signal<NoopRawMutex, BatteryMessage>,
+}
+
+impl EspiService {
+    pub fn new() -> Self {
+        Self {
+            endpoint: comms::Endpoint::uninit(EndpointID::External(External::Host)),
+            _signal: Signal::new(),
+        }
+    }
+}
+
+impl MailboxDelegate for EspiService {
+    fn receive(&self, _message: &Message) -> Result<(), MailboxDelegateError> {
+        Ok(())
+    }
+}
+
+// Actual static values
+static INSTANCE: StaticCell<EspiService> = StaticCell::new();
+// Create a cached global reference
+static mut INSTANCE_REF: Option<&'static EspiService> = None;
+static INSTANCE_READY: AtomicBool = AtomicBool::new(false);
+
+
+pub async fn init() {
+    println!("🔌 EspiService init()");
+    let svc = INSTANCE.init(EspiService::new());
+    // 🆕 Store the reference
+    unsafe {
+        INSTANCE_REF = Some(svc);
+    }
+
+    println!("🧩 Registering ESPI service endpoint...");
+    if comms::register_endpoint(svc, &svc.endpoint).await.is_err() {
+        panic!("Failed to register ESPI service endpoint");
+    }
+
+    INSTANCE_READY.store(true, Ordering::Relaxed);
+    println!("✅🔌 EspiService READY");
+}
+
+pub fn get() -> &'static EspiService {
+    if !INSTANCE_READY.load(Ordering::Relaxed) {
+        panic!("ESPI_SERVICE not initialized yet");
+    }
+
+    unsafe {
+        INSTANCE_REF.expect("ESPI_SERVICE reference not set")
+    }
+}
+
+#[embassy_executor::task]
+pub async fn task() {
+    use embassy_time::{Duration, Timer};
+
+    let svc = get();
+
+    let _ = svc
+        .endpoint
+        .send(
+            EndpointID::Internal(comms::Internal::Battery),
+            &BatteryEvent {
+                device_id: DeviceId(1),
+                event: BatteryEventInner::DoInit,
+            },
+        )
+        .await;
+
+    let _ = battery_service::wait_for_battery_response().await;
+
+    loop {
+        let _ = svc
+            .endpoint
+            .send(
+                EndpointID::Internal(comms::Internal::Battery),
+                &BatteryEvent {
+                    device_id: DeviceId(1),
+                    event: BatteryEventInner::PollDynamicData,
+                },
+            )
+            .await;
+
+        let _ = battery_service::wait_for_battery_response().await;
+        Timer::after(Duration::from_secs(5)).await;
+    }
+}
+```
+Here we've implemented a "comms" `MailboxDelegate` `receive` function to Receive `Message` communications, although it is currently not doing anything with them.
+
+We also have defined the task functions that are called to init and listen.
+
+Remember to add this module to your `lib.rs` file:
+
+```rust
+pub mod mock_battery;
+pub mod mock_battery_device;
+pub mod espi_service;
+```
+
+Verify we have our reference to `embassy-time` as shown here, as well as `embassy-sync` in the `[dependencies]` section of our `mock_battery/Cargo.toml` file:
+```toml
+embassy-time = { workspace = true, features=["std"] }
+embassy-sync = { workspace = true }
+```
+
+
+#### Time Driver
+Embassy requires a time driver for its timer functions.  We can create a simple one for use in our std environment.
+Create a file named `time_driver.rs` in your `mock_battery` project with these contents:
+
+```rust
+use embassy_time::Ticker;
+
+#[embassy_executor::task]
+pub async fn run() {
+    println!("🕒 time_driver started");
+
+    let mut ticker = Ticker::every(embassy_time::Duration::from_millis(1));
+    loop {
+        ticker.next().await;
+    }
+}
+```
+
+and add this near top of `main.rs`:
+
+```rust
+mod time_driver;
+
+use mock_battery::espi_service;
+```
+
+We need to add these tasks to `main.rs` to go with the other tasks we have created:
+```rust
+
+#[embassy_executor::task]
+async fn espi_service_init_task() {
+    espi_service::init().await;
+}
+
+#[embassy_executor::task]
+async fn test_message_sender() {
+    use battery_service::context::{BatteryEvent, BatteryEventInner};
+    use battery_service::device::DeviceId;
+    use embedded_services::comms::EndpointID;
+
+    println!("✍ Sending test BatteryEvent...");
+
+    // Wait a moment to ensure other services are initialized 
+    embassy_time::Timer::after(embassy_time::Duration::from_millis(100)).await;
+
+    // Access the ESPI_SERVICE singleton
+    let svc = mock_battery::espi_service::get();
+
+    let event = BatteryEvent {
+        device_id: DeviceId(1),
+        event: BatteryEventInner::PollStaticData, // or DoInit, PollDynamicData, etc.
+    };
+
+    if let Err(e) = svc.endpoint.send(
+        EndpointID::Internal(embedded_services::comms::Internal::Battery),
+        &event,
+    ).await {
+        println!("❌ Failed to send test BatteryEvent: {:?}", e);
+    } else {
+        println!("✅ Test BatteryEvent sent");
+    }
+}
+```
+These tasks:
+- initializes our `espi_service` comms support.
+- defines a function for sending a test message to the battery
+
+Now, we need to update the `run` block in our `main()` function to include these new tasks in the spawn list:
+
+
+```rust
+        spawner.spawn(time_driver::run()). unwrap();
+        spawner.spawn(espi_service_init_task ()).unwrap();
+        spawner.spawn(test_message_sender()).unwrap();
+
+```
+
+After all this is in place if we run it, we should see this output:
+
+```
+     Running `target\debug\mock_battery.exe`
+✍ Sending test BatteryEvent...
+🔋 Initializing battery fuel gauge service...
+🔌 EspiService init()
+🔌 Registering ESPI service endpoint...
+🔋 Launching battery service (single-threaded)
+🧩 Registering battery device...
+✅ Battery service is up and running.
+🕒 time_driver started
+🔌 EspiService READY
+✅ Test BatteryEvent sent
+
+```
+
+Which shows our spawned tasks going through their steps and the test message having been sent.
+
+But we have nothing in place to respond to this message yet.
+
+### The `Controller`
+
+You may recall from earlier diagrams that the bridge between the embedded-services service (e.g. `power-policy` service) and the subsystems that it communicates with (e.g. `battery` subsystem) is through a `Controller`.
+
+```mermaid
+flowchart TD
+    A[Power Policy Service<br><i>Service initiates query</i>]
+    B[Battery Subsystem Controller<br><i>Orchestrates component behavior</i>]
+    C[Battery Component Trait Interface<br><i>Defines the functional contract</i>]
+    D[Battery HAL Implementation<br><i>Implements trait using hardware-specific logic</i>]
+    E[EC / Hardware Access<br><i>Performs actual I/O operations</i>]
+
+    A --> B
+    B --> C
+    C --> D
+    D --> E
+
+    subgraph Service Layer
+        A
+    end
+
+    subgraph Subsystem Layer
+        B
+    end
+
+    subgraph Component Layer
+        C
+        D
+    end
+
+    subgraph Hardware Layer
+        E
+    end
+```
+But as we have it constructed up to this point, we have not  yet established a `Controller` into the scheme.  We are sending our `test message`
+directly to our espi_service which currently doesn't do anything with it.  
+
+We'll change things so that our espi service will delegate control to a `Controller`, consistent with how the service works in a real system, before we extend the behaviors of our mock battery.  This will make things more consistent with our eventual target.
+
+#### The Battery Controller
+The battery service `Controller` is the trait interface used to control a battery connected via the `SmartBattery` trait interface at a slightly higher level.  
+
+Create a new file in your `mock_battery` project named `mock_battery_controller.rs` and give it this content:
+
 ```rust
 use battery_service::controller::{Controller, ControllerEvent};
 use battery_service::device::{DynamicBatteryMsgs, StaticBatteryMsgs};
@@ -108,173 +400,180 @@ use embassy_time::{Duration, Timer};
 use embedded_batteries_async::smart_battery::{
     SmartBattery, ErrorType, 
     ManufactureDate, SpecificationInfoFields, CapacityModeValue, CapacityModeSignedValue,
-    BatteryModeFields, BatteryStatusFields, 
+    BatteryModeFields, BatteryStatusFields,
     DeciKelvin, MilliVolts
 };
 use core::convert::Infallible;
 
-pub struct MockBatteryController;
+pub struct MockBatteryController<B: SmartBattery + Send> {
+    /// The underlying battery instance that this controller manages.
+    battery: B,
+}
 
-impl MockBatteryController {
-    pub fn new() -> Self {
-        Self
+impl<B> MockBatteryController<B>
+where
+    B: SmartBattery + Send,
+{
+    pub fn new(battery: B) -> Self {
+        Self { battery }
     }
 }
 
-impl ErrorType for MockBatteryController {
-    type Error = Infallible;
+impl<B> ErrorType for MockBatteryController<B>
+where
+    B: SmartBattery + Send,
+{
+    type Error = B::Error;
 }
-
-impl SmartBattery for &mut MockBatteryController {
+impl<B> SmartBattery for &mut MockBatteryController<B>
+where
+    B: SmartBattery + Send,
+{
     async fn temperature(&mut self) -> Result<DeciKelvin, Self::Error> {
-        Ok(2732) // Stubbed temperature in deci-Kelvin
+        self.battery.temperature().await
     }
-    // You can stub other SmartBattery methods as needed
+
     async fn voltage(&mut self) -> Result<MilliVolts, Self::Error> {
-        Ok(11000)
+        self.battery.voltage().await
     }
 
-
-    // Stub all other required methods
     async fn remaining_capacity_alarm(&mut self) -> Result<CapacityModeValue, Self::Error> {
-        Ok(CapacityModeValue::MilliAmpUnsigned(0))
+        self.battery.remaining_capacity_alarm().await
     }
 
     async fn set_remaining_capacity_alarm(&mut self, _: CapacityModeValue) -> Result<(), Self::Error> {
-        Ok(())
+        self.battery.set_remaining_capacity_alarm(CapacityModeValue::MilliAmpUnsigned(0)).await
     }
 
     async fn remaining_time_alarm(&mut self) -> Result<u16, Self::Error> {
-        Ok(0)
+        self.battery.remaining_time_alarm().await
     }
 
     async fn set_remaining_time_alarm(&mut self, _: u16) -> Result<(), Self::Error> {
-        Ok(())
+        self.battery.set_remaining_time_alarm(0).await
     }
 
     async fn battery_mode(&mut self) -> Result<BatteryModeFields, Self::Error> {
-        Ok(BatteryModeFields::new())
+        self.battery.battery_mode().await
     }
 
     async fn set_battery_mode(&mut self, _: BatteryModeFields) -> Result<(), Self::Error> {
-        Ok(())
+        self.battery.set_battery_mode(BatteryModeFields::default()).await
     }
 
     async fn at_rate(&mut self) -> Result<CapacityModeSignedValue, Self::Error> {
-        Ok(CapacityModeSignedValue::MilliAmpSigned(0))
+        self.battery.at_rate().await
     }
 
     async fn set_at_rate(&mut self, _: CapacityModeSignedValue) -> Result<(), Self::Error> {
-        Ok(())
+        self.battery.set_at_rate(CapacityModeSignedValue::MilliAmpSigned(0)).await
     }
 
     async fn at_rate_time_to_full(&mut self) -> Result<u16, Self::Error> {
-        Ok(0)
+        self.battery.at_rate_time_to_full().await
     }
 
     async fn at_rate_time_to_empty(&mut self) -> Result<u16, Self::Error> {
-        Ok(0)
+        self.battery.at_rate_time_to_empty().await
     }
 
     async fn at_rate_ok(&mut self) -> Result<bool, Self::Error> {
-        Ok(true)
+        self.battery.at_rate_ok().await
     }
 
     async fn current(&mut self) -> Result<i16, Self::Error> {
-        Ok(0)
+        self.battery.current().await
     }
 
     async fn average_current(&mut self) -> Result<i16, Self::Error> {
-        Ok(0)
+        self.battery.average_current().await
     }
 
     async fn max_error(&mut self) -> Result<u8, Self::Error> {
-        Ok(0)
+        self.battery.max_error().await
     }
 
     async fn relative_state_of_charge(&mut self) -> Result<u8, Self::Error> {
-        Ok(0)
+        self.battery.relative_state_of_charge().await
     }
 
     async fn absolute_state_of_charge(&mut self) -> Result<u8, Self::Error> {
-        Ok(0)
+        self.battery.absolute_state_of_charge().await
     }
 
     async fn remaining_capacity(&mut self) -> Result<CapacityModeValue, Self::Error> {
-        Ok(CapacityModeValue::MilliAmpUnsigned(0))
+        self.battery.remaining_capacity().await
     }
 
     async fn full_charge_capacity(&mut self) -> Result<CapacityModeValue, Self::Error> {
-        Ok(CapacityModeValue::MilliAmpUnsigned(0))
+        self.battery.full_charge_capacity().await
     }
 
     async fn run_time_to_empty(&mut self) -> Result<u16, Self::Error> {
-        Ok(0)
+        self.battery.run_time_to_empty().await
     }
 
     async fn average_time_to_empty(&mut self) -> Result<u16, Self::Error> {
-        Ok(0)
+        self.battery.average_time_to_empty().await
     }
 
     async fn average_time_to_full(&mut self) -> Result<u16, Self::Error> {
-        Ok(0)
+        self.battery.average_time_to_full().await
     }
 
     async fn charging_current(&mut self) -> Result<u16, Self::Error> {
-        Ok(0)
+        self.battery.charging_current().await
     }
 
     async fn charging_voltage(&mut self) -> Result<u16, Self::Error> {
-        Ok(0)
+        self.battery.charging_voltage().await
     }
 
     async fn battery_status(&mut self) -> Result<BatteryStatusFields, Self::Error> {
-        Ok(BatteryStatusFields::new())
+        self.battery.battery_status().await
     }
 
     async fn cycle_count(&mut self) -> Result<u16, Self::Error> {
-        Ok(0)
+        self.battery.cycle_count().await
     }
 
     async fn design_capacity(&mut self) -> Result<CapacityModeValue, Self::Error> {
-        Ok(CapacityModeValue::MilliAmpUnsigned(0))
+        self.battery.design_capacity().await
     }
 
     async fn design_voltage(&mut self) -> Result<u16, Self::Error> {
-        Ok(0)
+        self.battery.design_voltage().await
     }
 
     async fn specification_info(&mut self) -> Result<SpecificationInfoFields, Self::Error> {
-        Ok(SpecificationInfoFields::new())
+        self.battery.specification_info().await
     }
 
     async fn manufacture_date(&mut self) -> Result<ManufactureDate, Self::Error> {
-        let mut date = ManufactureDate::new();
-        date.set_day(1);
-        date.set_month(1);
-        date.set_year(2025 - 1980); // must use offset from 1980
-
-        Ok(date)
-    }
+        self.battery.manufacture_date().await
+    }   
 
     async fn serial_number(&mut self) -> Result<u16, Self::Error> {
-        Ok(0)
+        self.battery.serial_number().await
     }
 
     async fn manufacturer_name(&mut self, _: &mut [u8]) -> Result<(), Self::Error> {
-        Ok(())
+        self.battery.manufacturer_name(&mut []).await
     }
 
     async fn device_name(&mut self, _: &mut [u8]) -> Result<(), Self::Error> {
-        Ok(())
+        self.battery.device_name(&mut []).await
     }
 
     async fn device_chemistry(&mut self, _: &mut [u8]) -> Result<(), Self::Error> {
-        Ok(())
+        self.battery.device_chemistry(&mut []).await
     }    
 }
 
-impl Controller for &mut MockBatteryController {
+impl<B> Controller for &mut MockBatteryController<B>
+where
+    B: SmartBattery + Send,
+{
     type ControllerError = Infallible;
 
     async fn initialize(&mut self) -> Result<(), Self::ControllerError> {
@@ -308,7 +607,11 @@ impl Controller for &mut MockBatteryController {
     }
 }
 ```
-This just implements the SmartBattery traits with stubs for now.  We will connect it to our mock_battery shortly.  But for now, this gets us going past the next few steps.
+This simply creates a `Controller` for the `battery_service` that implements the `SmartBattery` Traits as a pass-through to the our MockBattery implementation.  It also implements -- as stubs for now -- those traits of the `Controller` itself.
+
+The `Controller` is typically wrapped using a `Wrapper` struct provided by `battery_service`. The `Wrapper` is responsible for listening for incoming messages from the service and dispatching them to the appropriate method on the controller (e.g., `get_dynamic_data()`, `ping()`).
+
+We'll be implementing such a wrapper shortly.
 
 #### add to `lib.rs`
 Don't forget that we need to include this new file in our `lib.rs` declarations:
@@ -316,176 +619,154 @@ Don't forget that we need to include this new file in our `lib.rs` declarations:
 ```rust
 pub mod mock_battery;
 pub mod mock_battery_device;
+pub mod espi_service;
 pub mod mock_battery_controller;
+
 ```
 
 Make sure you can build cleanly at this point, and then we will move ahead.
 
-### The fuel gauge
-The battery service has the concept of a 'fuel gauge' that calls into the SmartBattery traits to monitor charge / discharge. 
+### Adding the Wrapper
 
-We'll hook that up now.
+Let's implement the controller into our `main.rs`.  Start by adding these imports toward the top of that file:
 
-Add this task to your `main.rs` file, nearby the other tasks found there:
+```rust
+use battery_service::wrapper::Wrapper;
+use mock_battery::mock_battery_controller::MockBatteryController;
+use mock_battery::mock_battery::MockBattery;
+use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use embassy_sync::signal::Signal;
+```
+
+We'll create new `StaticCell` instances for our `Controller` and `Wrapper`.  Add these near your other static declarations:
+
+```rust
+static BATTERY_WRAPPER: StaticCell<
+        Wrapper<'static, &'static mut MockBatteryController<&'static mut MockBattery>>
+    > = StaticCell::new();
+static CONTROLLER: StaticCell<MockBatteryController<&'static mut MockBattery>> = StaticCell::new();
+```
+add this task to run the wrapper at the bottom of the file along with the other tasks:
+
+```rust
+#[embassy_executor::task]
+async fn wrapper_task(wrapper: &'static mut Wrapper<'static, &'static mut MockBatteryController<&'static mut MockBattery>>) {
+    wrapper.process().await;
+}
+```
+
+#### Adding signaling for service readiness
+Up to now we've been able to simply spawn our tasks asynchronously in parallel because there hasn't been much interdependence between them.
+But before we can connect our new `Controller`, we need to make sure the services it relies on are all ready to go.
+
+In particular, we need to know when the `battery_service_init_task()` that registers the battery fuel gauge service is complete.  To facilitate that, we'll create a Signal and a couple of static references we can use when we create the registration.
+
+Add this just below your current `static` declarations:
+
+```rust
+
+pub struct BatteryFuelReadySignal {
+    signal: Signal<NoopRawMutex, ()>,
+}
+
+impl BatteryFuelReadySignal {
+    pub fn new() -> Self {
+        Self {
+            signal: Signal::new(),
+        }
+    }
+
+    pub fn signal(&self) {
+        self.signal.signal(());
+    }
+
+    pub async fn wait(&self) {
+        self.signal.wait().await;
+    }
+}
+static BATTERY_FUEL_READY: StaticCell<BatteryFuelReadySignal> = StaticCell::new();
+static BATTERY_FUEL_READY_REF: OnceLock<usize> = OnceLock::new();
+```
+
+and update your `battery_service_init_task()` to now look like this, so that we set our value and signal it is ready:
 
 ```rust
 #[embassy_executor::task]
 async fn battery_service_init_task(dev: &'static MockBatteryDevice) {
-    println!("🔋 Initializing battery fuel gauge service...");
+    println!("🔌 Initializing battery fuel gauge service...");
     let fuel_device = BATTERY_FUEL.init(BatteryDevice::new(BatteryDeviceId(dev.device().id().0)));
+    BATTERY_FUEL_REF.set(fuel_device as *const _ as usize).unwrap();
     battery_service::register_fuel_gauge(fuel_device).await.unwrap();
+    
+    // signal that the battery fuel service is ready
+    let ready = BATTERY_FUEL_READY.init(BatteryFuelReadySignal::new());
+    BATTERY_FUEL_READY_REF.set(ready as *const _ as usize).unwrap_or_else(|_| panic!("BATTERY_FUEL_READY_REF already initialized"));
+    ready.signal(); 
 }
 ```
-and we'll call upon it just after registering the device, so at the end of your `main` function, in the `executor.run(...)` block.
-add 
-```rust
-        spawner.spawn(battery_service_init_task(battery_ref)).unwrap(); 
-```
-to join the other spawned tasks in this group.
 
-Verify you can still build cleanly.  When you execute `cargo run` now, you should see output verifying our tasks have been run
+Now, to tie this together, we need another task that launches our Controller wrapper when it is ready. Add this to the end of `main.rs` with the other tasks:
+
+```rust
+#[embassy_executor::task]
+async fn wrapper_task_launcher(spawner: Spawner) {
+    println!("🔄 Launching wrapper task...");
+
+    // Wait a moment to ensure other services are initialized 
+    embassy_time::Timer::after(embassy_time::Duration::from_millis(100)).await;
+
+
+    // wait for the battery fuel service to be ready
+    let ready_ptr = BATTERY_FUEL_READY_REF.get().copied().expect("BATTERY_FUEL_READY_REF not initialized");
+    let ready: &'static BatteryFuelReadySignal = unsafe { &*(ready_ptr as *const BatteryFuelReadySignal) };
+    ready.wait().await;
+
+    println!("🔔 BATTERY_FUEL_READY signaled");
+
+    let battery_ptr = BATTERY_REF.get().copied().expect("BATTERY_REF not initialized");
+    // let battery_ref: &'static MockBatteryDevice = unsafe { &*(battery_ptr as *const MockBatteryDevice) };
+    let battery_ref: &'static mut MockBatteryDevice = unsafe { &mut *(battery_ptr as *mut MockBatteryDevice) };
+
+    let fuel_ptr = BATTERY_FUEL_REF.get().copied().expect("BATTERY_FUEL_REF not initialized");
+    let fuel_ref: &'static BatteryDevice = unsafe { &*(fuel_ptr as *const BatteryDevice) };
+
+    let controller = CONTROLLER.init(MockBatteryController::new(battery_ref.inner_battery()));
+    let wrapper = BATTERY_WRAPPER.init(Wrapper::new(fuel_ref, controller));
+
+    println!("🚀 Spawning wrapper_task...");
+    spawner.spawn(wrapper_task(wrapper)).unwrap();
+}
+```
+You'll note this one is a bit different than the others.  We pass in a Spawner, and in turn use it to spawn our wrapper when we get the signal that our battery fuel gauge service is ready.
+
+
+In your `run` block of `main()`, replace this:
+
+```rust
+    spawner.spawn(test_message_sender()).unwrap();
+```
+with this:
+
+```rust
+    spawner.spawn(wrapper_task_launcher(spawner)).unwrap();
+```
+
+So instead of sending a message to the espi_service, we are launching our `Controller` `Wrapper`.  
+The output of `cargo run` should now be:
+
 ```
      Running `target\debug\mock_battery.exe`
-🔋 Initializing battery fuel gauge service...
+🔄 Launching wrapper task...
+🔌 EspiService init()
+🧩 Registering ESPI service endpoint...
+🕒 time_driver started
 🔋 Launching battery service (single-threaded)
 🧩 Registering battery device...
-✅ Battery service is up and running.
-
+✅🔋 Battery service is up and running.
+✅🔌 EspiService READY
+🔔 BATTERY_FUEL_READY signaled
+🚀 Spawning wrapper_task...
 ```
-
-### Implementing "comms"
-
-The battery service is one of several services that may reside within the Embedded Controller (EC) microcontroller. In a fully integrated system, messages between the EC and other components — such as a host CPU or companion chips — are typically carried over physical transports like SPI or I²C.
-
-However, within the EC firmware itself, services communicate through an internal message routing layer known as comms. This abstraction allows us to test and exercise service logic without needing external hardware.
-
-At this point, we’ll establish a simple comms setup that allows messages to reach our battery service from other parts of the EC — particularly the power policy manager. The overall comms architecture can expand later to handle actual buses, security paging, or multi-core domains, but for now, a minimal local implementation will suffice.
-
-#### The "espi" comms
-We'll follow a pattern exhibited by the ODP `embedded-services/examples/std/src/bin/battery.rs`, but trimmed for embedded/no-std use.
-
-Create a file for a module named `espi_service.rs` inside your `mock_battery/src` folder and give it this content:
-
-```rust
-use battery_service::context::{BatteryEvent, BatteryEventInner};
-use battery_service::device::DeviceId;
-use embassy_sync::blocking_mutex::raw::NoopRawMutex;
-use embassy_sync::once_lock::OnceLock;
-use embassy_sync::signal::Signal;
-use embedded_services::comms::{self, EndpointID, External};
-use embedded_services::ec_type::message::BatteryMessage;
-
-
-pub struct EspiService {
-    endpoint: comms::Endpoint,
-    _signal: Signal<NoopRawMutex, BatteryMessage>,
-}
-
-impl EspiService {
-    pub fn new() -> Self {
-        Self {
-            endpoint: comms::Endpoint::uninit(EndpointID::External(External::Host)),
-            _signal: Signal::new(),
-        }
-    }
-}
-
-impl comms::MailboxDelegate for EspiService {
-    fn receive(&self, message: &comms::Message) -> Result<(), comms::MailboxDelegateError> {
-        let msg = message
-            .data
-            .get::<BatteryMessage>()
-            .ok_or(comms::MailboxDelegateError::MessageNotFound)?;
-
-        match msg {
-            BatteryMessage::CycleCount(_count) => {
-                // Do something if needed; placeholder
-                Ok(())
-            }
-            _ => Err(comms::MailboxDelegateError::InvalidData),
-        }
-    }
-}
-
-static ESPI_SERVICE: OnceLock<EspiService> = OnceLock::new();
-
-pub async fn init() {
-
-    let svc = ESPI_SERVICE.get_or_init(EspiService::new);
-    if comms::register_endpoint(svc, &svc.endpoint).await.is_err() {
-        // Handle registration failure as needed
-        panic!("Failed to register ESPI service endpoint");
-    }
-
-}
-
-#[embassy_executor::task]
-pub async fn task() {
-    let svc = ESPI_SERVICE.get().await;
-
-    let _ = svc.endpoint.send(
-        EndpointID::Internal(comms::Internal::Battery),
-        &BatteryEvent {
-            device_id: DeviceId(1),
-            event: BatteryEventInner::DoInit,
-        },
-    ).await;
-
-    let _ = battery_service::wait_for_battery_response().await;
-
-    loop {
-        let _ = svc.endpoint.send(
-            EndpointID::Internal(comms::Internal::Battery),
-            &BatteryEvent {
-                device_id: DeviceId(1),
-                event: BatteryEventInner::PollDynamicData,
-            },
-        ).await;
-
-        let _ = battery_service::wait_for_battery_response().await;
-
-        embassy_time::Timer::after(embassy_time::Duration::from_secs(5)).await;
-    }
-}
-```
-Before the loop, the DoInit message is sent which will cause `Controller::initialize` to be invoked via service layer.  The loop runs at 5 second intervals and polls for updates in the dynamic data
-(such as the current level of charge).
-
-and, by now I'm sure you know the drill, remember to add this module to your `lib.rs` file:
-
-```rust
-pub mod mock_battery;
-pub mod mock_battery_device;
-pub mod mock_battery_controller;
-pub mod espi_service;
-```
-
-We also have to add the following line to the `[dependencies]` of our `mock_battery/Cargo.toml` file, since we are using `embassy-sync` here, and even though it is declared in our top-level toml, we need to bring it forward to this crate context.
-```toml
-embassy-sync = { workspace = true }
-```
-
-Now we will use this code in our `main.rs` file:
-
-Add this `use` statement to import it:
-
-```rust
-use mock_battery::espi_service;
-```
-
-We need to call espi_service::init() asynchronously, so we need to create a task for this we can spawn in our main startup, so add this task:
-```rust
-#[embassy_executor::task]
-async fn espi_init_task() {
-    espi_service::init().await;
-}
-```
-We can spawn the task for `espi_service::task()` after initialization.  So in your main `executor.run(...)` block, add these lines to the end of the other spawn instructions:
-```rust
-    // Start up our comms
-    spawner.spawn(espi_init_task()).unwrap();
-    spawner.spawn(espi_service::task()).unwrap();
- ```           
 
 
 
