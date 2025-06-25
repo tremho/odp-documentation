@@ -40,33 +40,45 @@ documentation](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/10_Power_Source_and
 
 ### FFA ACPI Example
 ```
-Method (_BIX) {
-  // Check to make sure FFA is available and not unloaded
-  If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(144){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateField(BUFF,144,1088,BIXD) // Out – Raw data response max length
+  Method (_BIX, 0, Serialized) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) //  In – First byte of command
+      CreateDwordField(BUFF,32,BIX0)  // Out – Revision
+      CreateDwordField(BUFF,36,BIX1)  // Out – Power Unit
+      CreateDwordField(BUFF,40,BIX2)  // Out – Design Capacity
+      CreateDwordField(BUFF,44,BIX3)  // Out – Last Full Charge Capacity
+      CreateDwordField(BUFF,48,BIX4)  // Out – Battery Technology
+      CreateDwordField(BUFF,52,BIX5)  // Out – Design Voltage
+      CreateDwordField(BUFF,56,BIX6)  // Out – Design Capacity of Warning
+      CreateDwordField(BUFF,60,BIX7)  // Out – Design Capacity of Low
+      CreateDwordField(BUFF,64,BIX8)  // Out – Cycle Count
+      CreateDwordField(BUFF,68,BIX9)  // Out – Measurement Accuracy
+      CreateDwordField(BUFF,72,BI10)  // Out – Max Sampling Time
+      CreateDwordField(BUFF,76,BI11)  // Out – Min Sampling Time
+      CreateDwordField(BUFF,80,BI12)  // Out – Max Averaging Internal
+      CreateDwordField(BUFF,84,BI13)  // Out – Min Averaging Interval
+      CreateDwordField(BUFF,88,BI14)  // Out – Battery Capacity Granularity 1
+      CreateDwordField(BUFF,92,BI15)  // Out – Battery Capacity Granularity 2
+      CreateField(BUFF,768,64,BI16)  // Out – Model Number
+      CreateField(BUFF,832,64,BI17)  // Out – Serial number
+      CreateField(BUFF,896,64,BI18)  // Out – Battery Type
+      CreateField(BUFF,960,64,BI19)  // Out – OEM Information
+      CreateDwordField(BUFF,128,BI20)  // Out – OEM Information
 
-    Store(20, LENG)
-    Store(0x1, CMDD) // EC_BAT_GET_BIX
-    Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID) // Battery
-    Store(Store(BUFF, \\_SB_.FFA0.FFAC), BUFF)
+      Store(0x1, CMDD) //EC_BAT_GET_BIX
+      Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
 
-
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-      Return (BIXD)
-    } else {
-      Return(Zero)
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        Return(Package() {1,2,BIX2,BIX3,BIX4,BIX5,BIX6,BIX7,BIX8,BIX9,BI10,BI11,BI12,BI13,BI14,BI15,BI16,BI17,BI18,BI19,BI20})
+      }
     }
-  } else {
-    Return(Zero)
-  }
-}
-```
+    Return(Package() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,"","","",""})
+  }```
 
 ## EC_BAT_GET_BST
 
@@ -87,31 +99,28 @@ documentation](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/10_Power_Source_and
 ### FFA ACPI Example
 
 ```
-Method (_BST) {
-  // Check to make sure FFA is available and not unloaded
-  If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(34){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateField(BUFF,144,128,BSTD) // Out – Raw data response 4 DWords
+  Method (_BST, 0, Serialized) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) //  In – First byte of command
+      CreateDwordField(BUFF,32,BST0)  // Out – Battery State DWord
+      CreateDwordField(BUFF,36,BST1)  // Out – Battery Rate DWord
+      CreateDwordField(BUFF,40,BST2)  // Out – Battery Reamining Capacity DWord
+      CreateDwordField(BUFF,44,BST3)  // Out – Battery Voltage DWord
 
-    Store(20, LENG)
-    Store(0x2, CMDD) // EC_BAT_GET_BST
-    Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID) // Battery
-    Store(Store(BUFF, \\_SB_.FFA0.FFAC), BUFF)
+      Store(0x2, CMDD) //EC_BAT_GET_BST
+      Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
 
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-      Return (BSTD)
-    } else {
-      Return(Zero)
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        return(Package() {BST0, BST1, BST2, BST3} )
+      }
     }
-  } else {
-    Return(Zero)
+    Return(Package() {0,0,0,0})
   }
-}
 ```
 
 ## EC_BAT_GET_PSR
@@ -137,31 +146,26 @@ documentation](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/10_Power_Source_and
 ### FFA ACPI Example
 
 ```
-Method (_PSR) {
-  // Check to make sure FFA is available and not unloaded
-  If(LEqual(\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(22){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateField(BUFF,144,32,PSRD) // Out – Raw data response (overlaps with CMDD)
-    
-    Store(20, LENG)
-    Store(0x3, CMDD) // EC_BAT_GET_PSR
-    Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID) // Battery
-    Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+  Method (_PSR, 0, Serialized) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) //  In – First byte of command
+      CreateDwordField(BUFF,32,PSR0)  // Out – Power Source
 
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-      Return (PSRD)
-    } else {
-      Return(Zero)
+      Store(0x3, CMDD) //EC_BAT_GET_PSR
+      Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
+
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        return(PSR0)
+      }
     }
-  } else {
-    Return(Zero)
+
+    Return(0)
   }
-}
 ```
 ## EC_BAT_GET_PIF
 
@@ -183,30 +187,31 @@ documentation](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/10_Power_Source_and
 
 ### FFA ACPI Example
 ```
-Method (_PIF) {
-  // Check to make sure FFA is available and not unloaded
-  If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(22){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateField(BUFF,144,1088,PIFD) // Out – Raw data response (overlaps with CMDD)
-    Store(20, LENG)
-    Store(0x4, CMDD) // EC_BAT_GET_PIF
-    Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID) // Battery
-    Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+  Method (_PIF, 0, Serialized) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) //  In – First byte of command
+      CreateDwordField(BUFF,32,PIF0)  // Out – Power Source State
+      CreateDwordField(BUFF,36,PIF1)  // Out – Maximum Output Power
+      CreateDwordField(BUFF,40,PIF2)  // Out – Maximum Input Power
+      CreateField(BUFF,352,64,PIF3)  // Out – Model Number
+      CreateField(BUFF,416,64,PIF4)  // Out – Serial Number
+      CreateField(BUFF,480,64,PIF5)  // Out – OEM Information
 
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-      Return (PIFD)
-    } else {
-      Return(Zero)
+      Store(0x4, CMDD) //EC_BAT_GET_PIF
+      Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
+
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        return(Package() {PIF0, PIF1, PIF2, PIF3, PIF4, PIF5})
+      }
     }
-  } else {
-    Return(Zero)
+
+    Return(Package() {0,0,0,"","",""})
   }
-}
 ```
 
 ## EC_BAT_GET_BPS
@@ -227,31 +232,29 @@ Should return structure as defined by ACPI specification
 ### FFA ACPI Example
 
 ```
-Method (_BPS) {
-  // Check to make sure FFA is available and not unloaded
-  If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(22){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateField(BUFF,144,136,BPSD) // Out – BSP structure 5 integers
+  Method (_BPS, 0, Serialized) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) //  In – First byte of command
+      CreateDwordField(BUFF,32,BPS0)  // Out – Revision
+      CreateDwordField(BUFF,36,BPS1)  // Out – Instantaneous Peak Power Level
+      CreateDwordField(BUFF,40,BPS2)  // Out – Instantaneous Peak Power Period
+      CreateDwordField(BUFF,44,BPS3)  // Out – Sustainable Peak Power Level
+      CreateDwordField(BUFF,48,BPS4)  // Out – Sustainable Peak Power Period
 
-    Store(20, LENG)
-    Store(0x5, CMDD) // EC_BAT_GET_BPS
-    Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID) // Battery
-    Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      Store(0x5, CMDD) //EC_BAT_GET_BPS
+      Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
 
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-      Return (BPSD)
-    } else {
-      Return(Zero)
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        return(Package() {BPS0, BPS1, BPS2, BPS3, BPS4} )
+      }
     }
-  } else {
-    Return(Zero)
+    Return(Package() {0,0,0,0,0})
   }
-}
 ```
 
 ## EC_BAT_SET_BTP
@@ -276,32 +279,26 @@ None
 
 ### FFA ACPI Example
 ```
-Method (_BTP) {
-  // Check to make sure FFA is available and not unloaded
-  If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(24){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateDWordField(BUFF,19, BTP1) // In – Battery Trip Point
+  Method (_BTP, 1, Serialized) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) //  In – First byte of command
+      CreateDwordField(BUFF,36,BTP0)  // In - Trip point value
 
-    Store(20, LENG)
-    Store(0x6, CMDD) // EC_BAT_SET_BTP
-    Store(Arg0, BTP1)
-    Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID) // Battery
-    Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      Store(0x6, CMDD) //EC_BAT_SET_BTP
+      Store(Arg0, BTP0)
+      Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
 
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-      Return (One)
-    } else {
-      Return(Zero)
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        return(Zero )
+      }
     }
-  } else {
     Return(Zero)
   }
-}
 ```
 
 ## EC_BAT_GET_BPC
@@ -324,31 +321,28 @@ documentation](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/10_Power_Source_and
 
 ### FFA ACPI Example
 ```
-Method (_BPC) {
-  // Check to make sure FFA is available and not unloaded
-  If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(24){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateField(BUFF,19,128, BPCD) // Out – BPC output Data
+  Method (_BPC, 0, Serialized) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) //  In – First byte of command
+      CreateDwordField(BUFF,32,BPC0)  // Out - Revision
+      CreateDwordField(BUFF,36,BPC1)  // Out - Threshold support
+      CreateDwordField(BUFF,40,BPC2)  // Out - Max Inst peak power
+      CreateDwordField(BUFF,44,BPC3)  // Out - Max Sust peak power
 
-    Store(20, LENG)
-    Store(0x8, CMDD) // EC_BAT_GET_BPC
-    Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID) // Battery
-    Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      Store(0x8, CMDD) //EC_BAT_GET_BPC
+      Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
 
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-      Return (BPCD)
-    } else {
-      Return(Zero)
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        return(package() {BPC0, BPC1, BPC2, BPC3} )
+      }
     }
-  } else {
-    Return(Zero)
+    Return(package() {0,0,0,0})
   }
-}
 ```
 ## EC_BAT_SET_BPT
 
@@ -375,37 +369,31 @@ documentation](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/10_Power_Source_and
 
 ### FFA ACPI Example
 ```
-Method (_BPT) {
-  // Check to make sure FFA is available and not unloaded
-  If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(32){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateDwordField(BUFF,19, BPT1) // In – Averaging Interval
-    CreateDwordField(BUFF,23, BPT2) // In – Threshold ID
-    CreateDwordField(BUFF,27, BPT3) // In – Threshold Value
-    CreateField(BUFF,144,32,BPTD) // Out – BPT integer output
+  Method (_BPT, 3, Serialized) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) //  In – First byte of command
+      CreateDwordField(BUFF,36,BPT0)  // In - Revision
+      CreateDwordField(BUFF,40,BPT1)  // In - Threshold ID
+      CreateDwordField(BUFF,44,BPT2)  // In - Threshold value
+      CreateDwordField(BUFF,32,BPTS)  // Out - Trip point value
 
-    Store(0x30, LENG)
-    Store(0x7, CMDD) // EC_BAT_SET_BPT
-    Store(Arg0,BPT1)
-    Store(Arg1,BPT2)
-    Store(Arg2,BPT3)
-    Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID) // Battery
-    Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      Store(0x7, CMDD) //EC_BAT_SET_BPT
+      Store(Arg0, BPT0)
+      Store(Arg1, BPT1)
+      Store(Arg2, BPT2)
+      Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
 
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-      Return (BPTD)
-    } else {
-      Return(Zero)
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        return(BPTS)
+      }
     }
-  } else {
     Return(Zero)
   }
-}
 ```
 
 ## EC_BAT_SET_BMC
@@ -429,32 +417,22 @@ None
 ### FFA ACPI Example
 
 ```
-Method (_BMC) {
-  // Check to make sure FFA is available and not unloaded
-  If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(22){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateDWordField(BUFF,19, BMCF) // In – Feature Control Flags
+  Method (_BMC, 1, Serialized) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) //  In – First byte of command
+      CreateDwordField(BUFF,36,BMC0)  // In - Feature control flags
 
-    Store(20, LENG)
-    Store(0x9, CMDD) // EC_BAT_SET_BMC
-    Store(Arg0,BMCF)
-    Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID) // Battery
-    Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      Store(0x9, CMDD) //EC_BAT_SET_BMC
+      Store(Arg0, BMC0)
+      Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
 
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-      Return (One)
-    } else {
-      Return(Zero)
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
     }
-  } else {
     Return(Zero)
   }
-}
 ```
 
 ## EC_BAT_GET_BMD
@@ -484,32 +462,29 @@ Should return structure as defined by ACPI specification
 
 ### FFA ACPI Example
 ```
-Method (_BMD) {
-  // Check to make sure FFA is available and not unloaded
-  If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(40){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateField(BUFF,144,160,BMDD) // Out – BMD structure 5 DWords
+  Method (_BMD, 0, Serialized) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) //  In – First byte of command
+      CreateDwordField(BUFF,32,BMD0)  // Out - Status
+      CreateDwordField(BUFF,36,BMD1)  // Out - Capability Flags
+      CreateDwordField(BUFF,40,BMD2)  // Out - Recalibrate count
+      CreateDwordField(BUFF,44,BMD3)  // Out - Quick recal time
+      CreateDwordField(BUFF,48,BMD4)  // Out - Slow recal time
 
-    Store(20, LENG)
-    Store(0xA, CMDD) // EC_BAT_GET_BMD
-    Store(Arg0,BMCF)
-    Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID) // Battery
-    Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      Store(0xa, CMDD) //EC_BAT_GET_BMD
+      Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
 
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-      Return (BMDD)
-    } else {
-      Return(Zero)
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        return(package() {BMD0,BMD1,BMD2,BMD3,BMD4} )
+      }
     }
-  } else {
-    Return(Zero)
+    Return(package() {0,0,0,0,0})
   }
-}
 ```
 ## EC_BAT_GET_BCT
 
@@ -530,33 +505,27 @@ Should return structure as defined by ACPI specification
 
 ### FFA ACPI Example
 ```
-Method (_BCT) {
-  // Check to make sure FFA is available and not unloaded
-  If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(22){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateDWordField(BUFF,19, CHLV) // In – ChargeLevel
-    CreateField(BUFF,144,32,BCTD) // Out – Raw data response (overlaps with CMDD)
+  Method (_BCT, 1, Serialized) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) //  In – First byte of command
+      CreateDwordField(BUFF,36,BCT0)  // In - ChargeLevel
+      CreateDwordField(BUFF,32,BCTD)  // Out - Result
 
-    Store(20, LENG)
-    Store(0xB, CMDD) // EC_BAT_GET_BCT
-    Store(Arg0,CHLV)
-    Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID) // Battery
-    Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      Store(0xb, CMDD) //EC_BAT_GET_BCT
+      Store(Arg0, BCT0)
+      Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
 
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-      Return (BCTD)
-    } else {
-      Return(Zero)
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        return(BCTD)
+      }
     }
-  } else {
     Return(Zero)
   }
-}
 ```
 
 ## EC_BAT_GET_BTM
@@ -603,33 +572,27 @@ Should return structure as defined by ACPI specification
 ### FFA ACPI Example
 
 ```
-Method (_BMS) {
-  // Check to make sure FFA is available and not unloaded
-  If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(32){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateDwordField(BUFF,19, BMS1) // In – Sampling Time
-    CreateField(BUFF,144,32,BMSD) // Out – BPT integer output
+  Method (_BMS, 1, Serialized) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) //  In – First byte of command
+      CreateDwordField(BUFF,36,BMS0)  // In - Sampling Time
+      CreateDwordField(BUFF,32,BMSD)  // Out - Result code
 
-    Store(20, LENG)
-    Store(0xD, CMDD) // EC_BAT_SET_BMS
-    Store(Arg0,BMS1)
-    Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID) // Battery
-    Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      Store(0xd, CMDD) //EC_BAT_SET_BMS
+      Store(Arg0, BMS0)
+      Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
 
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-      Return (BMSD)
-    } else {
-      Return(Zero)
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        return(BMSD)
+      }
     }
-  } else {
     Return(Zero)
   }
-}
 ```
 
 ## EC_BAT_SET_BMA
@@ -657,33 +620,27 @@ Should return structure as defined by ACPI specification
 
 ### FFA ACPI Example
 ```
-Method (_BMA) {
-  // Check to make sure FFA is available and not unloaded
-  If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(32){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateDwordField(BUFF,19, BMA1) // In – Averaging Interval
-    CreateField(BUFF,144,32,BMAD) // Out – BMA integer output
-    
-    Store(20, LENG)
-    Store(0xE, CMDD) // EC_BAT_SET_BMA
-    Store(Arg0,BMS1)
-    Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID) // Battery
-    Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+  Method (_BMA, 1, Serialized) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) //  In – First byte of command
+      CreateDwordField(BUFF,36,BMA0)  // In - Averaging Interval
+      CreateDwordField(BUFF,32,BMAD)  // Out - Result code
 
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-      Return (BMAD)
-    } else {
-      Return(Zero)
+      Store(0xe, CMDD) //EC_BAT_SET_BMA
+      Store(Arg0, BMA0)
+      Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
+
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        return(BMAD)
+      }
     }
-  } else {
     Return(Zero)
   }
-}
 ```
 
 ## EC_BAT_GET_STA
@@ -703,31 +660,24 @@ documentation](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/06_Device_Configura
 
 ### FFA ACPI Example
 ```
-Method (_STA) {
-  // Check to make sure FFA is available and not unloaded
-  If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(144){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateField(BUFF,144,32,STAD) // Out – Raw data with status
+  Method (BSTA, 0, Serialized) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) //  In – First byte of command
+      CreateDwordField(BUFF,32,STAD)  // Out - Battery supported info
 
-    Store(20, LENG)
-    Store(0xF, CMDD) // EC_BAT_GET_STA
-    Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID) // Battery
-    Store(Store(BUFF, \\_SB_.FFA0.FFAC), BUFF)
+      Store(0xf, CMDD) //EC_BAT_GET_STA
+      Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
 
-
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-      Return (STAD)
-    } else {
-      Return(Zero)
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        return(STAD)
+      }
     }
-  } else {
     Return(Zero)
   }
-}
 ```
 
