@@ -26,8 +26,6 @@ Other repositories represented here define tools and tests that are useful in de
 | [ec-test-app](https://github.com/OpenDevicePartnership/ec-test-app?tab=readme-ov-file#ec-test-app) | Test application to exercise EC functionality through ACPI from the OS |  | ✅ |  |  | ✅ |
 | [ffa](https://github.com/OpenDevicePartnership/ffa?tab=readme-ov-file#ff-a-firmware-framework-for-armv8-a-profile) | FFA for Rust services running under Hafnium through FF-A |  | ✅ | ✅ |  |  |
 | [haf-ec-service](https://github.com/OpenDevicePartnership/haf-ec-service?tab=readme-ov-file#hafnium-ec-service-in-rust) | Rust services for Hafnium supported EC architectures. |  | ✅ | ✅ |  |  |
-| [patina-mtrr](https://github.com/openDevicePartnership/patina-mtrr?tab=readme-ov-file#introduction) | This repository supports a MTRR(Memory Type Range Registers) API that helps program MTRRs on x86_64 architecture. | ✅ |  | ✅  |  |  |
-| [patina-paging](https://github.com/openDevicePartnership/patina-paging?tab=readme-ov-file#cpu-paging-support) | Common paging support for various architectures such as ARM64 and X64 | ✅ |  | ✅  |  |  |
 | [rust_crate_audits](https://github.com/OpenDevicePartnership/rust-crate-audits?tab=readme-ov-file#open-device-partnerships-rust-crate-audits) | Aggregated audits for Rust crates by the Open Device Partnership |  |  | ✅ |  | ✅ |
 | [uefi-bds](https://github.com/OpenDevicePartnership/uefi-bds) | UEFI Boot Device Selection DXE driver | ✅ | | | | ✅ |
 | [uefi-corosensei](https://github.com/OpenDevicePartnership/uefi-corosensei) |  UEFI fork of the corosensei crate | ✅ | | | | ✅ |
