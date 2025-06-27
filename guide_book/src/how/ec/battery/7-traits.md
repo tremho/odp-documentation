@@ -173,19 +173,19 @@ impl SmartBattery for MockBattery {
     }
 
     async fn manufacturer_name(&mut self, buf: &mut [u8]) -> Result<(), Self::Error> {
-        let name = b"MockBatteryCorp";
+        let name = b"MockBatteryCorp\0"; // Null-terminated string
         buf[..name.len()].copy_from_slice(name);
         Ok(())
     }
 
     async fn device_name(&mut self, buf: &mut [u8]) -> Result<(), Self::Error> {
-        let name = b"MB-4200";
+        let name = b"MB-4200\0";
         buf[..name.len()].copy_from_slice(name);
         Ok(())
     }
 
     async fn device_chemistry(&mut self, buf: &mut [u8]) -> Result<(), Self::Error> {
-        let name = b"Li-Ion";
+        let name = b"LION\0";   // Null-terminated 5-byte string
         buf[..name.len()].copy_from_slice(name);
         Ok(())
     }

@@ -32,9 +32,8 @@ We'll put this into a separate `types.rs` file so that is is available in more t
 
 use embassy_sync::channel::Channel;
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
-use battery_service::context::BatteryEvent;
 
-pub type BatteryChannel = Channel<NoopRawMutex, BatteryEvent, 1>;
+pub type BatteryChannel = Channel<NoopRawMutex, BatteryEvent, 4>;
 ```
 and add this to `lib.rs`
 
@@ -83,7 +82,7 @@ Let's go ahead and call the spawns for these tasks now in the `run()` spawn list
 Update the `espi_service_init_task` to accept this parameter:
 ```rust
 #[embassy_executor::task]
-async fn espi_service_init_task(battery_channel: &'static mut Channel<NoopRawMutex, BatteryEvent, 1>) {
+async fn espi_service_init_task(battery_channel: &'static mut BatteryChannel) {
     espi_service::init(battery_channel).await;
 }
 ```
