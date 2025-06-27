@@ -20,7 +20,7 @@ flowchart LR
 The ability to reuse and recompose across product lines (via ODP libraries) reduces the need to "reinvent the wheel" for each board/platform, as Hardware Abstraction Layers can be cleanly isolated from the business logic of a component design, and easily expanded upon for new features.
 
 #### More than HAL
-This component philosophy extends much further than replaceable HAL layers -- it permeates throughout the component and service structure patterns ODP exposes. This allows agile modularity, greater re-useability, and shorter development cycles.
+This component philosophy extends much further than replaceable HAL layers -- it permeates throughout the component and service structure patterns ODP exposes. This allows agile modularity, greater reuseability, and shorter development cycles.
 
 
 ```mermaid
