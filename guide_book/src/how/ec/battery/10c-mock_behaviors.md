@@ -196,7 +196,113 @@ MockBatteryController: Fetching static data
 
 So, very good.  Now we can do essentially the same thing for `get_dynamic_data`.
 
-First, let's issue the `PollDynamicData` message.  We'll add this to our 
+First, let's issue the `PollDynamicData` message.  This is just temporary, so just add this to the bottom of your
+existing `test_message_sender` task:
 
+```rust
+    // now for the dynamic data:
+    let event2 = BatteryEvent {
+        device_id: DeviceId(1),
+        event: BatteryEventInner::PollDynamicData,
+    };
+
+    if let Err(e) = svc.endpoint.send(
+        EndpointID::Internal(embedded_services::comms::Internal::Battery),
+        &event2,
+    ).await {
+        println!("❌ Failed to send test BatteryEvent: {:?}", e);
+    } else {
+        println!("✅ Test BatteryEvent sent");
+    }
+```
+
+and in the `event_handler_task`:
+
+```rust
+    BatteryEventInner::PollDynamicData => {
+        println!("🔄 Handling PollDynamicData");
+        let dd  = controller.get_dynamic_data().await;
+        println!("📊 Static battery data: {:?}", dd);
+    }
+```
+will suffice for a quick report.
+
+Now, implement into `mock_battery_controller.rs` in the `Controller` implementation for `get_dynamic_data` as this:
+
+```rust
+
+    async fn get_dynamic_data(&mut self) -> Result<DynamicBatteryMsgs, Self::ControllerError> {
+        println!("MockBatteryController: Fetching dynamic data");
+
+        // Pull values from SmartBattery trait
+        let full_capacity = match self.battery.full_charge_capacity().await? {
+            CapacityModeValue::MilliAmpUnsigned(val) => val as u32,
+            _ => 0,
+        };
+
+        let remaining_capacity = match self.battery.remaining_capacity().await? {
+            CapacityModeValue::MilliAmpUnsigned(val) => val as u32,
+            _ => 0,
+        };
+
+        let battery_status = {
+            let status = self.battery.battery_status().await?;
+            // Bit masking matches the SMS specification
+            let mut result: u16 = 0;
+            result |= (status.fully_discharged() as u16) << 0;
+            result |= (status.fully_charged() as u16) << 1;
+            result |= (status.discharging() as u16) << 2;
+            result |= (status.initialized() as u16) << 3;
+            result |= (status.remaining_time_alarm() as u16) << 4;
+            result |= (status.remaining_capacity_alarm() as u16) << 5;
+            result |= (status.terminate_discharge_alarm() as u16) << 7;
+            result |= (status.over_temp_alarm() as u16) << 8;
+            result |= (status.terminate_charge_alarm() as u16) << 10;
+            result |= (status.over_charged_alarm() as u16) << 11;
+            result |= (status.error_code() as u16) << 12;
+            result
+        };
+
+        let relative_soc_pct = self.battery.relative_state_of_charge().await? as u16;
+        let cycle_count = self.battery.cycle_count().await?;
+        let voltage_mv = self.battery.voltage().await?;
+        let max_error_pct = self.battery.max_error().await? as u16;
+        let charging_voltage_mv = self.battery.charging_voltage().await?;
+        let charging_current_ma = self.battery.charging_current().await?;
+        let battery_temp_dk = self.battery.temperature().await?;
+        let current_ma = self.battery.current().await?;
+        let average_current_ma = self.battery.average_current().await?;
+
+        // For now, placeholder sustained/max power
+        let max_power_mw = 0;
+        let sus_power_mw = 0;
+
+        Ok(DynamicBatteryMsgs {
+            max_power_mw,
+            sus_power_mw,
+            full_charge_capacity_mwh: full_capacity,
+            remaining_capacity_mwh: remaining_capacity,
+            relative_soc_pct,
+            cycle_count,
+            voltage_mv,
+            max_error_pct,
+            battery_status,
+            charging_voltage_mv,
+            charging_current_ma,
+            battery_temp_dk,
+            current_ma,
+            average_current_ma,
+        })
+    }        
+```
+You can see that this is similar to what was done for `get_static_data`.
+
+Now run and you will see representative values that come from your current `MockBattery` implementation:
+
+```
+🔄 Handling PollDynamicData
+MockBatteryController: Fetching dynamic data
+📊 Static battery data: Ok(DynamicBatteryMsgs { max_power_mw: 0, sus_power_mw: 0, full_charge_capacity_mwh: 4800, remaining_capacity_mwh: 4200, relative_soc_pct: 88, cycle_count: 100, voltage_mv: 7500, max_error_pct: 1, battery_status: 0, charging_voltage_mv: 8400, charging_current_ma: 2000, battery_temp_dk: 2950, current_ma: 1500, average_current_ma: 1400 })
+```
 
 
