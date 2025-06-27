@@ -34,7 +34,8 @@ async fn main() {
     println!("Voltage: {} mV", voltage);
     println!("State of Charge: {}%", soc);
     println!("Temperature: {} deci-K", temp);
-}```
+}
+```
 and type `cargo run` to build and execute it.
 After it builds and runs successfully, you should see output similar to this:
 ```

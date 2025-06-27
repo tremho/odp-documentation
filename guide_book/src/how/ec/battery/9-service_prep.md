@@ -55,6 +55,37 @@ once_cell = { workspace = true }
 This will allow us to import what we need for the next steps.
 
 ### Top-level Cargo.toml
+Note that some of these dependencies say 'workspace = true'.  This implies they are in the workspace as configured by our top-level Cargo.toml, at `battery_project/Cargo.toml`.
+We need to update our top-level Cargo.toml to include these.  In `battery_project/Cargo.toml` add this section and settings:
+
+```toml
+[workspace.dependencies]
+embassy-executor = { path = "embassy/embassy-executor", features = ["arch-std", "executor-thread"], default-features = false }
+embassy-time = { path = "embassy/embassy-time" }
+embassy-futures = "0.1.0"
+embassy-sync = "0.7.0"
+embassy-time-driver = "0.2.0"
+embedded-hal = "1.0"
+embedded-hal-async = "1.0"
+```
+and you will want to add this section as well.  This tells cargo to use our local submodule version of embassy rather than reaching out to crates-io for a version:
+
+```toml
+[patch.crates-io]
+embassy-executor = { path = "embassy/embassy-executor"}
+embassy-time = { path = "embassy/embassy-time" }
+embassy-time-driver = { path = "embassy/embassy-time-driver" }
+embassy-time-queue-utils = { path = "embassy/embassy-time-queue-utils" }
+```
+But we are not done yet.
+If we execute `cargo build` at this point, we will likely get an error that says there was an "error inheriting `once_cell` from workspace root manifest's `workspace.dependencies.once_cell`
+
+We can solve that by adding that reference to `[workspace.dependencies]`
+```toml
+once_cell = "1.19"
+```
+
+Still not done.
 If we execute `cargo build` at this point, we will likely get an error that says there was an "error inheriting `defmt` from workspace root manifest's `workspace.dependencies.defmt`" and "`workspace.dependencies` was not defined".
 
 This is because these dependencies are used by the dependencies that we have included, even if we aren't using them ourselves.  In many cases, such as those dependencies that are relying on packages like `embassy` for embedded support, we won't be using at all in our 'std' build environment, and these will be compiled out of our build as a result, but they must still be referenced to satisfy the dependency chain.
@@ -85,14 +116,15 @@ So in these cases, change the "1.0" to one of the versions from the list ("0.7.0
 After doing all of this, your `[workspace.dependencies]` section will look something like this:
 ```toml
 [workspace.dependencies]
-defmt = "1.0"
-embassy-executor = { path = "embassy/embassy-executor", features = ["arch-std", "executor-thread", "log"], default-features = false }
+embassy-executor = { path = "embassy/embassy-executor", features = ["arch-std", "executor-thread"], default-features = false }
 embassy-time = { path = "embassy/embassy-time" }
 embassy-futures = "0.1.0"
 embassy-sync = "0.7.0"
 embassy-time-driver = "0.2.0"
 embedded-hal = "1.0"
 embedded-hal-async = "1.0"
+once_cell = "1.19"
+defmt = "1.0"
 log = "0.4.27"
 bitfield = "0.19.1"
 bitflags = "1.0"
@@ -106,7 +138,6 @@ embedded-io = "0.6.1"
 embedded-io-async = "0.6.1"
 embedded-storage = "0.3.1"
 embedded-storage-async = "0.4.1"
-once_cell = "1.19"
 fixed = "1.0"
 heapless = "0.8.0"
 postcard = "1.0"
@@ -122,17 +153,7 @@ embedded-cfu-protocol = { path = "embedded-cfu" }
 embedded-usb-pd = { path = "embedded-usb-pd" }
 ```
 
-We also want to insure that all references to embassy are pulling from the same submodule version we have placed in our workspace,
-so you will also want to add this section as well:
-```toml
-[patch.crates-io]
-embassy-executor = { path = "embassy/embassy-executor"}
-embassy-time = { path = "embassy/embassy-time" }
-embassy-time-driver = { path = "embassy/embassy-time-driver" }
-embassy-time-queue-utils = { path = "embassy/embassy-time-queue-utils" }
-```
-
-_(Note: the entries above also include dependencies for items we will need in upcoming steps and haven't encountered yet)_
+_(Note: the entries above also include dependencies for some items we will need in upcoming steps and haven't encountered yet)_
 
 Insure `cargo clean` and `cargo build` succeeds with your dependencies referenced accordingly before proceeding to the next step.
 

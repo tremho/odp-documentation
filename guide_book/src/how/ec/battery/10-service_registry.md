@@ -21,7 +21,6 @@ To do this, let's replace our current `mock_battery/main.rs` with this:
 ```rust
 use embassy_executor::Executor;
 use static_cell::StaticCell;
-use std::sync::OnceLock;
 
 use embedded_services::init;
 use embedded_services::power::policy::{register_device, DeviceId};
@@ -29,36 +28,34 @@ use mock_battery::mock_battery_device::MockBatteryDevice;
 
 static EXECUTOR: StaticCell<Executor> = StaticCell::new();
 static BATTERY: StaticCell<MockBatteryDevice> = StaticCell::new();
-static BATTERY_REF: OnceLock<usize> = OnceLock::new();
+
 
 fn main() {
     let executor = EXECUTOR.init(Executor::new());
 
-    // Safe one-time init, then store a reference to use elsewhere
-    let battery_ref = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
-    BATTERY_REF.set(battery_ref as *const _ as usize).unwrap_or_else(|_| panic!("BATTERY_REF already initialized"));
+    // Construct battery and extract needed values *before* locking any 'static borrows
+    let battery = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
 
     executor.run(|spawner| {
-        spawner.spawn(init_task()).unwrap();
+        spawner.spawn(init_task(battery)).unwrap();
         spawner.spawn(battery_service::task()).unwrap();
     });
 }
 
+
 #[embassy_executor::task]
-async fn init_task() {
+async fn init_task(battery:&'static mut MockBatteryDevice) {
     println!("🔋 Launching battery service (single-threaded)");
 
     init().await;
 
-    let battery_ptr = BATTERY_REF.get().copied().expect("BATTERY_REF not initialized");
-    let battery_ref: &'static MockBatteryDevice = unsafe { &*(battery_ptr as *const MockBatteryDevice) };
-
     println!("🧩 Registering battery device...");
-    register_device(battery_ref).await.unwrap();
+    register_device(battery).await.unwrap();
 
     println!("✅🔋 Battery service is up and running.");
 }
-``
+
+```
 
 You should type `cargo run` and after it builds you should see this output:
 
@@ -69,6 +66,15 @@ You should type `cargo run` and after it builds you should see this output:
 ✅🔋 Battery service is up and running.
 ```
 
+## Our main code
+Our main code does a few new important things.
+
+1. It uses the static allocator and `StaticCell` to create single ownership of our component structures.
+2. It initializes these `StaticCell` instances in `main`
+3. It passes them into asynchronous tasks that execute upon them.
+
+This pattern comes from the use of Embassy Executor and we will use it throughout the evolution of this example.
+
 ## The Battery Service
 Now we have registered our battery device as a device for the embedded-services power policy,
 but the `battery_service` knows how to use a battery specifically, so we need to register our battery as a 'fuel gauge' by that definition.
@@ -78,32 +84,46 @@ The battery service has the concept of a 'fuel gauge' that calls into the SmartB
 
 We'll hook that up now.
 
-Add these `use` statement near the top of your `main.rs` file:
+Add this `use` statement near the top of your `main.rs` file:
 ```rust
-use embassy_executor::Spawner;
 use battery_service::device::{Device as BatteryDevice, DeviceId as BatteryDeviceId};
 ```
 
-Then add this static declaration for our fuel gauge device service. Place it near the other statics for `EXECUTOR`, `BATTERY` and `BATTERY_REF`. 
+Then add this static declaration for our fuel gauge device service. Place it near the other statics for `EXECUTOR`, and `BATTERY`. 
 
 ```rust
 static BATTERY_FUEL: StaticCell<BatteryDevice> = StaticCell::new();
-static BATTERY_FUEL_REF: OnceLock<usize> = OnceLock::new();
 ```
 
 add this task at the end of the file:
 ```rust
 #[embassy_executor::task]
-async fn battery_service_init_task(dev: &'static MockBatteryDevice) {
-    println!("🔋 Initializing battery fuel gauge service...");
-    let fuel_device = BATTERY_FUEL.init(BatteryDevice::new(BatteryDeviceId(dev.device().id().0)));
-    battery_service::register_fuel_gauge(fuel_device).await.unwrap();
+async fn battery_service_init_task(
+    dev: &'static mut BatteryDevice
+) {
+    println!("🔌 Initializing battery fuel gauge service...");
+    battery_service::register_fuel_gauge(dev).await.unwrap();
 }
 ```
-and we'll call it by placing this at the end of the `run` block in `main()`, below the other two task spawns.
+and we'll call it by placing this at the end of the `run` block in `main()`, below the other two task spawns, after
+getting the id from the battery and initializeing the fuel gauge.  So the new `main()` should look like:
 
 ```rust
-    spawner.spawn(battery_service_init_task(battery_ref)).unwrap(); 
+fn main() {
+    let executor = EXECUTOR.init(Executor::new());
+
+    // Initialize our values one time
+    let battery = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
+    let battery_id = battery.device().id().0;
+    let fuel = BATTERY_FUEL.init(BatteryDevice::new(BatteryDeviceId(battery_id)));
+
+    executor.run(|spawner| {
+        spawner.spawn(init_task(battery)).unwrap();
+        spawner.spawn(battery_service::task()).unwrap();
+        spawner.spawn(battery_service_init_task(fuel)).unwrap();
+
+    });
+}
 ```
 
 Verify you can still build cleanly.  When you execute `cargo run` now, you should see output verifying our tasks have been run,
@@ -135,7 +155,7 @@ use battery_service::context::{BatteryEvent, BatteryEventInner};
 use battery_service::device::DeviceId;
 use embassy_sync::blocking_mutex::raw::NoopRawMutex;
 use embassy_sync::signal::Signal;
-use embedded_services::comms::{self, EndpointID, External, MailboxDelegate, MailboxDelegateError, Message};
+use embedded_services::comms::{self, EndpointID, Internal, MailboxDelegate, MailboxDelegateError, Message};
 use embedded_services::ec_type::message::BatteryMessage;
 
 
@@ -150,7 +170,7 @@ pub struct EspiService {
 impl EspiService {
     pub fn new() -> Self {
         Self {
-            endpoint: comms::Endpoint::uninit(EndpointID::External(External::Host)),
+            endpoint: comms::Endpoint::uninit(EndpointID::Internal(Internal::Battery)),
             _signal: Signal::new(),
         }
     }
@@ -273,7 +293,6 @@ and add this near top of `main.rs`:
 
 ```rust
 mod time_driver;
-
 use mock_battery::espi_service;
 ```
 
@@ -318,7 +337,7 @@ These tasks:
 - initializes our `espi_service` comms support.
 - defines a function for sending a test message to the battery
 
-Now, we need to update the `run` block in our `main()` function to include these new tasks in the spawn list:
+Now, we need to update the `run` block in our `main()` function to include these three tasks to what already exists in the spawn list:
 
 
 ```rust
@@ -659,12 +678,11 @@ async fn wrapper_task(wrapper: &'static mut Wrapper<'static, &'static mut MockBa
 Up to now we've been able to simply spawn our tasks asynchronously in parallel because there hasn't been much interdependence between them.
 But before we can connect our new `Controller`, we need to make sure the services it relies on are all ready to go.
 
-In particular, we need to know when the `battery_service_init_task()` that registers the battery fuel gauge service is complete.  To facilitate that, we'll create a Signal and a couple of static references we can use when we create the registration.
+In particular, we need to know when the `battery_service_init_task()` that registers the battery fuel gauge service is complete.  To facilitate that, we'll create a Signal and a couple of static references we can use when we create the registration.  We've already include the import statements we will need for this.
 
 Add this just below your current `static` declarations:
 
 ```rust
-
 pub struct BatteryFuelReadySignal {
     signal: Signal<NoopRawMutex, ()>,
 }
@@ -685,22 +703,20 @@ impl BatteryFuelReadySignal {
     }
 }
 static BATTERY_FUEL_READY: StaticCell<BatteryFuelReadySignal> = StaticCell::new();
-static BATTERY_FUEL_READY_REF: OnceLock<usize> = OnceLock::new();
 ```
 
 and update your `battery_service_init_task()` to now look like this, so that we set our value and signal it is ready:
 
 ```rust
 #[embassy_executor::task]
-async fn battery_service_init_task(dev: &'static MockBatteryDevice) {
+async fn battery_service_init_task(
+    dev: &'static mut BatteryDevice,
+    ready: &'static BatteryFuelReadySignal
+) {
     println!("🔌 Initializing battery fuel gauge service...");
-    let fuel_device = BATTERY_FUEL.init(BatteryDevice::new(BatteryDeviceId(dev.device().id().0)));
-    BATTERY_FUEL_REF.set(fuel_device as *const _ as usize).unwrap();
-    battery_service::register_fuel_gauge(fuel_device).await.unwrap();
+    battery_service::register_fuel_gauge(dev).await.unwrap();
     
     // signal that the battery fuel service is ready
-    let ready = BATTERY_FUEL_READY.init(BatteryFuelReadySignal::new());
-    BATTERY_FUEL_READY_REF.set(ready as *const _ as usize).unwrap_or_else(|_| panic!("BATTERY_FUEL_READY_REF already initialized"));
     ready.signal(); 
 }
 ```
@@ -709,49 +725,90 @@ Now, to tie this together, we need another task that launches our Controller wra
 
 ```rust
 #[embassy_executor::task]
-async fn wrapper_task_launcher(spawner: Spawner) {
+async fn wrapper_task_launcher(
+    fuel: &'static BatteryDevice,
+    controller: &'static mut MockBatteryController<&'static mut MockBattery>,
+    ready: &'static BatteryFuelReadySignal,
+    spawner: Spawner,
+) {
     println!("🔄 Launching wrapper task...");
 
-    // Wait a moment to ensure other services are initialized 
-    embassy_time::Timer::after(embassy_time::Duration::from_millis(100)).await;
-
-
-    // wait for the battery fuel service to be ready
-    let ready_ptr = BATTERY_FUEL_READY_REF.get().copied().expect("BATTERY_FUEL_READY_REF not initialized");
-    let ready: &'static BatteryFuelReadySignal = unsafe { &*(ready_ptr as *const BatteryFuelReadySignal) };
     ready.wait().await;
-
     println!("🔔 BATTERY_FUEL_READY signaled");
 
-    let battery_ptr = BATTERY_REF.get().copied().expect("BATTERY_REF not initialized");
-    // let battery_ref: &'static MockBatteryDevice = unsafe { &*(battery_ptr as *const MockBatteryDevice) };
-    let battery_ref: &'static mut MockBatteryDevice = unsafe { &mut *(battery_ptr as *mut MockBatteryDevice) };
-
-    let fuel_ptr = BATTERY_FUEL_REF.get().copied().expect("BATTERY_FUEL_REF not initialized");
-    let fuel_ref: &'static BatteryDevice = unsafe { &*(fuel_ptr as *const BatteryDevice) };
-
-    let controller = CONTROLLER.init(MockBatteryController::new(battery_ref.inner_battery()));
-    let wrapper = BATTERY_WRAPPER.init(Wrapper::new(fuel_ref, controller));
-
-    println!("🚀 Spawning wrapper_task...");
+    let wrapper = BATTERY_WRAPPER.init(Wrapper::new(fuel, controller));
     spawner.spawn(wrapper_task(wrapper)).unwrap();
+    spawner.spawn(test_message_sender()).unwrap();
 }
+
 ```
-You'll note this one is a bit different than the others.  We pass in a Spawner, and in turn use it to spawn our wrapper when we get the signal that our battery fuel gauge service is ready.
+You'll note this one is a bit different than the others.  We pass in a Spawner, and in turn use it to spawn our wrapper when we get the signal that our battery fuel gauge service is ready, and _then_ send our test message.
 
 
-In your `run` block of `main()`, replace this:
+In your `run` block of `main()`, remove the old call to send the test message:
 
 ```rust
     spawner.spawn(test_message_sender()).unwrap();
 ```
-with this:
+and replace it with the call to our wrapper task launcher with this:
 
 ```rust
     spawner.spawn(wrapper_task_launcher(spawner)).unwrap();
 ```
+We also need to update the call to `battery_service_init_task` to pass in the `ready` signal, in main where we
+create the other static initializations:
+```rust
+    let battery_fuel_ready = BATTERY_FUEL_READY.init(BatteryFuelReadySignal::new());
+```
+and we also have to init our `Controller`.  The `MockBatteryController` needs the battery from the MockBatteryDevice.
+```rust
+    let inner_battery = battery.inner_battery();
+    let controller = CONTROLLER.init(MockBatteryController::new(inner_battery));
+```
+And herein lies a problem. If we build this code, we'll receive an error:
 
-So instead of sending a message to the espi_service, we are launching our `Controller` `Wrapper`.  
+> cannot borrow `*fuel` as immutable because it is also borrowed as mutable
+
+this is a "double-borrow" violation of Rust. We've already 'borrowed' `fuel` by passing it to `battery_service_init_task`, so attempting to use it again creates the violation  because Rust can't be certain these two shares won't conflict with one another.
+
+We can get around this with a bit of `unsafe` marked code that creates a copy we can borrow instead.
+```
+let fuel_for_controller = unsafe { &mut *(fuel as *const _ as *mut _) };
+```
+and we'll use this reference to pass to the wrapper_task_launcher, since `fuel` has already been referenced by `battery_service_init_task`.
+
+We will soon learn that this same situation applies to the access to `battery` as well, but it actually has three separate cases: one to get the `battery_id`, one to get the `inner_battery`, and one to pass to the `init_task`.
+
+So our new main now looks like this:
+
+```
+fn main() {
+    let executor = EXECUTOR.init(Executor::new());
+
+    // Construct battery and extract needed values *before* locking any 'static borrows
+    let battery = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
+    let battery_for_id: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const _ as *mut _) };
+    let battery_for_inner: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const _ as *mut _) };
+    let battery_id = battery_for_id.device().id().0;
+    let fuel = BATTERY_FUEL.init(BatteryDevice::new(BatteryDeviceId(battery_id)));
+    let battery_fuel_ready = BATTERY_FUEL_READY.init(BatteryFuelReadySignal::new());
+    let inner_battery = battery_for_inner.inner_battery();
+    let fuel_for_controller = unsafe { &mut *(fuel as *const _ as *mut _) };
+    let controller = CONTROLLER.init(MockBatteryController::new(inner_battery));
+
+    executor.run(|spawner| {
+        spawner.spawn(init_task(battery)).unwrap();
+        spawner.spawn(battery_service::task()).unwrap();
+        spawner.spawn(battery_service_init_task(fuel, battery_fuel_ready)).unwrap();
+        spawner.spawn(time_driver::run()). unwrap();
+        spawner.spawn(espi_service_init_task ()).unwrap();
+        spawner.spawn(wrapper_task_launcher(fuel_for_controller, controller, battery_fuel_ready, spawner)).unwrap();
+
+    });
+}
+```
+
+
 The output of `cargo run` should now be:
 
 ```
@@ -760,14 +817,18 @@ The output of `cargo run` should now be:
 🔌 EspiService init()
 🧩 Registering ESPI service endpoint...
 🕒 time_driver started
+🔌 Initializing battery fuel gauge service...
 🔋 Launching battery service (single-threaded)
 🧩 Registering battery device...
 ✅🔋 Battery service is up and running.
 ✅🔌 EspiService READY
 🔔 BATTERY_FUEL_READY signaled
-🚀 Spawning wrapper_task...
+✍ Sending test BatteryEvent...
+✅ Test BatteryEvent sent
 ```
 
+So we can see that the services fire up and once the ready signal is seen, we send our test message.
+This establishes the basic skeletal flow we need to complete our service wirings and tests.
 
 
 

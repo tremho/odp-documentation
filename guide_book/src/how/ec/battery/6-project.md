@@ -45,7 +45,7 @@ note there are two `Cargo.toml` files here. One is within the `battery_project` 
 
 The contents of the `battery_project/Cargo.toml` file should contain:
 
-```
+```toml
 [workspace]
 resolver = "2"
 members = [
@@ -55,7 +55,7 @@ members = [
 ```
 and the contents of the `battery_project/mock_battery/Cargo.toml` file should be set to:
 
-```
+```toml
 [package]
 name = "mock_battery"
 version = "0.1.0"
