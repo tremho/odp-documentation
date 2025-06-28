@@ -5,6 +5,23 @@ Battery control is monitored through the Modern Power Thermal Framework
 firmware for these features. This section outlines the interface
 required in ACPI for this framework to function.
 
+<b>Note:</b> There is an issue with ACPI and embedded packages `return Package() {BST0,BST1,BST2,BST3}` returns "BST0","BST1","BST2","BST3" rather than the values pointed to by these variables. As such we need to create a global Name for BSTD and initialize default values and update these fields like the following.
+
+```
+  Name (BSTD, Package (4) {
+    0x2,
+    0x500,
+    0x10000,
+    0x3C28
+  })
+...
+  BSTD[0] = BST0
+  BSTD[1] = BST1
+  BSTD[2] = BST2
+  BSTD[3] = BST3
+  Return(BSTD)
+```
+
 | Command                 | Description                                                                                                                                     |
 | ----------------------- | ----------------------------------------------------------------------------------------------------------------------------------------------- |
 | EC_BAT_GET_BIX = 0x1 | Returns information about battery, model, serial number voltage. Note this is a superset of BIF. (MPTF)                                         |
@@ -40,6 +57,30 @@ documentation](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/10_Power_Source_and
 
 ### FFA ACPI Example
 ```
+  Name (BIXD, Package(21) {
+    0,
+    0,
+    0x15F90,
+    0x15F90,
+    1,
+    0x3C28,
+    0x8F,
+    0xE10,
+    1,
+    0x17318,
+    0x03E8,
+    0x03E8,
+    0x03E8,
+    0x03E8,
+    0x380,
+    0xE1,
+    "        ",
+    "        ",
+    "        ",
+    "        ",
+    0
+  })
+
   Method (_BIX, 0, Serialized) {
     // Check to make sure FFA is available and not unloaded
     If(LEqual(\_SB.FFA0.AVAL,One)) {
@@ -74,11 +115,32 @@ documentation](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/10_Power_Source_and
       Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
       If(LEqual(STAT,0x0) ) // Check FF-A successful?
       {
-        Return(Package() {1,2,BIX2,BIX3,BIX4,BIX5,BIX6,BIX7,BIX8,BIX9,BI10,BI11,BI12,BI13,BI14,BI15,BI16,BI17,BI18,BI19,BI20})
+        BIXD[0] = BIX0
+        BIXD[1] = BIX1
+        BIXD[2] = BIX2
+        BIXD[3] = BIX3
+        BIXD[4] = BIX4
+        BIXD[5] = BIX5
+        BIXD[6] = BIX6
+        BIXD[7] = BIX7
+        BIXD[8] = BIX8
+        BIXD[9] = BIX9
+        BIXD[10] = BI10
+        BIXD[11] = BI11
+        BIXD[12] = BI12
+        BIXD[13] = BI13
+        BIXD[14] = BI14
+        BIXD[15] = BI15
+        BIXD[16] = BI16
+        BIXD[17] = BI17
+        BIXD[18] = BI18
+        BIXD[19] = BI19
+        BIXD[20] = BI20
       }
     }
-    Return(Package() {0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,0,"","","",""})
-  }```
+    Return(BIXD)
+  }
+  ```
 
 ## EC_BAT_GET_BST
 
@@ -99,6 +161,13 @@ documentation](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/10_Power_Source_and
 ### FFA ACPI Example
 
 ```
+  Name (BSTD, Package (4) {
+    0x2,
+    0x500,
+    0x10000,
+    0x3C28
+  })
+
   Method (_BST, 0, Serialized) {
     // Check to make sure FFA is available and not unloaded
     If(LEqual(\_SB.FFA0.AVAL,One)) {
@@ -114,12 +183,16 @@ documentation](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/10_Power_Source_and
       Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
 
       Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+
       If(LEqual(STAT,0x0) ) // Check FF-A successful?
       {
-        return(Package() {BST0, BST1, BST2, BST3} )
+        BSTD[0] = BST0
+        BSTD[1] = BST1
+        BSTD[2] = BST2
+        BSTD[3] = BST3
       }
     }
-    Return(Package() {0,0,0,0})
+    Return(BSTD)
   }
 ```
 
@@ -187,6 +260,15 @@ documentation](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/10_Power_Source_and
 
 ### FFA ACPI Example
 ```
+  Name( PIFD, Package(6) {
+    0,          // Out – Power Source State
+    0,          // Out – Maximum Output Power
+    0,          // Out – Maximum Input Power
+    "        ", // Out – Model Number
+    "        ", // Out – Serial Number
+    "        "  // Out – OEM Information
+  })
+
   Method (_PIF, 0, Serialized) {
     // Check to make sure FFA is available and not unloaded
     If(LEqual(\_SB.FFA0.AVAL,One)) {
@@ -206,11 +288,17 @@ documentation](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/10_Power_Source_and
       Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
       If(LEqual(STAT,0x0) ) // Check FF-A successful?
       {
-        return(Package() {PIF0, PIF1, PIF2, PIF3, PIF4, PIF5})
+        PIFD[0] = PIF0
+        PIFD[1] = PIF1
+        PIFD[2] = PIF2
+        PIFD[3] = PIF3
+        PIFD[4] = PIF4
+        PIFD[5] = PIF5
+
       }
     }
 
-    Return(Package() {0,0,0,"","",""})
+    Return(PIFD)
   }
 ```
 
@@ -232,6 +320,14 @@ Should return structure as defined by ACPI specification
 ### FFA ACPI Example
 
 ```
+  Name( BPSD, Package(5) {
+    0,  // Out – Revision
+    0,  // Out – Instantaneous Peak Power Level
+    0,  // Out – Instantaneous Peak Power Period
+    0,  // Out – Sustainable Peak Power Level
+    0  // Out – Sustainable Peak Power Period
+  })
+
   Method (_BPS, 0, Serialized) {
     // Check to make sure FFA is available and not unloaded
     If(LEqual(\_SB.FFA0.AVAL,One)) {
@@ -250,10 +346,14 @@ Should return structure as defined by ACPI specification
       Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
       If(LEqual(STAT,0x0) ) // Check FF-A successful?
       {
-        return(Package() {BPS0, BPS1, BPS2, BPS3, BPS4} )
+        BPSD[0] = BPS0
+        BPSD[1] = BPS1
+        BPSD[2] = BPS2
+        BPSD[3] = BPS3
+        BPSD[4] = BPS4
       }
     }
-    Return(Package() {0,0,0,0,0})
+    Return(BPSD)
   }
 ```
 
@@ -321,6 +421,13 @@ documentation](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/10_Power_Source_and
 
 ### FFA ACPI Example
 ```
+  Name( BPCD, Package(4) {
+    1,  // Out - Revision
+    0,  // Out - Threshold support
+    8000,  // Out - Max Inst peak power
+    2000  // Out - Max Sust peak power
+  })
+
   Method (_BPC, 0, Serialized) {
     // Check to make sure FFA is available and not unloaded
     If(LEqual(\_SB.FFA0.AVAL,One)) {
@@ -338,10 +445,13 @@ documentation](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/10_Power_Source_and
       Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
       If(LEqual(STAT,0x0) ) // Check FF-A successful?
       {
-        return(package() {BPC0, BPC1, BPC2, BPC3} )
+        BPCD[0] = BPC0
+        BPCD[1] = BPC1
+        BPCD[2] = BPC2
+        BPCD[3] = BPC3
       }
     }
-    Return(package() {0,0,0,0})
+    Return(BPCD)
   }
 ```
 ## EC_BAT_SET_BPT
@@ -462,6 +572,14 @@ Should return structure as defined by ACPI specification
 
 ### FFA ACPI Example
 ```
+  Name( BMDD, Package(5) {
+    0,  // Out - Status
+    0,  // Out - Capability Flags
+    0,  // Out - Recalibrate count
+    0,  // Out - Quick recal time
+    0 // Out - Slow recal time
+  })
+  
   Method (_BMD, 0, Serialized) {
     // Check to make sure FFA is available and not unloaded
     If(LEqual(\_SB.FFA0.AVAL,One)) {
@@ -480,10 +598,14 @@ Should return structure as defined by ACPI specification
       Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
       If(LEqual(STAT,0x0) ) // Check FF-A successful?
       {
-        return(package() {BMD0,BMD1,BMD2,BMD3,BMD4} )
+        BMDD[0] = BMD0
+        BMDD[1] = BMD1
+        BMDD[2] = BMD2
+        BMDD[3] = BMD3
+        BMDD[4] = BMD4
       }
     }
-    Return(package() {0,0,0,0,0})
+    Return(BMDD)
   }
 ```
 ## EC_BAT_GET_BCT
