@@ -49,17 +49,8 @@ with HLOS there is also no security surrounding accesses to the memory.
 ### Example Memory Mapped Interface
 
 ```
-// Map 4K memory region
+// Map 4K memory region shared
 OperationRegion(ABCD, SystemMemory, 0xFFFF0000, 0x1000)
-
-// Map fields in region if you want to access or set via ACPI
-Field(ABCD,AnyAcc,Lock,Preserve) {
-  VER,16, // Version
-  RES, 16, // Reserved
-  VAR1,32, // 32-bit variable1
-  VAR2,64, // 64-bit variable1
-  VAR3,128, // 128-bit variable1
-}
 
 // DSM Method to send sync event
 Method(_DSM,4,Serialized,0,UnknownObj, {BuffObj, IntObj,IntObj,PkgObj})
@@ -70,25 +61,15 @@ Method(_DSM,4,Serialized,0,UnknownObj, {BuffObj, IntObj,IntObj,PkgObj})
     // Use FFA to send Notification event down to copy data to EC
     If(LEqual(\\_SB.FFA0.AVAL,One)) {
 
-      Name(BUFF, Buffer(144){}) // Create buffer for send/recv data
-      CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-      CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-      CreateField(BUFF,16,128,UUID) // UUID of service
-      CreateByteField(BUFF,18, CMDD) // In – First byte of command
-      CreateField(BUFF,144,1024,FIFD) // Out – Msg data
+      CreateQwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32, CMDD) // In – First byte of command
 
-      // Create Doorbell Event
-      Store(20, LENG)
-      Store(0x0, CMDD) // UCSI set doorbell
-      Store(ToUUID("daffd814-6eba-4d8c-8a91-bc9bbf4aa301"), UUID)
+      // Create Doorbell Event to read shared memory
+      Store(0x0, CMDD) // 
+      Store(ToUUID("daffd814-6eba-4d8c-8a91-bc9bbf4aa301"), UUID) // Debug Service UUID
       Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
 
-      If(LEqual(STAT,0x0) ) // Check FF-A successful?
-      {
-        Return (Zero)
-      } else {
-        Return(One)
-      }
     } // End AVAL
   } // End UUID
 } // End DSM
