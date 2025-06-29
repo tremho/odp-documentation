@@ -182,26 +182,68 @@ the system.</p>
 <h3 id="acpi-example-for-lid-notificiation"><a class="header" href="#acpi-example-for-lid-notificiation">ACPI Example for LID notificiation</a></h3>
 <p>Assuming that LID is managed by the EC during registration we register
 for Input Management service for a Virtual ID = 1</p>
-<pre><code>Method(_RNY, 0, Serialized) {
-  Return( Package() {
-    Package(0x2) {
-      ToUUID("e3168a99-4a57-4a2b-8c5e-11bcfec73406"),
-      Buffer() {0x1,0x0} // Register event 0x1 for LID
-    }
-    } )
-  }
-
-  Method(_NFY, 2, Serialized) {
-    // Arg0 == UUID
-    // Arg1 == Notify ID
-    If(LEqual(ToUUID("e3168a99-4a57-4a2b-8c5e-11bcfec73406"),Arg0)) {
-      Switch(Arg1) {
-      Case(1) {
-        Notify(\\_SB._LID,0x80)
+<pre><code> Name(_DSD, Package() {
+      ToUUID("daffd814-6eba-4d8c-8a91-bc9bbf4aa301"), //Device Prop UUID
+      Package() {
+        Package(2) {
+          "arm-arml0002-ffa-ntf-bind",
+          Package() {
+              1, // Revision
+              1, // Count of following packages
+              Package () {
+                     ToUUID("e3168a99-4a57-4a2b-8c5e-11bcfec73406"), // Input Management UUID
+                     Package () {
+                          0x02,     // Cookie for LID
+                      }
+              },
+         }
       }
     }
+  }) // _DSD()
+
+  Method(_DSM, 0x4, NotSerialized)
+  {
+    // Arg0 - UUID
+    // Arg1 - Revision
+    // Arg2: Function Index
+    //         0 - Query
+    //         1 - Notify
+    //         2 - binding failure
+    //         3 - infra failure    
+    // Arg3 - Data
+  
+    //
+    // Device specific method used to query
+    // configuration data. See ACPI 5.0 specification
+    // for further details.
+    //
+    If(LEqual(Arg0, Buffer(0x10) {
+        //
+        // UUID: {7681541E-8827-4239-8D9D-36BE7FE12542}
+        //
+        0x1e, 0x54, 0x81, 0x76, 0x27, 0x88, 0x39, 0x42, 0x8d, 0x9d, 0x36, 0xbe, 0x7f, 0xe1, 0x25, 0x42
+      }))
+    {
+      // Query Function
+      If(LEqual(Arg2, Zero)) 
+      {
+        Return(Buffer(One) { 0x03 }) // Bitmask Query + Notify
+      }
+      
+      // Notify Function
+      If(LEqual(Arg2, One))
+      {
+        // Arg3 - Package {UUID, Cookie}
+        Local0 = DeRefOf(Index(Arg3,1))
+        Switch(Local0) {
+          Case(2) {
+            Notify(\_SB._LID, 0x80)
+          }
+        }
+      }
+    }
+    Return(Buffer(One) { 0x00 })
   }
-}
 </code></pre>
 <h2 id="system-wake-event"><a class="header" href="#system-wake-event">System Wake Event</a></h2>
 <p>Ability to wake the system from various external events. This is for

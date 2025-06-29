@@ -255,28 +255,23 @@ accessible by secure world.</p>
     {
       // Use FFA to send Notification event down to copy data to EC
       If(LEqual(\\_SB.FFA0.AVAL,One)) {
-        Name(BUFF, Buffer(144){}) // Create buffer for send/recv data
-        CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-        CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-        CreateField(BUFF,16,128,UUID) // UUID of service
-        CreateByteField(BUFF,18, CMDD) // In – First byte of command
-        CreateField(BUFF,144,1024,FIFD) // Out – Msg data
+        CreateQwordField(BUFF,0,STAT) // Out – Status
+        CreateField(BUFF,128,128,UUID) // UUID of service
+        CreateByteField(BUFF,32, CMDD) // In – First byte of command
+        CreateField(BUFF,288,384,FIFD) // Out – Msg data
 
-        CreateField(BUFF,0x0,128,UUID)
         // Create USCI Doorbell Event
-
-        Store(20, LENG)
         Store(0x0, CMDD) // UCSI set doorbell
         Store(ToUUID("daffd814-6eba-4d8c-8a91-bc9bbf4aa301"), UUID) // UCSI
+        Store(USBC, FIFD) // Copy output data
         Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
 
         If(LEqual(STAT,0x0) ) // Check FF-A successful?
         {
           Return (FIFD)
-        } else {
-          Return(error)?
         }
       } // End AVAL
+      Return(Zero)
     } // End UUID
   } // End DSM
 }

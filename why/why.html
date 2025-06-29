@@ -176,7 +176,7 @@
 <p>Trying to manage all of this with what has been the status-quo for these concerns in past decades, without memory-safe languages and with a loosely-federated collection of standards and patterns agreed upon by an ad-hoc consortium of vendors is increasingly dangerous and costly.</p>
 <hr />
 <div class="table-wrapper"><table><thead><tr><th><strong>Legacy Approach</strong></th><th><strong>ODP Approach</strong></th></tr></thead><tbody>
-<tr><td>🐜 Many vendor-specific hacks ❌</td><td>🧩 Cross-platform modularity 🔒</td></tr>
+<tr><td>🐜 Many vendor-specific changesets ❌</td><td>🧩 Cross-platform modularity 🔒</td></tr>
 <tr><td>❄️ Weak component isolation 🩸</td><td>🔐 Secure runtime services 🤖</td></tr>
 <tr><td>🔩 Proprietary tool building ⚔️</td><td>🛠️ Rust-based build tools, Stuart 🧑‍🔧</td></tr>
 </tbody></table>
@@ -186,7 +186,7 @@
 </blockquote>
 <hr />
 <p>The Open Device Partnership offers an alternative and a way forward to a more sustainable future that, while still built upon the proven paradigms of the past, boldly rejects the patterns that are known to be costly and ineffective in favor of future-ready, portable, sustainable, and expandable alternatives.</p>
-<p>Key to this is the adoption of the programming language Rust as the successor to C. This immediately brings confidence that the code will not be susceptible to programming-error related vulnerabilities that may lead to either costly performance behaviors or be maliciously exploited by opportunistic bad actors. Furthermore, it provides the confidence that code from outside of one's immediate provenance of control may be audited and trusted and ready to join into a firmware construction built upon industry standards.</p>
+<p>Key to this is the adoption of the programming language Rust as the successor to C. This immediately brings greater confidence that the code will not be susceptible to programming-error related vulnerabilities that may lead to either costly performance behaviors or be maliciously exploited by opportunistic bad actors. Code may be marked <code>unsafe</code> to allow certain difficult-to-static-analyze behaviors that can be asserted to be risk-free, so potentially dangerous area must be carefully justified.  Furthermore, the patterns adopted by ODP provides the confidence that code from outside of one's immediate provenance of control may be audited and trusted and ready to join into a firmware construction built upon industry standards.</p>
 <p>In the pages ahead, we'll look a little more closely at the advantages of ODP one at a time.</p>
 
                     </main>
