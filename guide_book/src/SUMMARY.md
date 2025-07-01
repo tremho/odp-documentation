@@ -42,6 +42,7 @@
             - [Standard Build](./how/ec/battery/5-standard.md)
                 - [Battery Project](./how/ec/battery/6-project.md)
                 - [Battery Traits](./how/ec/battery/7-traits.md)
+                - [Virtual HAL](./how/ec/battery/7b-virtualHAL.md)
                 - [Battery Values](./how/ec/battery/8-values.md)
                 - [Service Prep](./how/ec/battery/9-service_prep.md)
                 - [Battery Service](./how/ec/battery/10-service_registry.md)

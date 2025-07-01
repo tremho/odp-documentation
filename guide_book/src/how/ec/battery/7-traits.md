@@ -210,25 +210,6 @@ By implementing `core::fmt::Display`, we ensure that error messages can be print
 
 This scaffolding allows our mock implementation to slot into the service framework cleanly, even if the actual logic is still forthcoming.
 
-Finally, we get to the SmartBattery implementation for our MockBattery.  As you might guess, this simply implements each of the functions of the trait as declared, by simply returning an arbitrary representative return value for each.  We'll make these values more meaningful later, but for now, it's pretty minimalist.
+Finally, we get to the SmartBattery implementation for our MockBattery.  As you might guess, this simply implements each of the functions of the trait as declared, by simply returning an arbitrary representative return value for each.  We'll make these values more meaningful in the next step, but for now, it's pretty minimalist.
 
-> ### Implementing a HAL layer
-> In our virtual Mock Battery, we will not be attaching to any actual hardware.
-> But if we were, this would be the place to do it.
->
-> A brief overview of what these steps would be include:
-> - Consulting the specifications of our hardware to explore its features
-> - Determine which of these features would be necessary to fulfill each trait from the SBS specification we wish to implement
-> - Define the traits that name these features or feature sequences.
-> - Implement these traits in hardware (GPIO / MMIO, etc)
-> - Use this to fulfill the SBS traits for the values required.
->
-> For our mock battery, we will simply return coded values for the SBS traits directly.
->
-> ------
 
-## Now to expose this to the service
-
-We have defined the battery traits and given our simulated placeholder values for our mock battery here.
-If we were implementing a real battery, the process would follow the same pattern except that instead of the literal values we've assigned, we would call upon our Hardware Abstraction Layer (HAL) implementation modules to pull these values from the actual hardware circuitry, per manufacturer design (i.e. GPIO or MMIO).
-But before any of this is useful, it needs to be exposed to the service layer.  In the next step, we'll do a simple test that shows we can expose these values, and then we'll implement the service layer that conveys these up the chain in response to service messages.
