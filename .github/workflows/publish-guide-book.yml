@@ -3,7 +3,7 @@
 # A Github workflow that compiles an mdbook located at guide_book/* and publishes it
 # to the repository's github page.
 #
-name: Publish Documentation
+name: Build and Publish Guide Book
 
 on:
   # Trigger this workflow manually if necessary
@@ -40,19 +40,14 @@ jobs:
           cd guide_book
           mdbook build
 
-      - name: Copy Output to the Publish Root
-        run: |
-          mkdir -p guide
-          cp -r guide_book/book guide
-
       - name: Upload Github Pages Site Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           name: github-pages
-          path: guide
+          path: guide_book/book/
 
   publish:
-    name: Publish Documentation
+    name: Publish Guide Book
     needs: [build]
     runs-on: ubuntu-latest
 
