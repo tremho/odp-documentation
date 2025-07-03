@@ -33,7 +33,7 @@ However, there are some differences in the threading model that is used when we 
 
 We need an asynchronous context for testing our asynchronous method traits, so we construct our test flow in the same way we constructed our `main()` function, and will use the Embassy `Executor` to spawn asynchronous tasks that call upon the traits we wish to test.
 
-Because of some thread handling and Mutex differences between a standard run and test framework run, we need to make a few simple refactors to our existing code so that it will handle both cases.
+Due to thread and Mutex handling differences between a standard run and test framework run, we need to make a few simple refactors to our existing code so that it will handle both cases.
 
 To do this, we will first define a helper module named `mutex.rs` with this content:
 ```rust
@@ -175,7 +175,7 @@ This will report `running 0 tests` of course, because we haven't created any yet
 
 #### A Framework within a Framework - Embedded Unit Testing with Embassy
 
-At this point, it may come as no surprise that the standard `#[test]` framework presented by Rust/Cargo is insufficient for our needs. The classic 'Rust` test framework is great for standard non-async unit tests. But as we already know the systems we want to test are async. We've already refactored our code to be compatible with differing thread/mutex handling, so what now?
+At this point, it may come as no surprise that the standard `#[test]` framework presented by Rust/Cargo is insufficient for our needs. The classic Rust test framework is great for standard non-async unit tests. But as we already know the systems we want to test are async. We've already refactored our code to be compatible with differing thread/mutex handling, so what now?
 
 #### When enough isn't enough
 

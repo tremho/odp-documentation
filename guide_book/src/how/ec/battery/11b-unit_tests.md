@@ -540,7 +540,7 @@ async fn alarm_set_test_task(done:  &'static Signal<RawMutex, ()>) {
 }
 
 ```
-These will test to see that we can change the values for the remaining capacity and remaining time alarms.
+These will verify that we can change the values for the remaining capacity and remaining time alarms.
 
 ### Testing a feature that isn't implemented
 
