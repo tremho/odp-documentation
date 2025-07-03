@@ -297,7 +297,7 @@ After you've done all that,  you should be able to build with
 cargo build
 ```
 and get a clean result
-_Note: if you commented out or removed the reference to `tokio` in your `Cargo.toml` you may need to put that back to compile against the existing `main.rs`_
+_Note: if you commented out or removed the reference to `tokio` in your `Cargo.toml` you may need to put that back to compile against the existing `main.rs`, but we will be replacing `main.rs` shortly._
 
 Next we will work to put this battery to use.
 

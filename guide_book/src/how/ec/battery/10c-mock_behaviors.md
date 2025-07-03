@@ -350,7 +350,7 @@ for this, let's modify our `test_message_sender` again, this time wrapping the e
 When you run now, you will see repeated outputs of the dynamic data and you will note the values changing as the
 simulation (running at 10x speed) shows the effect of a 1200 ma current draw over time.
 
-Not the relative_soc_pct slowing decreasing from 100% in pace with the remaining_capacity_mwh value, the voltage slowly decaying, and the temperature increasing.
+Note the relative_soc_pct slowing decreasing from 100% in pace with the remaining_capacity_mwh value, the voltage slowly decaying, and the temperature increasing.
 
 While this simulation with the `println!` outputs have been helpful in building a viable battery simulator that could fit into the component model of an embedded controller integration, it is not a true substitute for actual unit tests, so we
 will do that next.

@@ -127,7 +127,7 @@ impl VirtualBatteryState {
     /// Advance the battery simulation by one tick (e.g., 1 second)
     pub fn tick(&mut self, multiplier:f32) {
         // 1. Update remaining capacity
-        let delta_f = (self.current_ma as f32 / 3600.0) * multiplier; // control speed of simulation
+        let delta_f = (self.current_ma as f32 / 3600.0) * multiplier; // allows external control over simulation pacing
         let delta = delta_f.round() as i32;
         let new_remaining = (self.remaining_capacity_mah as i32 + delta)
             .clamp(0, self.full_charge_capacity_mah as i32) as u16;
@@ -251,6 +251,8 @@ What we've done here is to define a virtual battery as a set of states. These co
 We initialize our virtual battery with some constant starting values, and include a reset function that sets the values back to
 a fully charged, idle state.  We offer some helper functions to return some of the dynamic value computations and to relay
 constant string values.
+
+This virtual construction allows us to simulate stateful battery behavior without any actual hardware dependencies.
 
 Of most interest, however, is perhaps the `tick()` function that controls the simulation.
 

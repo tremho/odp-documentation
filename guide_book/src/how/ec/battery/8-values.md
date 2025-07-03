@@ -16,6 +16,8 @@ We'll be taking that out later on once we are done with this first sanity test.
 
 ## Create main.rs file for mock_battery
 
+We’ll verify our setup with a minimal `main.rs` that queries and prints battery values.
+
 In your mock_battery project create `src/main.rs` with this content:
 
 ```rust

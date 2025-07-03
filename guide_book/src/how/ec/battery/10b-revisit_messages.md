@@ -25,7 +25,7 @@ What we will do in the next few steps:
 
 Let's first define a channel type for our BatteryEvent messages.
 
-We'll put this into a separate `types.rs` file so that is is available in more than one place. We add other type definitions to this later, also:
+We'll put this into a separate `types.rs` file so that it is available in more than one place. We can add other type definitions to this later, also:
 
 ```rust
 // mock_battery/src/types.rs
@@ -168,7 +168,7 @@ impl MailboxDelegate for EspiService {
             .ok_or(MailboxDelegateError::MessageNotFound)?;
 
         // Forward the event to the battery channel    
-        self.battery_channel.try_send(*event).unwrap(); // or handle error appropriately
+        self.battery_channel.try_send(*event).unwrap(); // replace .unwrap() with proper error handling if desired
         Ok(())
     }
 }

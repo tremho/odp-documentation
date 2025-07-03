@@ -853,7 +853,7 @@ The output of `cargo run` should now be:
 So we can see that the services fire up and once the ready signal is seen, we send our test message.
 This establishes the basic skeletal flow we need to complete our service wirings and tests.
 
-
+With our components registered, we are now ready to begin testing real message flows and simulate battery behaviors under event-driven conditions.
 
 
 

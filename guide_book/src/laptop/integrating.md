@@ -7,6 +7,6 @@ covers
 - setting up QEMU as a host
 - apply the Patina Firmware we built in exercises and a bootloader
 - communicate with the EC we have constructed in exercises
-
+- boot into Windows
 - run some tests
 

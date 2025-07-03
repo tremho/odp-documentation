@@ -8,7 +8,9 @@ In subsequent steps we'll connect the battery into the supporting upstream EC se
 ## Setting up for development
 We are going to create a project space that contains a folder for our battery code, and the dependent repository clones.
 
-So, start by finding a suitable location on your local computer and create the workpace:
+We'll refer to this as __`battery_project`__.
+
+So, start by finding a suitable location on your local computer and create the workspace:
 
 ```
 mkdir battery_project
@@ -26,11 +28,10 @@ git submodule add https://github.com/OpenDevicePartnership/embedded-batteries
 ```
 
 The `embedded-batteries` repository has the subsystem service definitions for the battery defined in both 
-`embedded-batteries` and `embedded-batteries-async` crates.  We are going to use the async variant here because this is required when attaching 
-later to the `Controller`, which we will attach our battery implementation into the larger service framework.
+`embedded-batteries` and `embedded-batteries-async` crates.  We are going to use the async variant here because this is required when attaching later to the `Controller`, which we will attach our battery implementation into the larger service framework.
 
 
-Now, we can create our project space and start our own work.  Within the battery_project directory, create a folder named mock_battery and give it this project structure:
+Now, we can create our project space and start our own work.  Within the battery_project directory, create a folder named mock_battery and give it this project structure.  This will allow us to organize our own modules and dependencies cleanly:
 
 ```
 mock_battery/
