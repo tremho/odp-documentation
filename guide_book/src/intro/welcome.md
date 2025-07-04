@@ -22,7 +22,7 @@ As new standards—and potentially even government regulations—begin to push f
 Let's start by familiarizing ourselves with Rust (if you are not already),
 then we will get a high-level understanding of ODP Concepts in the [Concepts](./Concepts.md) section, which explains how the various pieces fit together.
 
-One you've familiarized yourself with the fundamentals of Rust and the concepts and scope of ODP, you are ready to explore the ODP tracks and the repositories that support each track or to dive deep into practical examples in building your own firmware components that you can later use to build your own laptop. 
+Once you've familiarized yourself with the fundamentals of Rust and the concepts and scope of ODP, you are ready to explore the ODP tracks and the repositories that support each track or to dive deep into practical examples in building your own firmware components that you can later use to build your own laptop. 
 
 Continue on to learn the concepts, or jump ahead to choose which [ODP track](../tracks.md) you will follow next.
  

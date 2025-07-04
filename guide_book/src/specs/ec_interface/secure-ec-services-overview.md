@@ -15,57 +15,18 @@ The following github projects provide sample implementations of this interface:
 The following GUID’s have been designed to represent each service
 operating in the secure partition for EC.
 
-<table>
-<thead>
-<tr class="header">
-<th>EC Service Name</th>
-<th>Service GUID</th>
-<th>Description</th>
-</tr>
-</thead>
-<tbody>
-<td>EC_SVC_MANAGEMENT</td>
-<td>330c1273-fde5-4757-9819-5b6539037502</td>
-<td>Used to query EC functionality, Board info, version, security state, FW update</td>
-</tr>
-<td>EC_SVC_POWER</td>
-<td>7157addf-2fbe-4c63-ae95-efac16e3b01c</td>
-<td>Handles general power related requests and OS Sx state transition state notification</td>
-</tr>
-<td>EC_SVC_BATTERY</td>
-<td>25cb5207-ac36-427d-aaef-3aa78877d27e</td>
-<td>Handles battery info, status, charging</td>
-</tr>
-<td>EC_SVC_THERMAL</td>
-<td>31f56da7-593c-4d72-a4b3-8fc7171ac073</td>
-<td>Handles thermal requests for skin and other thermal events</td>
-</tr>
-<td>EC_SVC_UCSI</td>
-<td>65467f50-827f-4e4f-8770-dbf4c3f77f45</td>
-<td>Handles PD notifications and calls to UCSI interface</td>
-</tr>
-<td>EC_SVC_INPUT</td>
-<td>e3168a99-4a57-4a2b-8c5e-11bcfec73406</td>
-<td>Handles wake events, power key, lid, input devices (HID separate instance)</td>
-</tr>
-<td>EC_SVC_TIME_ALARM</td>
-<td>23ea63ed-b593-46ea-b027-8924df88e92f</td>
-<td>Handles RTC and wake timers.</td>
-</tr>
-<td>EC_SVC_DEBUG</td>
-<td>0bd66c7c-a288-48a6-afc8-e2200c03eb62</td>
-<td>Used for telemetry, debug control, recovery modes, logs, etc</td>
-</tr>
-<td>EC_SVC_TEST</td>
-<td>6c44c879-d0bc-41d3-bef6-60432182dfe6</td>
-<td>Used to send commands for manufacturing/factory test</td>
-</tr>
-<td>EC_SVC_OEM1</td>
-<td>9a8a1e88-a880-447c-830d-6d764e9172bb</td>
-<td>Sample OEM custom service and example piping of events</td>
-</tr>
-</tbody>
-</table>
+| EC Service Name       | Service GUID                         | Description
+|-----------------------|--------------------------------------|----------------------
+| EC_SVC_MANAGEMENT     | 330c1273-fde5-4757-9819-5b6539037502 | Used to query EC functionality, Board info, version, security state, FW update
+| EC_SVC_POWER          | 7157addf-2fbe-4c63-ae95-efac16e3b01c | Handles general power related requests and OS Sx state transition state notification
+| EC_SVC_BATTERY        | 25cb5207-ac36-427d-aaef-3aa78877d27e | Handles battery info, status, charging
+| EC_SVC_THERMAL        | 31f56da7-593c-4d72-a4b3-8fc7171ac073 | Handles thermal requests for skin and other thermal events
+| EC_SVC_UCSI           | 65467f50-827f-4e4f-8770-dbf4c3f77f45 | Handles PD notifications and calls to UCSI interface
+| EC_SVC_INPUT          | e3168a99-4a57-4a2b-8c5e-11bcfec73406 | Handles wake events, power key, lid, input devices (HID separate instance)
+| EC_SVC_TIME_ALARM     | 23ea63ed-b593-46ea-b027-8924df88e92f | Handles RTC and wake timers.
+| EC_SVC_DEBUG          | 0bd66c7c-a288-48a6-afc8-e2200c03eb62 | Used for telemetry, debug control, recovery modes, logs, etc
+| EC_SVC_TEST           | 6c44c879-d0bc-41d3-bef6-60432182dfe6 | Used to send commands for manufacturing/factory test
+| EC_SVC_OEM1           | 9a8a1e88-a880-447c-830d-6d764e9172bb | Sample OEM custom service and example piping of events
 
 ## FFA Overview
 
@@ -98,9 +59,9 @@ The FFA device is loaded from ACPI during boot and as such requires a
 Device entry in ACPI
 
 ```
-  Name(_HID, "MSFT000C")
+  Name(_HID, "ARML0002")
 
-  OperationRegion(AFFH, FFixedHw, 4, 144) 
+  OperationRegion(AFFH, FFixedHw, 2, 144) 
   Field(AFFH, BufferAcc, NoLock, Preserve) { AccessAs(BufferAcc, 0x1), FFAC, 1152 }     
     
 
@@ -181,7 +142,7 @@ Device entry in ACPI
 
 #### HID definition
 
-The _HID “MSFT000C” is reserved for FFA devices. Defining this HID for
+The _HID “ARML0002” is reserved for FFA devices. Defining this HID for
 your device will cause the FFA interface for the OS to be loaded on this
 device.
 
@@ -195,7 +156,7 @@ mapped to FFAC is 1152 bits (144\*8) and this field is where we act
 upon.
 
 ```
-OperationRegion(AFFH, FFixedHw, 4, 144)
+OperationRegion(AFFH, FFixedHw, 2, 144)
 Field(AFFH, BufferAcc, NoLock, Preserve) { AccessAs(BufferAcc, 0x1),FFAC, 1152 }
 ```
 
@@ -214,33 +175,33 @@ sent via ACPI
 ```
 FFA_REQ_PACKET
 {
-  uint8 status; // Not used just populated so commands are symmetric
-  uint8 length; // Number of bytes in rawdata
+  uint64 status; // Output status should be zero on input
+  uint64 recvid; // Lower 16-bits is receiver ID, leave 0 for OS to populate
   uint128 UUID;
   uint8 reqdata[];
 }
 
 FFA_RSP_PACKET
 {
-  uint8 status; // Status from ACPI if FFA command was sent successfully
-  uint8 length;
+  uint64 status;      // Output status from framework, zero on success
+  uint64 sendrecvid;  // Sender and receiver ID's
   uint128 UUID;
-  uint64 ffa_status; // Status returned from the service of the FFA command
   uint8 rspdata[];
 }
 
-CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-CreateField(BUFF,16,128,UUID) // In/Out - UUID of service
-CreateDwordField(BUFF,18,FFST)// Out - FFA command status
+CreateField(BUFF,0,64,STAT) // Out – Status for req/rsp
+CreateField(BUFF,64,64,RECV) // In/Out – 16-bits for receiver ID
+CreateField(BUFF,128,128,UUID) // In/Out - UUID of service
 ```
 
-#### Register Notification
+#### Inter Partition Setup Protocol
 
 During FFA driver initialization it calls into secure world to get a
-list of all available services for each secure partition. After this we
-send a NOTIFICATION_REGISTRATION request to each SP that has a service
-which registers for notification events
+list of all available services for each secure partition. When parsing the _DSD, for
+each service UUID a notification registration is sent for each cookie defined. The
+FFA driver will assign globally unique notification ID with each cookie that the
+corresponding service must use to trigger given notification going forward.
+
 
 ```
   Name(_DSD, Package() {
@@ -276,82 +237,67 @@ used the FFA driver keeps track of this and allows each service to
 create a list of virtual ID’s they need to handle. The FFA driver then
 maps this to one of the available bits in the hardware bitmask and
 passes this mapping down to the notification service running in a given
-SP.
+SP. 
+
+Please refer to ARM documentation for full details on Inter-partition
+protocol DEN0077A_Firmware_Framework_Arm_A-profile_1.3
 
 <h3>Input</h3>
-<table>
-<thead>
-<tr class="header">
-<th><strong>Parameter </strong></th>
-<th><strong>Register </strong></th>
-<th><strong>Value </strong></th>
-</tr>
-</thead>
-<tbody>
-<td>Function<strong> </strong></td>
-<td>X4 </td>
-<td>0x1 </td>
-</tr>
-<td>UUID Lo<strong> </strong></td>
-<td>X5 </td>
-<td>Bytes [0..7] for the service UUID. </td>
-</tr>
-<td>UUID Hi<strong> </strong></td>
-<td>X6 </td>
-<td>Bytes [8..16] for the service UUID. </td>
-</tr>
-<td>Mappings Count<strong> </strong></td>
-<td>X7 </td>
-<td>The number of notification mappings </td>
-</tr>
-<td>Notification Mapping1<strong> </strong></td>
-<td>X8 </td>
-<td><p>Bits [0..16] – Notification ID. --&gt; 0,1,2,3,... </p>
-<p> </p>
-<p>Bits [16..32] – Notification Bitmap bit number (0-383).  </p></td>
-</tr>
-<td>Notification Mapping2<strong> </strong></td>
-<td>X9 </td>
-<td><p>Bits [0..16] – Notification ID. --&gt; 0,1,2,3,... </p>
-<p> </p>
-<p>Bits [16..32] – Notification Bitmap bit number (0-383). </p>
-<p> </p></td>
-</tr>
-<td>...<strong> </strong></td>
-<td>... </td>
-<td>... </td>
-</tr>
-</tbody>
-</table>
 
- 
+| Parameter  | Register  | Value                        |
+| ---------- | --------- | -------------------------------- |
+| FFA_MSG_SEND_DIRECT_REQ2  | X0 | 0xC400008D |
+| Sender/Receiver Id  | X1 | Bits[31:16]: Sender endpoint ID<br> Bits[15:0]: Receiver endpoint ID  |
+| Protocol UUID low  | X2 | Bytes[0..7] of Inter-partition setup protocol UUID  |
+| Protocol UUID high | X3 | Bytes[8..15] of Inter-partition setup protocol UUID  |
+| Reserved SBZ  | X4 | 0x0 |
+| Sender UUID low  | X5 | Bytes[0..7] of service UUID  |
+| Sender UUID high | X6 | Bytes[8..15] of service UUID  |
+| Receiver UUID low  | X7 | Bytes[0..7] of service UUID  |
+| Receiver UUID high | X8 | Bytes[8..15] of service UUID  |
+| Message Information | X9 | Bits[63:9]: Reserved MBZ<br>Bit[8]: Message Direction<br> - b'0 Request Message<br>Bits[7:3]: Reserved MBZ<br>Bits[2:0]: Message ID<br> - b'010: Notification registration for a service |
+| Cookie Information | X10 | Bits[63:9]: Bits[63:9]: Reserved MBZ<br>Bits[8:0]: Count of (cookie,notification ID) tuples<br>- 1 <= Count <= 7 |
+| Tuple Mapping | X11-xX17 | Bits[63:32]: Cookie value<br>Bits[31:23]: Notification ID associated with cookie<br>Bits[22:1]: Reserved MBZ<br>Bit[0]: Per-vcpu notification flag<br> - b'0: Notification is a global notification<br> - b'1: Notification is per-vcpu notification<br> |
+
+
 
 <h3>Output</h3>
 
 | Parameter  | Register  | Value                        |
 | ---------- | --------- | -------------------------------- |
-| Result     | X4        | 0 on success. Otherwise, Failure |
+| FFA_MSG_SEND_DIRECT_RESP2  | X0 | 0xC400008E |
+| Sender/Receiver Id  | X1 | Bits[31:16]: Sender endpoint ID<br> Bits[15:0]: Receiver endpoint ID  |
+| Protocol UUID low  | X2 | Bytes[0..7] of Inter-partition setup protocol UUID  |
+| Protocol UUID high | X3 | Bytes[8..15] of Inter-partition setup protocol UUID  |
+| Reserved SBZ  | X4 | 0x0 |
+| Sender UUID low  | X5 | Bytes[0..7] of service UUID  |
+| Sender UUID high | X6 | Bytes[8..15] of service UUID  |
+| Receiver UUID low  | X7 | Bytes[0..7] of service UUID  |
+| Receiver UUID high | X8 | Bytes[8..15] of service UUID  |
+| Message Information | X9 | Bits[63:9]: Reserved MBZ<br>Bit[8]: Message Direction<br> - b'1 Response Message<br>Bits[7:3]: Reserved MBZ<br>Bits[2:0]: Message ID<br> - b'010: Notification registration for a service |
+| Cookie Information | X10 | Bits[63:9]: Bits[63:9]: Reserved MBZ<br>Bits[8:0]: Count of (cookie,notification ID) tuples<br>- 1 <= Count <= 7 |
+| Tuple Mapping | X11-xX17 | Bits[63:32]: Cookie value<br>Bits[31:23]: Notification ID associated with cookie<br>Bits[22:1]: Reserved MBZ<br>Bit[0]: Per-vcpu notification flag<br> - b'0: Notification is a global notification<br> - b'1: Notification is per-vcpu notification<br> |
 
  
 
 Note this NOTIFICATION_REGISTER request is sent to the
-Notification Service UUID in the SP. The UUID of the service that the
+Inter-Partition Service UUID in the SP. The UUID of the service that the
 notifications are for are stored in X5/X6 registers shown above.
 
 The UUID for notification service is
-{B510B3A3-59F6-4054-BA7A-FF2EB1EAC765} which is stored in X2/X3.
+{e474d87e-5731-4044-a727-cb3e8cf3c8df} which is stored in X2/X3.
 
 #### Notification Events
 
 All notification events sent from all secure partitions are passed back
 through the FFA driver. The notification calls the _DSM method. Function 0
 is always a bitmap of all the other functions supported. We must support at
-least a minium of the Query and Notify.
+least Query and Notify.
 The UUID is stored in Arg0 and the notification cookie is stored in Arg3 when Arg2 is 11.
 ```
   Method(_DSM, 0x4, NotSerialized)
   {
-    // Arg0 - UUID
+    // Arg0 - UUID  0194daab-ab08-7d5e-aea3-854bc457606a
     // Arg1 - Revision
     // Arg2: Function Index
     //         0 - Query
@@ -367,27 +313,37 @@ The UUID is stored in Arg0 and the notification cookie is stored in Arg3 when Ar
     //
     If(LEqual(Arg0, Buffer(0x10) {
         //
-        // UUID: {7681541E-8827-4239-8D9D-36BE7FE12542}
+        // UUID: {0194daab-ab08-7d5e-aea3-854bc457606a}
         //
-        0x1e, 0x54, 0x81, 0x76, 0x27, 0x88, 0x39, 0x42, 0x8d, 0x9d, 0x36, 0xbe, 0x7f, 0xe1, 0x25, 0x42
+        0x01, 0x94, 0xda, 0xab, 0xab, 0x08, 0x7d, 0x5e, 0xae, 0xa3, 0x85, 0x4b, 0xc4, 0x57, 0x60, 0x6a
       }))
     {
       // Query Function
-      If(LEqual(Arg2, Zero)) 
+      If(LEqual(Arg2, 0x0)) 
       {
-        Return(Buffer(One) { 0x03 }) // Bitmask Query + Notify
+        Return(Buffer(One) { 0x0f }) // Bitmask Query + Notify + binding failure + infra failure
       }
       
       // Notify Function
-      If(LEqual(Arg2, One))
+      If(LEqual(Arg2, 0x1))
       {
         // Arg3 - Package {UUID, Cookie}
         Store(DeRefOf(Index(Arg3,1)), \_SB.ECT0.NEVT )
-        Return(Zero) 
       }
-    } Else {
-      Return(Buffer(One) { 0x00 })
+
+      // Binding Failure
+      If(LEqual(Arg2, 0x2))
+      {
+        // Arg3 Binding failure details
+      }
+
+      // Infra Failure
+      If(LEqual(Arg2, 0x3))
+      {
+        // Arg3 Infra failure details
+      }
     }
+    Return(Buffer(One) { 0x00 })
   }
 ```
 
@@ -397,7 +353,7 @@ notification payload can optionally be written to a shared buffer or
 ACPI can make another call back into EC service to retrieve the
 notification details.
 
-The _NFY only contains the ID of the notification and no other payload,
+In the _DSM, Arg2=1, Arg3 only contains the ID of the notification and no other payload,
 so both ACPI and the EC service must be designed either with shared
 memory buffer or a further notify data packet.
 
@@ -408,7 +364,7 @@ generated](media/image3.png)
 
 During runtime the non-secure side uses FFA_MSG_SEND_DIRECT_REQ2
 requests to send requests to a given service within an SP. Any request
-that is expected to take longer than 500 uSec should yield control back
+that is expected to take longer than 1 ms should yield control back
 to the OS by calling FFA_YIELD within the service. When FFA_YIELD is
 called it will return control back to the OS to continue executing but
 the corresponding ACPI thread will be blocked until the original FFA
@@ -430,7 +386,7 @@ generated](media/image5.png)
 ```
 FFA_REQ_PACKET req = {
   0x0, // Initialize to no error
-  0x1, // Only 1 byte of data is sent after the header
+  0x0, // Let the OS populate the sender/receiver ID
   {0x25,0xcb,0x52,0x07,0xac,0x36,0x42,0x7d,0xaa,0xef,0x3a,0xa7,0x88,0x77,0xd2,0x7e},
   0x2 // EC_BAT_GET_BST
 }
@@ -439,13 +395,11 @@ FFA_REQ_PACKET req = {
 The equivalent to write this data into a BUFF in ACPI is as follows
 
 ```
-Name(BUFF, Buffer(32){}) // Create buffer for send/recv data
-CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-CreateField(BUFF,16,128,UUID) // UUID of service
-CreateByteField(BUFF,18, CMDD) // In – First byte of command
-CreateField(BUFF,144,128,BSTD) // Out – Raw data response 4 DWords
-Store(20,LENG)
+CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+CreateField(BUFF,64,64,RECV) // In/Out – Sender/Receiver ID
+CreateField(BUFF,128,128,UUID) // UUID of service
+CreateField(BUFF,256,8,CMDD) // In – First byte of command
+CreateField(BUFF,256,128,BSTD) // Out – Raw data response 4 DWords
 Store(0x2, CMDD)
 Store(ToUUID ("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
 Store(Store(BUFF, \\_SB_.FFA0.FFAC), BUFF)
@@ -462,7 +416,7 @@ world EC Service
 typedef struct _FFA_INTERFACE {
     ULONG Version;
     PFFA_MSG_SEND_DIRECT_REQ2 SendDirectReq2;
-} FFA_INTERFACE, \*PFFA_INTERFACE;
+} FFA_INTERFACE, PFFA_INTERFACE;
 ````
 
 ### FFA Parsing
@@ -513,113 +467,98 @@ pub struct FfaParams {
 }
 ```
 
-In our SP we receive the raw FfaParams structure and we convert this to
-an FfaMsg using our translator. This pulls out the function_id,
-source_id, destination_id and uuid.
+The EC service receives all direct messages through the odp-ffa crate in DirectMessage.
+You will find this conversion into the RegisterPayload here.
 
 ```
-fn from(params: FfaParams) -> FfaMsg {
-  FfaMsg {
-    function_id: params.x0,              // Function id is in lower 32 bits of x0
-    source_id: (params.x1 >> 16) as u16, // Source in upper 16 bits
-    destination_id: params.x1 as u16,    // Destination in lower 16 bits
-    uuid: u64_to_uuid(params.x2, params.x3),
-    args64: [
-      params.x4, params.x5, params.x6, params.x7, params.x8, params.x9, params.x10,
-      params.x11, params.x12, params.x13, params.x14, params.x15, params.x16, params.x17,
-            ],
-  }
-}
+    fn try_from(value: SmcParams) -> Result<Self, Self::Error> {
+        let source_id = (value.x1 & 0xFFFF) as u16;
+        let destination_id = (value.x1 >> 16) as u16;
+
+        let uuid_high = u64::from_be(value.x2);
+        let uuid_low = u64::from_be(value.x3);
+        let uuid = Uuid::from_u64_pair(uuid_high, uuid_low);
+
+        // x4-x17 are for payload (14 registers)
+        let payload_regs = [
+            value.x4, value.x5, value.x6, value.x7, value.x8, value.x9, value.x10, value.x11, value.x12, value.x13,
+            value.x14, value.x15, value.x16, value.x17,
+        ];
+        let payload_bytes_iter = payload_regs.iter().flat_map(|&reg| u64::to_le_bytes(reg).into_iter());
+
+        let payload = RegisterPayload::from_iter(payload_bytes_iter);
+
+        Ok(DirectMessage {
+            source_id,
+            destination_id,
+            uuid,
+            payload,
+        })
+    }
 ```
 
 The destination_id is used to route the message to the correct SP, this
 is based on the ID field in the DTS description file. Eg: id =
 <0x8001>;
 
+### Embassy and Scheduling
+The Secure Partition uses embassy as the scheduler for secure partition. This
+allows us to use await and do useful work while waiting for events even when
+we only are single threaded. 
+
+Embassy depeneds on timers and interrupts for signalling events. When we don't
+have any work to do we still in the poll loop today. Optimizations can be made
+to yield control back to non-secure world in these situations.
+
 ### EC Service Parsing
 
-Within the EC partition there are several services that run, the routing
-of the FF-A request to the correct services is done by the main message
-handling loop for the secure partition. After receiving a message we
-call into ffa_msg_handler and based on the UUID send it to the
-corresponding service to handle the message.
+Within the EC partition there are several services that register their UUID
+to receive messages. You will find the main message loop and registration
+of each service in the embassy_main entry.
 
 ```
-let mut next_msg = ffa.msg_wait();
-loop {
-  match next_msg {
-    Ok(ffamsg) => match ffa_msg_handler(&ffamsg) {
-      Ok(msg) => next_msg = ffa.msg_resp(\&msg),
-      Err(_e) => panic!("Failed to handle FFA msg"),
-    },
-    Err(_e) => {
-      panic!("Error executing msg_wait");
-    }
-   }
-}
+    service_list![
+        ec_service_lib::services::Thermal::new(),
+        ec_service_lib::services::Battery::new(),
+        ec_service_lib::services::FwMgmt::new(),
+        ec_service_lib::services::Notify::new()
+    ]
+    .run_message_loop()
+    .await
+    .expect("Error in run_message_loop");
 ```
 
-The main message loop gets the response back from ffa_msg_handler and
-returns to non-secure world so the next incoming message after the
-response is a new message to handle.
+Each service must implement the following 3 functions to register and allow
+it to recieve direct messages. The following is example implementation of
+the notification service entry.
 
 ```
-fn ffa_msg_handler(msg: &FfaMsg) -> Result<FfaMsg> {
-    println!(
-        "Successfully received ffa msg:
-        function_id = {:08x}
-               uuid = {}",
-        msg.function_id, msg.uuid
-    );
+const UUID: Uuid = uuid!("e474d87e-5731-4044-a727-cb3e8cf3c8df");
 
-    match msg.uuid {
-        UUID_EC_SVC_MANAGEMENT => {
-            let fwmgmt = fw_mgmt::FwMgmt::new();
-            fwmgmt.exec(msg)
-        }
+impl Service for Notify {
+    fn service_name(&self) -> &'static str {
+        "Notify"
+    }
 
-        UUID_EC_SVC_NOTIFY => {
-            let ntfy = notify::Notify::new();
-            ntfy.exec(msg)
-        }
+    fn service_uuid(&self) -> Uuid {
+        UUID
+    }
 
-        UUID_EC_SVC_POWER => {
-            let pwr = power::Power::new();
-            pwr.exec(msg)
-        }
+    async fn ffa_msg_send_direct_req2(&mut self, msg: MsgSendDirectReq2) -> Result<MsgSendDirectResp2> {
+        let req: NotifyReq = msg.clone().into();
+        debug!("Received notify command: {:?}", req.msg_info.message_id());
 
-        UUID_EC_SVC_BATTERY => {
-            let batt = battery::Battery::new();
-            batt.exec(msg)
-        }
+        let payload = match req.msg_info.message_id() {
+            MessageID::Setup => RegisterPayload::from(self.nfy_setup(req)),
+            MessageID::Destroy => RegisterPayload::from(self.nfy_destroy(req)),
+            _ => {
+                error!("Unknown Notify Command: {:?}", req.msg_info.message_id());
+                return Err(odp_ffa::Error::Other("Unknown Notify Command"));
+            }
+        };
 
-        UUID_EC_SVC_THERMAL => {
-            let thm = thermal::ThmMgmt::new();
-            thm.exec(msg)
-        }
-
-        UUID_EC_SVC_UCSI => {
-            let ucsi = ucsi::UCSI::new();
-            ucsi.exec(msg)
-        }
-
-        UUID_EC_SVC_TIME_ALARM => {
-            let alrm = alarm::Alarm::new();
-            alrm.exec(msg)
-        }
-
-        UUID_EC_SVC_DEBUG => {
-            let dbg = debug::Debug::new();
-            dbg.exec(msg)
-        }
-
-        UUID_EC_SVC_OEM => {
-            let oem = oem::OEM::new();
-            oem.exec(msg)
-        }
-
-        _ => panic!("Unknown UUID"),
-    }
+        Ok(MsgSendDirectResp2::from_req_with_payload(&msg, payload))
+    }
 }
 ```
 
@@ -873,15 +812,11 @@ the data in the RX buffer.
 ```
 Method(ASYC, 0x0, Serialized) {
   If(LEqual(\\_SB.FFA0.AVAL,One)) {
-  Name(BUFF, Buffer(30){})
-  CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-  CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-  CreateField(BUFF,16,128,UUID) // UUID of service
-  CreateByteField(BUFF,18,CMDD) // Command register
-  CreateWordField(BUFF,19,BSQN) // Sequence Number
+  CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+  CreateField(BUFF,128,128,UUID) // UUID of service
+  CreateByteField(BUFF,32,CMDD) // Command register
+  CreateWordField(BUFF,33,BSQN) // Sequence Number
 
-  // x0 -\> STAT
-  Store(20, LENG)
   Store(0x0, CMDD) // EC_ASYNC command
   Local0 = QTXB(BUFF,20) // Copy data to our queue entry and get back SEQN
   Store(Local0,BSQN) // Sequence packet to read from shared memory

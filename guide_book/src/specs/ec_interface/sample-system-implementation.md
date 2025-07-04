@@ -4,8 +4,8 @@
 
 ### FFA Device Definition
 
-```rust
-Device(\\_SB_.FFA0) {
+```
+Device(\_SB_.FFA0) {
   Name(_HID, "MSFT000C")
   OperationRegion(AFFH, FFixedHw, 4, 144)
   Field(AFFH, BufferAcc, NoLock, Preserve) { AccessAs(BufferAcc, 0x1), FFAC, 1152 }
@@ -41,7 +41,7 @@ Device(\\_SB_.FFA0) {
     If(LEqual(ToUUID("330c1273-fde5-4757-9819-5b6539037502"),Arg0)) {
       Switch(Arg1) {
         Case(1) { // Test Notification Event
-          Notify(\\_SB.ECT0,0x20)
+          Notify(\_SB.ECT0,0x20)
         }
       }
     }
@@ -50,13 +50,13 @@ Device(\\_SB_.FFA0) {
     If(LEqual(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"),Arg0)) {
       Switch(Arg1) {
         Case(1) { // Temp crossed low threshold
-          Notify(\\_SB.SKIN,0x80)
+          Notify(\_SB.SKIN,0x80)
         }
         Case(2) { // Temp crossed high threshold
-          Notify(\\_SB.SKIN,0x81)
+          Notify(\_SB.SKIN,0x81)
         }
         Case(3) { // Critical temperature event
-          Notify(\\_SB.SKIN,0x82)
+          Notify(\_SB.SKIN,0x82)
         }
       }
     }
@@ -65,7 +65,7 @@ Device(\\_SB_.FFA0) {
     If(LEqual(ToUUID("e3168a99-4a57-4a2b-8c5e-11bcfec73406"),Arg0)) {
       Switch(Arg1) {
         Case(1) { // LID event
-          Notify(\\_SB._LID,0x80)
+          Notify(\_SB._LID,0x80)
         }
       }
     }
@@ -86,6 +86,9 @@ Device(USBC) {
   Name(_UID,1)
   Name(_DDN, “USB Type-C”)
   Name(_ADR,0x0)
+
+  Name(BUFF, Buffer(144){}) // Create buffer for FFA data
+
   OperationRegion(USBC, SystemMemory, UCSI_PHYS_MEM, 0x30)
   Field(USBC,AnyAcc,Lock,Preserve)
   {
@@ -105,18 +108,16 @@ Device(USBC) {
     If(LEqual(Arg0,ToUUID(“6f8398c2-7ca4-11e4-ad36-631042b5008f”)))
     {
       // Use FFA to send Notification event down to copy data to EC
-      If(LEqual(\\_SB.FFA0.AVAL,One)) {
-        Name(BUFF, Buffer(144){}) // Create buffer for send/recv data
-        CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-        CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-        CreateField(BUFF,16,128,UUID) // UUID of service
-        CreateByteField(BUFF,18, CMDD) // In – First byte of command
-        CreateField(BUFF,144,1024,FIFD) // Out – Msg data
+      If(LEqual(\_SB.FFA0.AVAL,One)) {
+        CreateQwordField(BUFF,0,STAT) // Out – Status for req/rsp
+        CreateField(BUFF,128,128,UUID) // UUID of service
+        CreateByteField(BUFF,32, CMDD) // In – First byte of command
+        CreateField(BUFF,288,384,FIFD) // Out – Msg data
 
         // Create Doorbell Event
-        Store(20, LENG)
         Store(0x0, CMDD) // UCSI set doorbell
         Store(ToUUID("daffd814-6eba-4d8c-8a91-bc9bbf4aa301"), UUID)
+        Store(USBC,FIFD)
         Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
       } // End AVAL
     } // End UUID
@@ -135,20 +136,17 @@ Device(SKIN) {
   Name(_HID, "MSFT000A")
 
   Method(_TMP, 0x0, Serialized) {
-    If(LEqual(\\_SB.FFA0.AVAL,One)) {
-      Name(BUFF, Buffer(30){})
-      CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-      CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-      CreateField(BUFF,16,128,UUID) // UUID of service
-      CreateByteField(BUFF,18,CMDD) // Command register
-      CreateByteField(BUFF,19,TZID) // Temp Sensor ID
-      CreateDWordField(BUFF,26,RTMP) // Output Data
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateQwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) // Command register
+      CreateByteField(BUFF,33,TZID) // Temp Sensor ID
+      CreateDWordField(BUFF,32,RTMP) // Output Data
 
-      Store(20, LENG)
       Store(0x1, CMDD) // EC_THM_GET_TMP
       Store(0x2, TZID) // Temp zone ID for SKIIN
       Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID)
-      Store(Store(BUFF, \\_SB_.FFA0.FFAC), BUFF)
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
 
       If(LEqual(STAT,0x0) ) // Check FF-A successful?
       {
@@ -161,26 +159,23 @@ Device(SKIN) {
   // Arg0 Temp sensor ID
   // Arg1 Package with Low and High set points
   Method(THRS,0x2, Serialized) {
-    If(LEqual(\\_SB.FFA0.AVAL,One)) {
-      Name(BUFF, Buffer(32){})
-      CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-      CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-      CreateField(BUFF,16,128,UUID) // UUID of service
-      CreateByteField(BUFF,18,CMDD) // Command register
-      CreateByteField(BUFF,19,TZID) // Temp Sensor ID
-      CreateDwordField(BUFF,20,VTIM) // Timeout
-      CreateDwordField(BUFF,24,VLO) // Low Threshold
-      CreateDwordField(BUFF,28,VHI) // High Threshold
-      CreateDWordField(BUFF,18,TSTS) // Output Data
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateQwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) // Command register
+      CreateByteField(BUFF,33,TZID) // Temp Sensor ID
+      CreateDwordField(BUFF,34,VTIM) // Timeout
+      CreateDwordField(BUFF,38,VLO) // Low Threshold
+      CreateDwordField(BUFF,42,VHI) // High Threshold
+      CreateDWordField(BUFF,46,TSTS) // Output Data
 
       Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID)
-      Store(32, LENG)
       Store(0x2, CMDD) // EC_THM_SET_THRS
       Store(Arg0, TZID)
       Store(DeRefOf(Index(Arg1,0)),VTIM)
       Store(DeRefOf(Index(Arg1,1)),VLO)
       Store(DeRefOf(Index(Arg1,2)),VHI)
-      Store(Store(BUFF, \\_SB_.FFA0.FFAC), BUFF)
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
 
       If(LEqual(STAT,0x0) ) // Check FF-A successful?
       {
@@ -216,24 +211,21 @@ Device(THRM) {
   // Arg1 UUID of variable
   // Return (Status,Value)
   Method(GVAR,2,Serialized) {
-    If(LEqual(\\_SB.FFA0.AVAL,One)) {
-      Name(BUFF, Buffer(38){})
-      CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-      CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-      CreateField(BUFF,16,128,UUID) // UUID of service
-      CreateByteField(BUFF,18,CMDD) // Command register
-      CreateByteField(BUFF,19,INST) // Instance ID
-      CreateWordField(BUFF,20,VLEN) // 16-bit variable length
-      CreateField(BUFF,176,128,VUID) // UUID of variable to read
-      CreateField(BUFF,208,64,RVAL) // Output Data
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateQwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) // Command register
+      CreateByteField(BUFF,33,INST) // Instance ID
+      CreateWordField(BUFF,34,VLEN) // 16-bit variable length
+      CreateField(BUFF,288,128,VUID) // UUID of variable to read
+      CreateQwordField(BUFF,52,64,RVAL) // Output Data
 
       Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID)
-      Store(38, LENG)
       Store(0x5, CMDD) // EC_THM_GET_VAR
       Store(Arg0,INST) // Save instance ID
       Store(4,VLEN) // Variable is always DWORD here
       Store(Arg1, VUID)
-      Store(Store(BUFF, \\_SB_.FFA0.FFAC), BUFF)
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
 
       If(LEqual(STAT,0x0) ) // Check FF-A successful?
       {
@@ -247,26 +239,23 @@ Device(THRM) {
   // Arg1 UUID of variable
   // Return (Status,Value)
   Method(SVAR,3,Serialized) {
-    If(LEqual(\\_SB.FFA0.AVAL,One)) {
-      Name(BUFF, Buffer(42){})
-      CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-      CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-      CreateField(BUFF,16,128,UUID) // UUID of service
-      CreateByteField(BUFF,18,CMDD) // Command register
-      CreateByteField(BUFF,19,INST) // Instance ID
-      CreateWordField(BUFF,20,VLEN) // 16-bit variable length
-      CreateField(BUFF,176,128,VUID) // UUID of variable to read
-      CreateDwordField(BUFF,38,DVAL) // Data value
-      CreateField(BUFF,208,32,RVAL) // Ouput Data
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateQwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) // Command register
+      CreateByteField(BUFF,33,INST) // Instance ID
+      CreateWordField(BUFF,34,VLEN) // 16-bit variable length
+      CreateField(BUFF,288,128,VUID) // UUID of variable to Write
+      CreateQwordField(BUFF,52,64,RVAL) // Output Data
+      CreateDwordField(BUFF,60,DVAL) // Data value
 
       Store(ToUUID("31f56da7-593c-4d72-a4b3-8fc7171ac073"), UUID)
-      Store(42, LENG)
       Store(0x6, CMDD) // EC_THM_SET_VAR
       Store(Arg0,INST) // Save instance ID
       Store(4,VLEN) // Variable is always DWORD here
       Store(Arg1, VUID)
       Store(Arg2,DVAL)
-      Store(Store(BUFF, \\_SB_.FFA0.FFAC), BUFF)
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
 
       If(LEqual(STAT,0x0) ) // Check FF-A successful?
       {
@@ -359,7 +348,7 @@ Device(EC0) {
     Memory32Fixed (ReadWrite, 0x100000, 0x10) // Used for simulated port access
     Memory32Fixed (ReadWrite, 0x100010, 0x10)
     // Interrupt defined for eSPI event signalling
-    GpioInt(Edge, ActiveHigh, ExclusiveAndWake,PullUp 0,"\\_SB.GPI2"){43} 
+    GpioInt(Edge, ActiveHigh, ExclusiveAndWake,PullUp 0,"\_SB.GPI2"){43} 
   })
 
   Name(_GPE, 0) // GPE index for this EC
@@ -385,10 +374,10 @@ Device(EC0) {
   Method (_BST) {
     Name (BSTD, Package (0x4)
     {
-      \\_SB.PCI0.ISA0.EC0.BST1, // Battery State
-      \\_SB.PCI0.ISA0.EC0.BST2, // Battery Present Rate
-      \\_SB.PCI0.ISA0.EC0.BST3, // Battery Remaining Capacity
-      \\_SB.PCI0.ISA0.EC0.BST4, // Battery Present Voltage
+      \_SB.PCI0.ISA0.EC0.BST1, // Battery State
+      \_SB.PCI0.ISA0.EC0.BST2, // Battery Present Rate
+      \_SB.PCI0.ISA0.EC0.BST3, // Battery Remaining Capacity
+      \_SB.PCI0.ISA0.EC0.BST4, // Battery Present Voltage
     })
     Return(BSTD)
   }
@@ -410,7 +399,7 @@ corresponding _Qxx event function is called.
 ```rust
 Method (_Q07) {
   // Take action for event 7
-  Notify(\\_SB._LID, 0x80)
+  Notify(\_SB._LID, 0x80)
 }
 ```
 
@@ -426,30 +415,29 @@ be convert to a peripheral access with the same IO port and offset as
 non-secure definition.
 
 #### Secure eSPI READ
-```rust
-Method (_BST) {
-  // Check to make sure FFA is available and not unloaded
-  If(LEqual(\\_SB.FFA0.AVAL,One)) {
-    Name(BUFF, Buffer(32){}) // Create buffer for send/recv data
-    CreateByteField(BUFF,0,STAT) // Out – Status for req/rsp
-    CreateByteField(BUFF,1,LENG) // In/Out – Bytes in req, updates bytes returned
-    CreateField(BUFF,16,128,UUID) // UUID of service
-    CreateByteField(BUFF,18, CMDD) // In – First byte of command
-    CreateDwordField(BUFF,19, BMA1) // In – Averaging Interval
-    CreateField(BUFF,144,128,BSTD) // Out – 4 DWord BST data
+```
+  Method (_BST, 0, Serialized) {
+    // Check to make sure FFA is available and not unloaded
+    If(LEqual(\_SB.FFA0.AVAL,One)) {
+      CreateDwordField(BUFF,0,STAT) // Out – Status for req/rsp
+      CreateField(BUFF,128,128,UUID) // UUID of service
+      CreateByteField(BUFF,32,CMDD) //  In – First byte of command
+      CreateDwordField(BUFF,32,BST0)  // Out – Battery State DWord
+      CreateDwordField(BUFF,36,BST1)  // Out – Battery Rate DWord
+      CreateDwordField(BUFF,40,BST2)  // Out – Battery Reamining Capacity DWord
+      CreateDwordField(BUFF,44,BST3)  // Out – Battery Voltage DWord
 
-    Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID) // Battery
-    Store(42, LENG)
-    Store(0x6, CMDD) // EC_BAT_GET_BST
-    Store(Store(BUFF, \\_SB_.FFA0.FFAC), BUFF)
+      Store(0x2, CMDD) //EC_BAT_GET_BST
+      Store(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"), UUID)
 
-    If(LEqual(STAT,0x0) ) // Check FF-A successful?
-    {
-    Return (BMAD)
-    } 
-  } 
-  Return(Zero)
-}
+      Store(Store(BUFF, \_SB_.FFA0.FFAC), BUFF)
+      If(LEqual(STAT,0x0) ) // Check FF-A successful?
+      {
+        return(Package() {BST0, BST1, BST2, BST3} )
+      }
+    }
+    Return(Package() {0,0,0,0})
+  }
 ```
 
 ![A diagram of a communication system AI-generated content may be
@@ -464,17 +452,48 @@ ACPI converts this to Qxx callback. On secure platform this is converted
 to a virtual ID and sent back to the OS via _NFY callback and a virtual
 ID.
 
-```rust
-Method(_NFY, 2, Serialized) {
-  // Arg0 == UUID
-  // Arg1 == Notify ID
-  If(LEqual(ToUUID("25cb5207-ac36-427d-aaef-3aa78877d27e"),Arg0)) {
-    If(LEqual(0x2,Arg1)) {
-      Store(Arg1, \\_SB.ECT0.NEVT)
-      Notify(\\_SB._LID, 0x80)
+```
+  Method(_DSM, 0x4, NotSerialized)
+  {
+    // Arg0 - UUID
+    // Arg1 - Revision
+    // Arg2: Function Index
+    //         0 - Query
+    //         1 - Notify
+    //         2 - binding failure
+    //         3 - infra failure    
+    // Arg3 - Data
+  
+    //
+    // Device specific method used to query
+    // configuration data. See ACPI 5.0 specification
+    // for further details.
+    //
+    If(LEqual(Arg0, Buffer(0x10) {
+        //
+        // UUID: {7681541E-8827-4239-8D9D-36BE7FE12542}
+        //
+        0x1e, 0x54, 0x81, 0x76, 0x27, 0x88, 0x39, 0x42, 0x8d, 0x9d, 0x36, 0xbe, 0x7f, 0xe1, 0x25, 0x42
+      }))
+    {
+      // Query Function
+      If(LEqual(Arg2, Zero)) 
+      {
+        Return(Buffer(One) { 0x03 }) // Bitmask Query + Notify
+      }
+      
+      // Notify Function
+      If(LEqual(Arg2, One))
+      {
+        // Arg3 - Package {UUID, Cookie}
+        Store(DeRefOf(Index(Arg3,1)), \_SB.ECT0.NEVT )
+        If(LEqual(0x2,\_SB.ECT0.NEVT)) {
+          Notify(\_SB._LID, 0x80)
+        }
+      }
     }
+    Return(Buffer(One) { 0x00 })
   }
-}
 ```
 
 ![A diagram of a event AI-generated content may be

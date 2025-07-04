@@ -10,8 +10,6 @@
     - [Concepts](./intro/concepts/Concepts.md)
         - [A Quick Look at Rust](./intro/concepts/rust_quick_look.md)
         - [Patina](./intro/concepts/patina.md)
-            - [Patina Evolution](./intro/concepts/patina_evolution.md)
-            - [Patina Resources](./intro/concepts/patina_resources.md)
         - [Embedded Controller](./intro/concepts/Embedded_controller.md)
         - [EC Services](./intro/concepts/EC_Services.md) 
             -[EC Services Example](./intro/concepts/ec_services_example/ec_services_example.md)
@@ -88,16 +86,6 @@
             -[Flashing](./how/ec/embedded_target/embedded_flashing.md)
             -[Testing](./how/ec/embedded_target/embedded_testing.md)
 
-    - [Patina](./how/patina/overview.md)
-        - [Setting up for Patina](./how/patina/tree/setting_up_for_patina.md)
-        - [Patina-dxe-core-qemu Code](./how/patina/tree/patina-dxe-core-qemu_code.md)
-        - [Creating_a_Component](./how/patina/tree/creating_a_component.md)
-        - [Using the Patina FW Patcher](./how/patina/tree/using_patina_fw_patcher.md)
-            
-        - [Security](./how/patina/security.md)
-        - [Runtime](./how/patina/runtime.md)
-        - [Booting into Windows](./how/patina/windows.md)
-
     - [Integrating the Virtual Laptop](./laptop/integrating.md)
 - [Summary and Takeaways](./conclusions.md)
 
@@ -117,6 +105,6 @@
         - [EC Debug Service](./specs/ec_interface/ec-debug-service.md)
         - [EC Manufacturing Service](./specs/ec_interface/ec-manufacturing-service.md)
         - [EC OEM Service](./specs/ec_interface/ec-oem-service.md)
-        - [Sample System Implementation](sample-system-implementation.md)
+        - [Sample System Implementation](./specs/ec_interface/sample-system-implementation.md)
 
 
