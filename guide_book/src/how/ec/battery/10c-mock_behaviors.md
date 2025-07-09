@@ -6,33 +6,7 @@ We now have the component parts of our battery subsystem assembled and it is rea
 For right now, we are going to continue to make use of our `println!` output in our std context to show us the data our battery
 produces in response to the messages it receives.
 
-#### Handling static data
-Our current test message is `PollStaticData`.  The data from this message is typically cached so that it does not have to do hardware access on each request.  We'll implement a simple cache here.
-
-In your `main.rs` file, add the following imports:
-
-```rust
-use embassy_sync::mutex::Mutex;
-use battery_service::device::StaticBatteryMsgs;
-```
-and add this to your static section:
-
-```rust
-static STATIC_BATTERY_DATA: StaticCell<Mutex<NoopRawMutex, Option<StaticBatteryMsgs>>> = StaticCell::new();
-```
-This will set up a static storage space we can use as our cache.
-
-In `main()`, init this:
-
-```rust
-let static_data_mutex = STATIC_BATTERY_DATA.init(Mutex::new(None));
-```
-and include it as an additional parameter to event_handler_task:
-
-```rust
-    spawner.spawn(event_handler_task(controller_for_handler, battery_channel_for_handler, static_data_mutex)).unwrap();
-```
-update the event handler:
+Update the event handler so that we print what we get for `PollStaticData`:
 ```rust
 #[embassy_executor::task]
 async fn event_handler_task(
@@ -50,18 +24,8 @@ async fn event_handler_task(
         match event.event {
             BatteryEventInner::PollStaticData => {
                 println!("🔄 Handling PollStaticData");
-                let _ = controller.get_static_data().await;
-
-                let mut lock = static_data.lock().await;
-                if lock.is_none() {
-                    println!("📊 Fetching static battery data for the first time");
-                    let result = controller.get_static_data().await;
-                    *lock = Some(result.unwrap()); // or handle error properly
-                }
-
-                if let Some(cached) = &*lock {
-                    println!("📊 Static battery data: {:?}", cached);
-                }
+                let sd  = controller.get_static_data(). await;
+                println!("📊 Static battery data: {:?}", sd);
             }
             BatteryEventInner::PollDynamicData => {
                 println!("🔄 Handling PollDynamicData");
@@ -79,7 +43,8 @@ async fn event_handler_task(
     }
 }
 ```
-Now it will check the cache, and if not filled, call upon the controller to get the static data, cache it, and print it out.
+Note that in an actual battery implementation, it is common to cache this static data after the first fetch to avoid the 
+overhead of interrogating the hardware for this unchanging data each time. We are not doing that here, as it would be superfluous to our virtual implementation.
 
 Output now should look like:
 
@@ -106,9 +71,9 @@ Output now should look like:
 
 We can see the data is all zeroes.
 
-___But wait! Didn't we populate MockBattery with some arbitrary, but non-zero values?___
+___But wait! Didn't we create our `VirtualBatteryState` with meaningful values and implement `MockBattery` to use it?___
 
-Yes.  We did.  And we made sure our MockBatteryController forwarded all of its `SmartBattery` traits to its inner battery.
+Yes.  We did.  And we made sure our `MockBatteryController` forwarded all of its `SmartBattery` traits to its inner battery.
 But we did not implement the `BatteryController` traits for this with anything other than default (0) values.
 
 ### Implementing `get_static_data` at the `MockBatteryController`
@@ -194,7 +159,7 @@ MockBatteryController: Fetching static data
 📊 Static battery data: Ok(StaticBatteryMsgs { manufacturer_name: [77, 111, 99, 107, 66, 97, 116, 116, 101, 114, 121, 67, 111, 114, 112, 0, 0, 0, 0, 0, 0], device_name: [77, 66, 45, 52, 50, 48, 48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], device_chemistry: [76, 73, 79, 78, 0], design_capacity_mwh: 5000, design_voltage_mv: 7800, device_chemistry_id: [1, 2], serial_num: [0, 0, 48, 57] })
 ```
 
-So, very good.  Now we can do essentially the same thing for `get_dynamic_data`.
+So, very good. Crude, but effective. Now we can do essentially the same thing for `get_dynamic_data`.
 
 First, let's issue the `PollDynamicData` message.  This is just temporary, so just add this to the bottom of your
 existing `test_message_sender` task:
@@ -297,12 +262,99 @@ Now, implement into `mock_battery_controller.rs` in the `Controller` implementat
 ```
 You can see that this is similar to what was done for `get_static_data`.
 
-Now run and you will see representative values that come from your current `MockBattery` implementation:
+Now run and you will see representative values that come from your current `MockBattery`/`VirtualBatteryState` implementation:
 
 ```
 🔄 Handling PollDynamicData
 MockBatteryController: Fetching dynamic data
-📊 Static battery data: Ok(DynamicBatteryMsgs { max_power_mw: 0, sus_power_mw: 0, full_charge_capacity_mwh: 4800, remaining_capacity_mwh: 4200, relative_soc_pct: 88, cycle_count: 100, voltage_mv: 7500, max_error_pct: 1, battery_status: 0, charging_voltage_mv: 8400, charging_current_ma: 2000, battery_temp_dk: 2950, current_ma: 1500, average_current_ma: 1400 })
+📊 Static battery data: Ok(DynamicBatteryMsgs { max_power_mw: 0, sus_power_mw: 0, full_charge_capacity_mwh: 4800, remaining_capacity_mwh: 4800, relative_soc_pct: 100, cycle_count: 0, voltage_mv: 4200, max_error_pct: 1, battery_status: 0, charging_voltage_mv: 8400, charging_current_ma: 2000, battery_temp_dk: 2982, current_ma: 0, average_current_ma: 0 })
 ```
+
+## Starting a simulation
+
+So now we can see the values of tha battery, but our virtual battery does not experience time naturally, so we need to 
+advance it along its way to observe its simulated behaviors.
+
+You no doubt recall the `tick()` function in `virtual_battery.rs` that performs all of our virtual battery simulation actions.
+
+We now will create a new task in `main.rs` to spawn to advance time for our battery.
+
+Add this task at the bottom of `main.rs`: 
+
+```rust
+#[embassy_executor::task]
+async fn simulation_task(
+    battery: &'static MockBattery,
+    multiplier: f32
+) {
+    loop {
+        {
+            let mut state = battery.state.lock().await;
+            
+            // Simulate current draw (e.g., discharge at 1200 mA)
+            state.set_current(-1200);
+            
+            // Advance the simulation by one tick
+            println!("calling tick...");
+            state.tick(multiplier);
+        }
+
+        // Simulate once per second
+        Timer::after(Duration::from_secs(1)).await;
+    }
+}
+```
+and near the top, add this import:
+
+```rust
+use embassy_time::{Timer, Duration};
+```
+
+This task takes passed-in references to the battery and also a 'multiplier' that determines how fast the simulaton runs (effectively the number of seconds computed for the tick operation)
+
+So let's call that in our `spawn` block with
+
+```rust
+    spawner.spawn(simulation_task(battery_for_sim.inner_battery(), 10.0)).unwrap();
+```
+creating the `battery_for_sim` value as another copy of `battery` in the section above:
+
+```rust
+    let battery_for_sim: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const _ as *mut _) };
+```
+      
+Now we want to look at the dynamic values of the battery over time.  To continue our crude but effective `println!` output
+for this, let's modify our `test_message_sender` again, this time wrapping the existing call to issue the `PollDynamicData` message in a loop that repeats every few seconds:
+
+```rust
+    loop {
+            // now for the dynamic data:
+            let event2 = BatteryEvent {
+                device_id: DeviceId(1),
+                event: BatteryEventInner::PollDynamicData,
+            };
+
+            if let Err(e) = svc.endpoint.send(
+                EndpointID::Internal(embedded_services::comms::Internal::Battery),
+                &event2,
+            ).await {
+                println!("❌ Failed to send test BatteryEvent: {:?}", e);
+            } else {
+                println!("✅ Test BatteryEvent sent");
+            }
+
+            embassy_time::Timer::after(embassy_time::Duration::from_millis(3000)).await;
+        }
+```
+
+When you run now, you will see repeated outputs of the dynamic data and you will note the values changing as the
+simulation (running at 10x speed) shows the effect of a 1200 ma current draw over time.
+
+Note the relative_soc_pct slowing decreasing from 100% in pace with the remaining_capacity_mwh value, the voltage slowly decaying, and the temperature increasing.
+
+While this simulation with the `println!` outputs have been helpful in building a viable battery simulator that could fit into the component model of an embedded controller integration, it is not a true substitute for actual unit tests, so we
+will do that next.
+
+
 
 

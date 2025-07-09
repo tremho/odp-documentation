@@ -39,9 +39,9 @@ async fn main() {
 and type `cargo run` to build and execute it.
 After it builds and runs successfully, you should see output similar to this:
 ```
-Voltage: 7500 mV
-State of Charge: 88%
-Temperature: 2950 deci-K
+Voltage: 4200 mV
+State of Charge: 100%
+Temperature: 2982 deci-K
 ```
 This test of course simply proves that we can call into our SmartBattery implementation and get the values out of it that we've defined there.
 

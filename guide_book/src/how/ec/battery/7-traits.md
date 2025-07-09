@@ -206,15 +206,11 @@ The code in `mock_battery.rs` starts out with a `use` statement that imports wha
 
 The next section defines a simple custom error type for use in our mock battery implementation. This MockBatteryError enum currently has no variants — it serves as a placeholder that allows our code to conform to the expected error traits used by the broader embedded_batteries framework.
 
-<<<<<<< HEAD
 By implementing core::fmt::Display, we ensure that error messages can be printed in a readable form (here, just "MockBatteryError"). Then, by implementing the embedded_batteries::smart_battery::Error trait, we allow this error to be returned in contexts where the smart battery interface expects a well-formed error object. The .kind() method returns ErrorKind::Other to indicate a generic error category.
-=======
-By implementing `core::fmt::Display`, we ensure that error messages can be printed in a readable form (here, just "MockBatteryError") while we are building and running from our local machine in a std environment. Then, by implementing the `embedded_batteries::smart_battery::Error` trait, we allow this error to be returned in contexts where the smart battery interface expects a well-formed error object. The `.kind()` method returns `ErrorKind::Other` to indicate a generic error category.
->>>>>>> fe85480 (Ready for pre-test and test)
 
 This scaffolding allows our mock implementation to slot into the service framework cleanly, even if the actual logic is still forthcoming.
 
-Finally, we get to the SmartBattery implementation for our MockBattery.  As you might guess, this simply implements each of the functions of the trait as declared, by simply returning an arbitrary representative return value for each.  We'll make these values more meaningful later, but for now, it's pretty minimalist.
+Finally, we get to the SmartBattery implementation for our MockBattery.  As you might guess, this simply implements each of the functions of the trait as declared, by simply returning an arbitrary representative return value for each.  We'll make these values more meaningful in the next step, but for now, it's pretty minimalist.
 
 ## Now to expose this to the service
 

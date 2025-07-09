@@ -30,25 +30,29 @@ We'll put this into a separate `types.rs` file so that is is available in more t
 ```rust
 // mock_battery/src/types.rs
 
+use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 use embassy_sync::channel::Channel;
-use embassy_sync::blocking_mutex::raw::NoopRawMutex;
+use battery_service::context::BatteryEvent;
 
-pub type BatteryChannel = Channel<NoopRawMutex, BatteryEvent, 4>;
+pub type BatteryChannel = Channel<ThreadModeRawMutex, BatteryEvent, 4>;
 ```
 and add this to `lib.rs`
 
 ```rust
 pub mod mock_battery;
+pub mod virtual_battery;
 pub mod mock_battery_device;
 pub mod espi_service;
 pub mod mock_battery_controller;
 pub mod types;
 ```
 
-Now, in our `main.rs` file, add this import
+Now, in our `main.rs` file, add these imports:
 
 ```rust
 use mock_battery::types::BatteryChannel;
+use embassy_sync::channel::Channel;
+use battery_service::controller::Controller;
 ```
 
 and down below, along with the other static allocations, add:
@@ -56,13 +60,13 @@ and down below, along with the other static allocations, add:
 static BATTERY_EVENT_CHANNEL: StaticCell<BatteryChannel> = StaticCell::new();
 ```
 
-init and get references to it in our `main()`. 
+Then create `init` and `get` references to it in our `main()`. 
 We'll need one for passing to our `EspiService` and one for our event handler task.
 We will also need another copy of our controller reference to send to the event handler task.
 
 ```rust
     let battery_channel = BATTERY_EVENT_CHANNEL.init(Channel::new());
-    let battery_channnel_for_handler = unsafe { &mut *(battery_channel as *const _ as *mut _) };
+    let battery_channel_for_handler = unsafe { &mut *(battery_channel as *const _ as *mut _) };
     let controller_for_handler = unsafe { &mut *(controller as *const _ as *mut _) };
 ```
 Let's go ahead and call the spawns for these tasks now in the `run()` spawn list:
@@ -128,12 +132,21 @@ Now, to update `espi_service.rs`:
 Update these sections of your current `espi_service.rs` code to match each of these blocks where they occur:
 
 ```rust
-use mock_battery::types::BatteryChannel;
+use battery_service::context::{BatteryEvent, BatteryEventInner};
+use battery_service::device::DeviceId;
+use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
+use embassy_sync::signal::Signal;
+use embedded_services::comms::{self, EndpointID, Internal, MailboxDelegate, MailboxDelegateError, Message};
+
+use core::sync::atomic::{AtomicBool, Ordering};
+use static_cell::StaticCell;
+
+use crate::types::BatteryChannel;
 
 pub struct EspiService {
     pub endpoint: comms::Endpoint,
     battery_channel: &'static mut BatteryChannel,
-    _signal: Signal<NoopRawMutex, BatteryEvent>
+    _signal: Signal<ThreadModeRawMutex, BatteryEvent>
 }
 impl EspiService {
     pub fn new(battery_channel: &'static mut BatteryChannel) -> Self {
@@ -155,7 +168,7 @@ impl MailboxDelegate for EspiService {
             .ok_or(MailboxDelegateError::MessageNotFound)?;
 
         // Forward the event to the battery channel    
-        self.battery_channel.try_send(*event).unwrap(); // or handle error appropriately
+        self.battery_channel.try_send(*event).unwrap(); // replace .unwrap() with proper error handling if desired
         Ok(())
     }
 }
@@ -189,6 +202,6 @@ With these updates, you should be able to run and see this output:
 🔄 Handling PollStaticData
 ```
 
-We have everything in place, but we're still not doing anything with the message we receive, but we can see that our event handler is indeed receiving it.
+We have everything in place, and although we're still not doing anything with the message we receive, we can see that our event handler is indeed receiving it.
 
 Next we will start the steps for handling the data.

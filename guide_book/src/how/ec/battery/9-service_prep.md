@@ -1,37 +1,32 @@
 # Battery Service Preparation
 
-
----------------
-_TODO: 
-This section needs to be revisited and rewritten to support a successful 'standard' build - earlier attempts at 
-including some of the dependencies in a std environment failed, and so this was written to build for the embedded target
-at this premature phase.  We want to build the battery complete before switching to the embedded context though._
-
------------------
-
 We've successfully exposed and proven our implementation of battery traits and their values for our mock battery,
 and built for an embedded target.
 In this step, we'll continue our integration by connecting to a battery service, but that requires some setup to cover first.
 
 ## Battery-service
-The ODP repository `embedded-services` has the `battery-service` we need for this, as well as the power-policy infracture support that uses it.
+The ODP repository `embedded-services` has the `battery-service` we need for this, as well as the power-policy infrastructure support that uses it.
 
-The ODP repository `embedded-cfu` is also needed here,
-as is `embedded-usb-pd`.
+We already have our `embedded-batteries` submodule in our project space from the first steps. We'll do the same thing to bring in what we need from `embedded-services`.
 
-We will bring these into our scope now.
+We will also need the repositories `embedded-cfu`, and `embedded-usb-pd` although we won't really be using the features of these while we are in a non-embedded (std) build environment, the dependencies are still needed for reference by the other dependencies.
 
-In the `battery_project`, we'll bring these in with the commands:
+The same is also true for Embassy, since some of the embassy_time traits are used by ODP signatures we will be attaching to.
 
-```
+In the `battery_project` directory:
+
+```cmd
 git submodule add https://github.com/OpenDevicePartnership/embedded-services
-
-git submodule add git@github.com:OpenDevicePartnership/embedded-cfu
-
-git submodule add git@github.com:OpenDevicePartnership/embedded-usb-pd
-
+git submodule add https://github.com/OpenDevicePartnership/embedded-cfu
+git submodule add https://github.com/OpenDevicePartnership/embedded-usb-pd
+git submodule add https://github.com/embassy-rs/embassy.git 
 ```
 
+### Checking the repository examples
+Within the `embedded-services` repository files, you will find a directory named `examples`.  We can find files in the `examples/std/src/bin/` folder that speak to battery and power_policy implementations, as well as other concerns.  You should familiarize yourself with these examples.
+
+In this exercise we will be borrowing from those designs in a curated fashion.
+If at any time there is question about the implementation presented in this exercise, please consult the examples in the repository, as they may contain updated information.
 
 ### A Mock Battery Device
 To fit the design of the ODP battery service, we first need to create a wrapper that contains our MockBattery and a Device Trait.  We need to implement `DeviceContainer` for this wrapper and reference that `Device`.
@@ -40,35 +35,28 @@ Then we will register the wrapper with `register_device(...)` and we will have a
 #### Import the battery-service from the ODP crate
 One of the service definitions from the `embedded-services` repository we brought into scope is the `battery-service`. 
 We now need to update our Cargo.toml to know where to find it.
-<<<<<<< HEAD
-Open the `Cargo.toml` file of your mock-battery project and add the dependency to the battery-service path to our Cargo.toml.  We will also need a reference to `embedded-services` itself for various support needs.  Update your `mock_battery/Cargo.toml` so that your `[dependencies]` section now looks like this:
-=======
-Open the `Cargo.toml` file of your mock-battery project and add the dependency to the battery-service path to our Cargo.toml.  We will also need a reference to `embedded-services` itself for various support needs.
+Open the `Cargo.toml` file of your mock-battery project and add the dependency to the battery-service path.  We will also need a reference to `embedded-services` itself for various support needs.
 We will no longer be requiring `tokio`, so you can remove that dependency, but we do need to import crate references from `embassy`.
 Update your `mock_battery/Cargo.toml` so that your `[dependencies]` section now looks like this to include references we will need.
->>>>>>> b9c0cab (Controller WIP)
 
-```
+Your new `[dependencies]` section should now look like this:
+
+```toml
 [dependencies]
-<<<<<<< HEAD
-cortex-m-rt = "0.7.3"
-static_cell = "2.0.0"
-embedded-batteries = { path = "../embedded-batteries/embedded-batteries" }
-=======
->>>>>>> b9c0cab (Controller WIP)
 embedded-batteries-async = { path = "../embedded-batteries/embedded-batteries-async" }
 battery-service = { path = "../embedded-services/battery-service" }
 embedded-services = { path = "../embedded-services/embedded-service" }
 embassy-executor = { workspace = true }
 embassy-time = { workspace = true, features=["std"] }
-embassy-sync = { workspace = true }
+embassy-sync = { workspace = true, features=["std"] }
+critical-section = {version = "1.0", features = ["std"] }
+async-trait = "0.1"
+# tokio = { version = "1.45", features = ["full"] }
 static_cell = "1.0"
 once_cell = { workspace = true }
 ```
 This will allow us to import what we need for the next steps.
 
-<<<<<<< HEAD
-=======
 ### Top-level Cargo.toml
 Note that some of these dependencies say 'workspace = true'.  This implies they are in the workspace as configured by our top-level Cargo.toml, at `battery_project/Cargo.toml`.
 We need to update our top-level Cargo.toml to include these.  In `battery_project/Cargo.toml` add this section and settings:
@@ -172,7 +160,6 @@ _(Note: the entries above also include dependencies for some items we will need 
 
 Insure `cargo clean` and `cargo build` succeeds with your dependencies referenced accordingly before proceeding to the next step.
 
->>>>>>> b9c0cab (Controller WIP)
 ### Define the MockBatteryDevice wrapper
 
 In your mock_battery project `src` folder, create a new file named `mock_battery_device.rs` and give it this content:
@@ -195,7 +182,7 @@ pub struct MockBatteryDevice {
 impl MockBatteryDevice {
     pub fn new(id: DeviceId) -> Self {
     Self {
-            battery: MockBattery,
+            battery: MockBattery::new(),
             device: Device::new(id)
         }
     }
@@ -299,17 +286,17 @@ What we've done here is:
 Note we have some `println!` statements here to echo when certain events occur.  These won't be seen until later, but we want feedback when we do hook things up in our pre-test example.
 
 #### Including mock_battery_device
-Just like we had to inform the build of our mock_battery, we need to do likewise with mock_battery_device.  So edit `lib.rs` and to this:
+Just like we had to inform the build of our mock_battery and virtual_battery, we need to do likewise with mock_battery_device.  So edit `lib.rs` into this:
 ```rust
 pub mod mock_battery;
-pub mod mock_battery_device;
-```
+pub mod virtual_battery;
+pub mod mock_battery_device;```
 
 After you've done all that,  you should be able to build with 
 ```
 cargo build
 ```
 and get a clean result
+_Note: if you commented out or removed the reference to `tokio` in your `Cargo.toml` you may need to put that back to compile against the existing `main.rs`, but we will be replacing `main.rs` shortly._
 
 Next we will work to put this battery to use.
-

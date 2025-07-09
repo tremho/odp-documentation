@@ -741,7 +741,7 @@ Input parameters as described in ACPI specification.
 Should return structure as defined by ACPI specification
 
 ### FFA ACPI Example
-```
+```rust
   Method (_BMA, 1, Serialized) {
     // Check to make sure FFA is available and not unloaded
     If(LEqual(\_SB.FFA0.AVAL,One)) {
@@ -781,7 +781,7 @@ Should return structure as defined by ACPI specification
 documentation](https://uefi.org/htmlspecs/ACPI_Spec_6_4_html/06_Device_Configuration/Device_Configuration.html#sta-device-status)
 
 ### FFA ACPI Example
-```
+```rust
   Method (BSTA, 0, Serialized) {
     // Check to make sure FFA is available and not unloaded
     If(LEqual(\_SB.FFA0.AVAL,One)) {
