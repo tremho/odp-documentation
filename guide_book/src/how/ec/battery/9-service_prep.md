@@ -290,7 +290,8 @@ Just like we had to inform the build of our mock_battery and virtual_battery, we
 ```rust
 pub mod mock_battery;
 pub mod virtual_battery;
-pub mod mock_battery_device;```
+pub mod mock_battery_device;
+```
 
 After you've done all that,  you should be able to build with 
 ```

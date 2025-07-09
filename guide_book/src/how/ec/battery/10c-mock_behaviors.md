@@ -232,8 +232,8 @@ Now, implement into `mock_battery_controller.rs` in the `Controller` implementat
         let cycle_count = self.battery.cycle_count().await?;
         let voltage_mv = self.battery.voltage().await?;
         let max_error_pct = self.battery.max_error().await? as u16;
-        let charging_voltage_mv = self.battery.charging_voltage().await?;
-        let charging_current_ma = self.battery.charging_current().await?;
+        let charging_voltage_mv = 0; // no charger implemented yet
+        let charging_current_ma = 0; // no charger implemented yet
         let battery_temp_dk = self.battery.temperature().await?;
         let current_ma = self.battery.current().await?;
         let average_current_ma = self.battery.average_current().await?;

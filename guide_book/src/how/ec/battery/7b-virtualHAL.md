@@ -29,7 +29,6 @@ This may not be the most sophisticated or comprehensive battery simulator one co
 Create a file named `virtual_battery.rs` and give it these initial contents:
 ```rust
 
-
 use embedded_batteries_async::smart_battery::{
     BatteryModeFields, BatteryStatusFields, 
     SpecificationInfoFields, ManufactureDate,
@@ -107,7 +106,7 @@ impl VirtualBatteryState {
                 bs
             },
             specification_info: SpecificationInfoFields::from_bits(0x0011),
-            serial_number: 0,
+            serial_number: 0x0102,
             current_ma: 0,
             avg_current_ma: 0,
             runtime_to_empty_min: 0,
@@ -125,7 +124,12 @@ impl VirtualBatteryState {
     }
 
     /// Advance the battery simulation by one tick (e.g., 1 second)
-    pub fn tick(&mut self, multiplier:f32) {
+    pub fn tick(
+        &mut self,  
+        charger_current: u16,
+        multiplier:f32
+    ) {
+
         // 1. Update remaining capacity
         let delta_f = (self.current_ma as f32 / 3600.0) * multiplier; // control speed of simulation
         let delta = delta_f.round() as i32;
@@ -142,17 +146,21 @@ impl VirtualBatteryState {
         // 3. Recalculate voltage
         self.voltage_mv = self.estimate_voltage();
 
-        // 4. Adjust average current toward current_ma
+        // 4. Adjust current for charging
+        if charger_current > 0 {
+            self.current_ma = charger_current as i16 - self.current_ma;
+        }
+
+        // 5. Adjust average current toward current_ma
         self.avg_current_ma = ((self.avg_current_ma as i32 * 7 + self.current_ma as i32) / 8) as i16;
 
-        // 5. Simulate temp change
+        // 6. Simulate temp change
         let temp = self.temperature_dk as i32 + self.estimate_temp_change() as i32;
         self.temperature_dk = temp.clamp(0, u16::MAX as i32) as u16;
 
-        // 6. State of Charge updates
+        // 7. State of Charge updates
         self.relative_soc_percent = ((self.remaining_capacity_mah as f32 / self.full_charge_capacity_mah as f32) * 100.0).round() as u8;
         self.absolute_soc_percent = self.relative_soc_percent.saturating_sub(3); // Or another logic
-
     }
 
 
