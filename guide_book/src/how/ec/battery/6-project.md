@@ -25,6 +25,9 @@ _(from the `battery_project` directory):_
 git submodule add https://github.com/OpenDevicePartnership/embedded-batteries
 ```
 
+The `embedded-batteries` repository has the subsystem service definitions for the battery defined in both 
+`embedded-batteries` and `embedded-batteries-async` crates.  We are going to use the async variant here because this is required when attaching 
+later to the `Controller`, which we will attach our battery implementation into the larger service framework.
 
 
 Now, we can create our project space and start our own work.  Within the battery_project directory, create a folder named mock_battery and give it this project structure:
@@ -42,7 +45,7 @@ note there are two `Cargo.toml` files here. One is within the `battery_project` 
 
 The contents of the `battery_project/Cargo.toml` file should contain:
 
-```
+```toml
 [workspace]
 resolver = "2"
 members = [
@@ -52,7 +55,7 @@ members = [
 ```
 and the contents of the `battery_project/mock_battery/Cargo.toml` file should be set to:
 
-```
+```toml
 [package]
 name = "mock_battery"
 version = "0.1.0"
@@ -60,7 +63,7 @@ edition = "2024"
 
 
 [dependencies]
-embedded-batteries = { path = "../embedded-batteries/embedded-batteries" }
+embedded-batteries-async = { path = "../embedded-batteries/embedded-batteries-async" }
 ```
 
 This structure and the `Cargo.toml` definitions just define a minimal skeleton for the dependencies we will be adding to as we continue to build our mock battery implementation and work it into the larger ODP framework.

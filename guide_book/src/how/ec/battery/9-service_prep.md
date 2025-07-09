@@ -40,20 +40,139 @@ Then we will register the wrapper with `register_device(...)` and we will have a
 #### Import the battery-service from the ODP crate
 One of the service definitions from the `embedded-services` repository we brought into scope is the `battery-service`. 
 We now need to update our Cargo.toml to know where to find it.
+<<<<<<< HEAD
 Open the `Cargo.toml` file of your mock-battery project and add the dependency to the battery-service path to our Cargo.toml.  We will also need a reference to `embedded-services` itself for various support needs.  Update your `mock_battery/Cargo.toml` so that your `[dependencies]` section now looks like this:
+=======
+Open the `Cargo.toml` file of your mock-battery project and add the dependency to the battery-service path to our Cargo.toml.  We will also need a reference to `embedded-services` itself for various support needs.
+We will no longer be requiring `tokio`, so you can remove that dependency, but we do need to import crate references from `embassy`.
+Update your `mock_battery/Cargo.toml` so that your `[dependencies]` section now looks like this to include references we will need.
+>>>>>>> b9c0cab (Controller WIP)
 
 ```
 [dependencies]
+<<<<<<< HEAD
 cortex-m-rt = "0.7.3"
 static_cell = "2.0.0"
 embedded-batteries = { path = "../embedded-batteries/embedded-batteries" }
+=======
+>>>>>>> b9c0cab (Controller WIP)
 embedded-batteries-async = { path = "../embedded-batteries/embedded-batteries-async" }
 battery-service = { path = "../embedded-services/battery-service" }
 embedded-services = { path = "../embedded-services/embedded-service" }
-embedded-cfu = { path = "../embedded-cfu}
+embassy-executor = { workspace = true }
+embassy-time = { workspace = true, features=["std"] }
+embassy-sync = { workspace = true }
+static_cell = "1.0"
+once_cell = { workspace = true }
 ```
 This will allow us to import what we need for the next steps.
 
+<<<<<<< HEAD
+=======
+### Top-level Cargo.toml
+Note that some of these dependencies say 'workspace = true'.  This implies they are in the workspace as configured by our top-level Cargo.toml, at `battery_project/Cargo.toml`.
+We need to update our top-level Cargo.toml to include these.  In `battery_project/Cargo.toml` add this section and settings:
+
+```toml
+[workspace.dependencies]
+embassy-executor = { path = "embassy/embassy-executor", features = ["arch-std", "executor-thread"], default-features = false }
+embassy-time = { path = "embassy/embassy-time" }
+embassy-futures = "0.1.0"
+embassy-sync = "0.7.0"
+embassy-time-driver = "0.2.0"
+embedded-hal = "1.0"
+embedded-hal-async = "1.0"
+```
+and you will want to add this section as well.  This tells cargo to use our local submodule version of embassy rather than reaching out to crates-io for a version:
+
+```toml
+[patch.crates-io]
+embassy-executor = { path = "embassy/embassy-executor"}
+embassy-time = { path = "embassy/embassy-time" }
+embassy-time-driver = { path = "embassy/embassy-time-driver" }
+embassy-time-queue-utils = { path = "embassy/embassy-time-queue-utils" }
+```
+But we are not done yet.
+If we execute `cargo build` at this point, we will likely get an error that says there was an "error inheriting `once_cell` from workspace root manifest's `workspace.dependencies.once_cell`
+
+We can solve that by adding that reference to `[workspace.dependencies]`
+```toml
+once_cell = "1.19"
+```
+
+Still not done.
+If we execute `cargo build` at this point, we will likely get an error that says there was an "error inheriting `defmt` from workspace root manifest's `workspace.dependencies.defmt`" and "`workspace.dependencies` was not defined".
+
+This is because these dependencies are used by the dependencies that we have included, even if we aren't using them ourselves.  In many cases, such as those dependencies that are relying on packages like `embassy` for embedded support, we won't be using at all in our 'std' build environment, and these will be compiled out of our build as a result, but they must still be referenced to satisfy the dependency chain.
+
+To remedy this, we must edit the top-level Cargo.toml (`battery_project/cargo.toml`) to include a reference to `defmt`, such as 
+```toml
+[workspace.dependencies]
+defmt = "1.0"
+```
+and when you try again, you will get another error specifying the next missing dependency reference.  Add these placeholder references in the same way.  For now, don't worry about the version.  Make each reference = "1.0".
+
+For references to dependencies we _are_ using in our project (`embedded-batteries`, `embedded-batteries-async`, `embedded-services`, `battery-service`), specify these by providing their path, as in:
+```toml
+embedded-batteries-async = { path = "embedded-batteries/embedded-batteries-async" }
+embedded-services = { path = "embedded-services/embedded-service" }
+battery-service = { path = "embedded-services/battery-service" }
+embedded-cfu-protocol = { path = "embedded-cfu" }
+embedded-usb-pd = { path = "embedded-usb-pd" }
+```
+Once all the dependencies have been named, `cargo build` will start to complain about acceptable version numbers for those where the "1.0" placeholder will not suffice.  For example:
+
+```
+error: failed to select a version for the requirement `embassy-executor = "^1.0"`
+candidate versions found which didn't match: 0.7.0, 0.6.3, 0.6.2, ...
+```
+So in these cases, change the "1.0" to one of the versions from the list ("0.7.0")
+
+After doing all of this, your `[workspace.dependencies]` section will look something like this:
+```toml
+[workspace.dependencies]
+embassy-executor = { path = "embassy/embassy-executor", features = ["arch-std", "executor-thread"], default-features = false }
+embassy-time = { path = "embassy/embassy-time" }
+embassy-futures = "0.1.0"
+embassy-sync = "0.7.0"
+embassy-time-driver = "0.2.0"
+embedded-hal = "1.0"
+embedded-hal-async = "1.0"
+once_cell = "1.19"
+defmt = "1.0"
+log = "0.4.27"
+bitfield = "0.19.1"
+bitflags = "1.0"
+bitvec = "1.0"
+cfg-if = "1.0"
+chrono = "0.4.41"
+critical-section = {version = "1.0", features = ["std"] }
+document-features = "0.2.11"
+embedded-hal-nb = "1.0"
+embedded-io = "0.6.1"
+embedded-io-async = "0.6.1"
+embedded-storage = "0.3.1"
+embedded-storage-async = "0.4.1"
+fixed = "1.0"
+heapless = "0.8.0"
+postcard = "1.0"
+rand_core = "0.9.3"
+serde = "1.0"
+cortex-m = "0.7.7"
+cortex-m-rt = "0.7.5"
+embedded-batteries = { path = "embedded-batteries/embedded-batteries" }
+embedded-batteries-async = { path = "embedded-batteries/embedded-batteries-async" }
+embedded-services = { path = "embedded-services/embedded-service" }
+battery-service = { path = "embedded-services/battery-service" }
+embedded-cfu-protocol = { path = "embedded-cfu" }
+embedded-usb-pd = { path = "embedded-usb-pd" }
+```
+
+_(Note: the entries above also include dependencies for some items we will need in upcoming steps and haven't encountered yet)_
+
+Insure `cargo clean` and `cargo build` succeeds with your dependencies referenced accordingly before proceeding to the next step.
+
+>>>>>>> b9c0cab (Controller WIP)
 ### Define the MockBatteryDevice wrapper
 
 In your mock_battery project `src` folder, create a new file named `mock_battery_device.rs` and give it this content:
@@ -84,6 +203,10 @@ impl MockBatteryDevice {
     pub fn device(&self) -> &Device {
         &self.device
     }
+
+    pub fn inner_battery(&mut self) -> &mut MockBattery {
+        &mut self.battery
+    }   
 
     pub async fn run(&self) {
         loop {
@@ -168,7 +291,7 @@ impl DeviceContainer for MockBatteryDevice {
 ```
 What we've done here is:
 
-- Imported what we need from the ODP repositories for both the SmartBattery definition from `embedded-batteries` and the battery service components from `embedded-services` crates as as our own local MockBattery definition.
+- Imported what we need from the ODP repositories for both the SmartBattery definition from `embedded-batteries_async` and the battery service components from `embedded-services` crates as as our own local MockBattery definition.
 
 - Defined and implemented our MockBatteryDevice
 - implemented a run loop for our MockBatteryDevice
