@@ -33,9 +33,11 @@ sequenceDiagram
     Controller->>Device: apply_charge(MilliAmps, MilliVolts)
     Device->>Charger: charging_current(MilliAmps)
     Charger-->>Device: Ok(MilliAmps)
+    Device-->>Controller: Ok(MilliAmps)
     Device->>Charger: charging_voltage(MilliVolts)
     Charger-->>Device: Ok(MilliVolts)
-    Device-->>Controller: Charging adjustment complete
+    Device-->>Controller: Ok(MilliVolts)
+    Controller->Controller: Charging adjustment complete
 ```
 
 Here, the controller polls the battery state, and the battery indicates that is has a low charge.  The controller determines the charging parameters and instructs the charger.  The battery charge level should now improve as the charge is applied over time.

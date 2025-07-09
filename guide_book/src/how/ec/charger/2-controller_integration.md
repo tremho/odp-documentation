@@ -6,7 +6,7 @@ Now that our battery device is properly equipped with a `Charger` interface, we 
 
 The `Controller` must manage the charging needs of the battery by:
 1. Detecting when the battery requires charging
-2. Instructing the carger to apply current and voltage, or to stop charging
+2. Instructing the charger to apply current and voltage, or to stop charging
 
 The `SmartBattery` interface defines for us some traits in this regard
 - `remaining_capacity()`
@@ -15,8 +15,7 @@ The `SmartBattery` interface defines for us some traits in this regard
 - `voltage()` and `current()`
 
 and the `Charger` interface gives us:
-- `current()` and `voltage()` as the values the charger will supply when enabled.
-- `enable()` and `disable()` to turn the charger on and off.
+- `charging_current()` and `charging_voltage()` setters for the values the charger will supply.
 
 We will create a simplistic rule for the `Controller` to adhere to when administering the charger:
 "If the battery state of charge falls below 90%, then enable the charger at a constant rate, and disable the
@@ -26,15 +25,16 @@ This is an overly-simplistic rule to be an efficient scheme in a real-life batte
 Later, when we integrate Thermal awareness into the scheme, the rate of charge and the enable/disable decisions will be affected
 by conditions made known through Thermal event notifications.  But for now, this will do.
 
-### Adding the poll_and_manage trait to the Controller
+### Adding the poll_and_manage_charger function to the Controller
 To perform this logic, the `Controller` needs a method that can be called by an executive task on a periodic basis - say once per second - to determine its actions.  This is not a trait to implement - it is business logic we add to the controller implementation ourselves to fit our needs.
 
 Edit the `mock_battery_controller.rs` file and add these lines near the top:
 ```rust
+use embedded_batteries::MilliAmps;
 use embedded_batteries_async::charger::Charger;
 
-const APPLIED_CHARGER_CURRENT:u16 = 1500;  // milliamps
-const APPLIED_CHARGER_VOLTAGE:u16 = 12600; // millivolts
+const APPLIED_CHARGER_CURRENT:MilliAmps= 1500;  
+const APPLIED_CHARGER_VOLTAGE:MilliVolts = 12600;
 const THRESHOLD_CHARGE_PERCENT: u8 = 90; // percent of remaining charge boundary to turn charger on/off
 ```
 
@@ -52,8 +52,12 @@ pub struct MockBatteryController<B: SmartBattery + Send, C:Charger + Send> {
     /// The underlying battery instance that this controller manages.
     battery: B,
     charger: C,
+    charging_current: MilliAmps,
+    charging_voltage: MilliVolts
 }
 ```
+Note that we've added local values for `charging_current` and `charging_voltage`.  We will use these to keep track of the 
+values we have set the charging levels to via the `Charger` interface, since there are no _getter_ methods there we can use.
 
 and we will both update the `impl` block and add our new method for charging decisions by replacing the `impl` block with:
 
@@ -66,21 +70,22 @@ where
     pub fn new(battery: B, charger: C) -> Self {
         Self { battery, charger }
     }
-    pub async fn poll_and_manage(&mut self) -> Result<(), <Self as ErrorType>::Error> {
+    pub async fn poll_and_manage_charger(&mut self) -> Result<(), <Self as ErrorType>::Error> {
         let soc = self.battery.relative_state_of_charge().await.unwrap();
 
         if soc < THRESHOLD_CHARGE_PERCENT {
-        let _ = self.charger.charging_current(APPLIED_CHARGER_CURRENT).await;
-        let _ = self.charger.charging_voltage(APPLIED_CHARGER_VOLTAGE).await;
+            self.charging_current = self.charger.charging_current(APPLIED_CHARGER_CURRENT).await.unwrap();
+            self.charging_voltage = self.charger.charging_voltage(APPLIED_CHARGER_VOLTAGE).await.unwrap();
         } else {
-            let _ = self.charger.charging_current(0).await;
-            let _ = self.charger.charging_voltage(0).await;
+            self.charging_current = self.charger.charging_current(0).await.unwrap();
+            self.charging_voltage = self.charger.charging_voltage(0).await.unwrap();
         }
         Ok(())
     }
 }
 ```
-This introduces our `poll_and_manage()` method that will apply charge or not according to our rules.
+This introduces our `poll_and_manage_charger()` method that will apply charge or not according to our rules, and record the values
+set there locally so we can refer to them later in `get_dynamic_data()`
 
 We must now continue to update our generic template decorations to account for the new Charger in other places where this is used.
 
@@ -112,13 +117,11 @@ where
     C: Charger + Send
 ```
 
-Finally, before we are done with the `Controller`, we need to make a change in our implementation of `get_dynamic_data()` to read the charging voltage and current from the attached `Charger` rather than our virtual battery by updating to these lines:
+Finally, before we are done with the `Controller`, we need to make a change in our implementation of `get_dynamic_data()` to read the charging voltage and current from the local values we updated during `poll_and_manage_charger` rather than the placeholder zero values that we have there now.
 ```rust
-        let charging_voltage_mv = self.charger.charging_voltage(APPLIED_CHARGER_VOLTAGE).await.unwrap();
-        let charging_current_ma = self.charger.charging_current(APPLIED_CHARGER_CURRENT).await.unwrap();
+        let charging_current_ma = self.charging_current;
+        let charging_voltage_mv = self.charging_voltage;
 ```
-Although it is not necessary, you _could_ remove these values from `virtual_battery.rs` now, because we won't be using them anymore.
-
 Now, over in our `main.rs` file, we need to update our references to the `MockBatteryController` with this new generic injection parameter for the `Charger`.
 
 Open `main.rs` and search for all occurrences of `MockBatteryController<&'static mut MockBattery>`, which designates our battery injection and replace with `MockBatteryController<&'static mut MockBattery, &'static mut MockCharger>`, which specifies both the battery and charger.
@@ -140,7 +143,11 @@ let battery_for_inner2: &'static mut MockBatteryDevice = unsafe { &mut *(battery
 ```
 and then change the `controller` declaration down below this to be
 ```rust
-let controller = CONTROLLER.init(MockBatteryController::new(inner_battery, inner_charger));
+    let controller = CONTROLLER.init(
+        MockBatteryController::<
+            &'static mut MockBattery,
+            &'static mut MockCharger
+        >::new(inner_battery, inner_charger));
 ```
 
 and now you should be able to cleanly compile.  Running the program or tests will give you the same output as before; we haven't done anything with our new integrated charger yet.

@@ -49,7 +49,7 @@
                 - [Tests](./how/ec/battery/11-tests.md)
                     - [Test Helper](./how/ec/battery/11a-test_helper.md)
                     - [Unit Tests](./how/ec/battery/11b-unit_tests.md)
-                    - [Integration Tests](./how/ec/battery/11c-integration_tests)
+                    - [Integration Tests](./how/ec/battery/11c-integration_tests.md)
         - [Charger](./how/ec/charger/charger.md)
             - [Add Charger](./how/ec/charger/1-add_charger.md)
             - [Controller Integration](./how/ec/charger/2-controller_integration.md)

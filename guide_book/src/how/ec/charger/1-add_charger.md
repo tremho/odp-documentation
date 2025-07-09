@@ -20,7 +20,6 @@ Return to  your Battery Project and create the source file `mock_charger.rs` and
 
 ```rust
 
-
 use embedded_batteries_async::charger::{
     Charger, Error, ErrorType, ErrorKind
 };
@@ -28,6 +27,9 @@ pub use embedded_batteries::{MilliAmps, MilliVolts};
 use crate::virtual_charger::VirtualChargerState;
 use crate::mutex::{Arc, Mutex, RawMutex};
 
+
+const MAXIMUM_ALLOWED_CURRENT:u16 = 3000;
+const MAXIMUM_ALLOWED_VOLTAGE:u16 = 15000;
 
 #[derive(Debug)]
 pub enum MockChargerError {}
@@ -64,23 +66,37 @@ impl ErrorType for MockCharger {
 #[allow(refining_impl_trait)]
 impl Charger for MockCharger {
 
-    fn charging_current(&mut self, requested_current:MilliAmps) -> impl Future<Output = Result<MilliAmps, Self::Error>> {
+    fn charging_current(&mut self, requested_current: MilliAmps) -> impl Future<Output = Result<MilliAmps, Self::Error>> {
         let state = self.state.clone();
         async move {
             let mut lock = state.lock().await;
-            Ok(lock.set_current(requested_current))
+            let mut req_cur = requested_current;
+            if req_cur < MAXIMUM_ALLOWED_CURRENT {
+                lock.set_current(req_cur);
+            } else {
+                req_cur = lock.current();
+            }
+            Ok(req_cur)
         }
     }
-    fn charging_voltage(&mut self, requested_voltage:MilliVolts) -> impl Future<Output = Result<MilliVolts, Self::Error>> {
+
+    fn charging_voltage(&mut self, requested_voltage: MilliVolts) -> impl Future<Output = Result<MilliVolts, Self::Error>> {
         let state = self.state.clone();
         async move {
             let mut lock = state.lock().await;
-            Ok(lock.set_voltage(requested_voltage))
+            let mut req_volt = requested_voltage;
+            if req_volt < MAXIMUM_ALLOWED_VOLTAGE {
+                lock.set_voltage(req_volt);
+            } else {
+                req_volt = lock.voltage();
+            }
+            Ok(req_volt)
         }
     }
 }
 ```
 All this does is implement the two traits of the `Charger` interface (`charging_current` and `charging_voltage`), and returns a 0 value result in terms of its inner `VirtualChargerState`, which we will look at next.
+It is interesting to note that `Charger` only offers _setters_ in `charging_current` and `charging_voltage`. The interface is curiously absent of corresponding _getter_ methods.  We'll see this again later.  
 
 >### Async Trait methods
 >Like we saw in the `mock_battery.rs` implementation, we are using `impl Future<...` as the return type because rust does not
@@ -98,7 +114,6 @@ use embedded_batteries_async::charger::{MilliAmps, MilliVolts};
 pub struct VirtualChargerState {
     pub last_requested_current: MilliAmps,
     pub last_requested_voltage: MilliVolts,
-    pub is_enabled: bool,
 }
 
 impl VirtualChargerState {
@@ -106,7 +121,6 @@ impl VirtualChargerState {
         Self {
             last_requested_current: 0,
             last_requested_voltage: 0,
-            is_enabled: true
         }
     }
     pub fn set_current(&mut self, requested_current:MilliAmps) -> MilliAmps {
@@ -118,32 +132,15 @@ impl VirtualChargerState {
         self.last_requested_voltage
     }
     pub fn current(&self) -> MilliAmps {
-        let mut cur = 0;
-        if self.is_enabled {
-            cur = self.last_requested_current
-        }
-        cur
+        self.last_requested_current
     }
     pub fn voltage(&self) -> MilliVolts {
-        let mut volts = 0;
-        if self.is_enabled {
-            volts = self.last_requested_voltage;
-        }
-        volts
+        self.last_requested_voltage
     }
-    pub fn enable(&mut self) {
-        self.is_enabled = true;
-    }
-    pub fn disable(&mut self) {
-        self.is_enabled = false;
-    }
-    pub fn is_enabled(&self) -> bool {
-        self.is_enabled
-    }
-
 }
 ```
-It doesn't do much except hold state, but that's all that is required.
+It doesn't do much except hold state, but that's all that is required.  We could have also simply implemented this directly
+in `MockCharger`, but in keeping with our pattern in deference to what _could be_ a HAL layer, we maintain the separation.
 
 The last step for this part is to include our `MockCharger` as part of our `MockBatteryDevice`. 
 
@@ -177,6 +174,21 @@ and add an `inner_charger` accessor to match the existing `inner_battery` method
     pub fn inner_charger(&mut self) -> &mut MockCharger {
         &mut self.charger
     }   
+```
+
+### Keeping lib.rs updated
+Make sure to add the new module files to `lib.rs`:
+```rust
+pub mod mock_battery;
+pub mod virtual_battery;
+pub mod mock_battery_device;
+pub mod espi_service;
+pub mod mock_battery_controller;
+pub mod types;
+pub mod mutex;
+pub mod test_helper;
+pub mod mock_charger;
+pub mod virtual_charger;
 ```
 
 Now we are ready to attach this to the `MockBatteryController`.
