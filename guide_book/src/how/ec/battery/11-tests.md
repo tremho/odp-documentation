@@ -154,7 +154,7 @@ pub type BatteryChannel = Channel<RawMutex, BatteryEvent, 4>;
 🗎 in your `mock_battery/Cargo.toml` file, add this section:
 ```toml
 [dev-dependencies]
-embassy-executor = { workspace = true, version = "0.5", features = ["arch-std"] }
+embassy-executor = { workspace = true,  features = ["arch-std"] }
 ```
 
 now do a `cargo clean` and `cargo build` to insure the refactoring was successful.

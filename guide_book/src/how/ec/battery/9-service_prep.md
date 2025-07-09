@@ -174,7 +174,6 @@ use embedded_services::power::policy::device::{
 
 
 pub struct MockBatteryDevice {
-    #[allow(dead_code)] // Prevent unused warning for MockBattery -- not used yet   
     battery: MockBattery,
     device: Device,
 }

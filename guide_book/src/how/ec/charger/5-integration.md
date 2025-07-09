@@ -1,0 +1,1 @@
+# Integration testing Battery and Charger behavior
