@@ -252,8 +252,6 @@ We initialize our virtual battery with some constant starting values, and includ
 a fully charged, idle state.  We offer some helper functions to return some of the dynamic value computations and to relay
 constant string values.
 
-This virtual construction allows us to simulate stateful battery behavior without any actual hardware dependencies.
-
 Of most interest, however, is perhaps the `tick()` function that controls the simulation.
 
 Here, the caller passes in a `multiplier` value to control how fast the simulation runs (1x == 1 simulated second per tick).

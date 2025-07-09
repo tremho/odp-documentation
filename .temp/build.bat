@@ -10,4 +10,3 @@ cd .\.temp
 md .\guide
 cd ..\guide_book
 xcopy "book\*" "..\.temp\guide" /E /I /Y
-
