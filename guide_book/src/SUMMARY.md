@@ -50,16 +50,13 @@
                     - [Test Helper](./how/ec/battery/11a-test_helper.md)
                     - [Unit Tests](./how/ec/battery/11b-unit_tests.md)
                     - [Integration Tests](./how/ec/battery/11c-integration_tests.md)
-<<<<<<< HEAD
-            - [Charger](./how/ec/charger/charger.md)
-=======
         - [Charger](./how/ec/charger/charger.md)
             - [Add Charger](./how/ec/charger/1-add_charger.md)
             - [Controller Integration](./how/ec/charger/2-controller_integration.md)
             - [Simulation Update](./how/ec/charger/3-simulation_update.md)
             - [Unit Tests](./how/ec/charger/4-unit_test.md)
             - [Integration](./how/ec/charger/5-integration.md)
->>>>>>> cb4759f (Charger implementation into battery subsystem)
+            - [Battery Subsystem Summary](./how/ec/charger/6-battery-charger-summary.md)
         - [Thermal](./how/ec/thermal/0-overview.md)
             - [MPTF Example](./how/ec/thermal/mptf/mptf.md)
                 - [Overview](./how/ec/thermal/mptf/overview.md)
