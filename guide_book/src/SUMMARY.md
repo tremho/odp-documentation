@@ -56,6 +56,7 @@
             - [Simulation Update](./how/ec/charger/3-simulation_update.md)
             - [Unit Tests](./how/ec/charger/4-unit_test.md)
             - [Integration](./how/ec/charger/5-integration.md)
+            - [Battery Subsystem Summary](./how/ec/charger/6-battery-charger-summary.md)
         - [Thermal](./how/ec/thermal/0-overview.md)
             - [MPTF Example](./how/ec/thermal/mptf/mptf.md)
                 - [Overview](./how/ec/thermal/mptf/overview.md)
