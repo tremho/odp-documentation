@@ -61,7 +61,7 @@ The `default-run` line in `[package]` will allow us to continue to use plain `ca
 
 ### The scope for our tests
 For these integration tests, we will want to test the whole of the battery subsystem and how it works within service structure.
-The parts of this subystem include
+The parts of this subsystem include
 - `MockBatteryDevice` and internal `MockBattery` and `MockCharger` components
 - `MockBatteryController` 
 
@@ -494,7 +494,7 @@ Calling `finalize_registry();` at the end completes the collection.
 Now, we need to update our tasks so that we pass these `Observation` objects to the tasks that will observe them, 
 and each of these tasks will mark the `Observation`s that they are associated with as pass or fail.
 
-We also want to remove many of the superfluous `println`` commands we have here to reduce output clutter.  We will leave `println!` output in the case of reporting errors, however.
+We also want to remove many of the superfluous `println` commands we have here to reduce output clutter.  We will leave `println!` output in the case of reporting errors, however.
 
 ```rust
 #[embassy_executor::task]

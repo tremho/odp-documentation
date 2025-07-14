@@ -87,7 +87,7 @@ and then replace all occurences of `ThreadModeRawMutex` with `RawMutex` (there s
 
 ### Run the tests
 
-The command `cargo test -p mock_battery` should show you that 1 test sucessfully ran.  It will not report an 'ok' because the test was forced to exit due to the nature of the test helper before the `#[test]` process returned.
+The command `cargo test -p mock_battery` should show you that 1 test successfully ran.  It will not report an 'ok' because the test was forced to exit due to the nature of the test helper before the `#[test]` process returned.
 
 ```
 running 1 test

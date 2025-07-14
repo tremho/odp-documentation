@@ -105,7 +105,7 @@ async fn battery_service_init_task(
 }
 ```
 and we'll call it by placing this at the end of the `run` block in `main()`, below the other two task spawns, after
-getting the id from the battery and initializeing the fuel gauge.  So the new `main()` should look like:
+getting the id from the battery and initializing the fuel gauge.  So the new `main()` should look like:
 
 ```rust
 fn main() {
@@ -197,7 +197,7 @@ pub mod types;
 
 ### Implementing "comms"
 
-The battery service is one of several services that may reside within the Embedded Controller (EC) microcontroller. In a fully integrated system, messages between the EC and other components — such as a host CPU or companion chips — are typically carried over physical transports like SPI or I²C.
+The battery service is one of several services that may reside within the Embedded Controller (EC) micro-controller. In a fully integrated system, messages between the EC and other components — such as a host CPU or companion chips — are typically carried over physical transports like SPI or I²C.
 
 However, within the EC firmware itself, services communicate through an internal message routing layer known as `comms`. This abstraction allows us to test and exercise service logic without needing external hardware.
 

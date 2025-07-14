@@ -4,7 +4,7 @@ Just like we did for our `MockBattery`, we will want to have unit tests for our 
 
 Although the behavior of our charger is simple, we still validate its correctness with a small set of focused unit tests that exercise both the `MockCharger` logic an its interaction with the underlying `VirtualChargerState`.
 
-> ### No trival code
+> ### No trivial code
 > It may seem unnecessary to test very simple constructs like this, _after all, it's just setting a state_.
 > But it is important to test _all_ code, for many reasons, but particularly for these data-level constructs, because:
 > - They are easily overlooked if there is a refactor.
