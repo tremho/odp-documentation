@@ -61,7 +61,6 @@ name = "mock_battery"
 version = "0.1.0"
 edition = "2024"
 
-
 [dependencies]
 embedded-batteries-async = { path = "../embedded-batteries/embedded-batteries-async" }
 ```
@@ -69,7 +68,7 @@ embedded-batteries-async = { path = "../embedded-batteries/embedded-batteries-as
 This structure and the `Cargo.toml` definitions just define a minimal skeleton for the dependencies we will be adding to as we continue to build our mock battery implementation and work it into the larger ODP framework.
 
 The `lib.rs` file is used to tell Rust which modules are part of the project. Set it's contents to:
-```
+```rust
 pub mod mock_battery;
 ```
 

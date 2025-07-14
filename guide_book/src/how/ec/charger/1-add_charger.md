@@ -176,6 +176,11 @@ and add an `inner_charger` accessor to match the existing `inner_battery` method
     }   
 ```
 
+Finally, at the top of `mock_battery_device.rs`, add this import:
+```rust
+use mock_battery::mock_charger::MockCharger;
+```
+
 ### Keeping lib.rs updated
 Make sure to add the new module files to `lib.rs`:
 ```rust
@@ -183,9 +188,10 @@ pub mod mock_battery;
 pub mod virtual_battery;
 pub mod mock_battery_device;
 pub mod espi_service;
-pub mod mock_battery_controller;
-pub mod types;
 pub mod mutex;
+pub mod types;
+pub mod mock_battery_controller;
+pub mod fuel_signal_ready;
 pub mod test_helper;
 pub mod mock_charger;
 pub mod virtual_charger;

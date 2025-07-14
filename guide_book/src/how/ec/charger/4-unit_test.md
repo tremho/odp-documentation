@@ -88,7 +88,7 @@ This will verify that setting these values will return the value set, and that t
 
 Run `cargo test -p mock_battery` and verify there are no failures in these tasks.
 
-### Reection of out-of-range values
+### Rejection of out-of-range values
 Our `MockCharger` implementation exhibits a feature of its own - an attempt to set a value that is out of range for current or voltage levels is not accepted, and no change in the underlying setting is made.  We want to test for this feature as well.
 
 Since this is still part of testing the _setting_ behavior, we'll make these tests additional tasks for our existing `test_charger_settings()` test.

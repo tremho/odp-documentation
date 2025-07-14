@@ -28,6 +28,12 @@ by conditions made known through Thermal event notifications.  But for now, this
 ### Adding the poll_and_manage_charger function to the Controller
 To perform this logic, the `Controller` needs a method that can be called by an executive task on a periodic basis - say once per second - to determine its actions.  This is not a trait to implement - it is business logic we add to the controller implementation ourselves to fit our needs.
 
+### Updates to Cargo.toml
+We are using the `embedded_batteries_async` crate for asynchronous support rather than the `embedded_batteries` synchronous crate, but some of the defined types used by `embedded_batteries_async` are defined by `embedded_batteries`, so we need to import this as well.  Edit your `mock_battery/Cargo.toml` to include this in the `[dependencies]` section:
+```toml
+embedded-batteries = { workspace = true }
+```
+
 Edit the `mock_battery_controller.rs` file and add these lines near the top:
 ```rust
 use embedded_batteries::MilliAmps;
@@ -68,7 +74,12 @@ where
     C: Charger + Send,
 {
     pub fn new(battery: B, charger: C) -> Self {
-        Self { battery, charger }
+        Self { 
+            battery, 
+            charger,
+            charging_current: 0,
+            charging_voltage: 0
+        }
     }
     pub async fn poll_and_manage_charger(&mut self) -> Result<(), <Self as ErrorType>::Error> {
         let soc = self.battery.relative_state_of_charge().await.unwrap();
@@ -122,32 +133,30 @@ Finally, before we are done with the `Controller`, we need to make a change in o
         let charging_current_ma = self.charging_current;
         let charging_voltage_mv = self.charging_voltage;
 ```
-Now, over in our `main.rs` file, we need to update our references to the `MockBatteryController` with this new generic injection parameter for the `Charger`.
-
-Open `main.rs` and search for all occurrences of `MockBatteryController<&'static mut MockBattery>`, which designates our battery injection and replace with `MockBatteryController<&'static mut MockBattery, &'static mut MockCharger>`, which specifies both the battery and charger.
-
-and up near the top, add 
+Now we also have to update our definition of `OurController` in our `types.rs` file, as so:
 ```rust
-use mock_battery::mock_charger::MockCharger;
+use crate::mock_charger::MockCharger;
+
+pub type OurController = MockBatteryController<&'static mut MockBattery, &'static mut MockCharger>;
 ```
 
-In the function `main()`, we need to include our `inner_charger` from the device to the constructor of the controller in much the same way as we do our `inner_battery`.  This requires us to make another copy of our `BATTERY` `StaticCell` init value.
+Now, over in our `main.rs` file, in the function `main()`, we need to include our `inner_charger` from the device to the constructor of the controller in much the same way as we do our `inner_battery`.  This requires us to make another copy of our `BATTERY` `StaticCell` init value.
 
 Below the line
 ```rust
-let battery_for_inner: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const _ as *mut _) };
+let battery_for_inner: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const MockBatteryDevice as *mut MockBatteryDevice) };
 ```
 add another:
 ```rust
-let battery_for_inner2: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const _ as *mut _) };
+let battery_for_inner2: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const MockBatteryDevice as *mut MockBatteryDevice) };
 ```
-and then change the `controller` declaration down below this to be
+and
 ```rust
-    let controller = CONTROLLER.init(
-        MockBatteryController::<
-            &'static mut MockBattery,
-            &'static mut MockCharger
-        >::new(inner_battery, inner_charger));
+let inner_charger = battery_for_inner2.inner_charger();
+```
+and update the construction of `controller` with
+```rust
+let controller = CONTROLLER.init(OurController::new(inner_battery, inner_charger));
 ```
 
 and now you should be able to cleanly compile.  Running the program or tests will give you the same output as before; we haven't done anything with our new integrated charger yet.

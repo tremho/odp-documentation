@@ -10,13 +10,13 @@ Update the event handler so that we print what we get for `PollStaticData`:
 ```rust
 #[embassy_executor::task]
 async fn event_handler_task(
-    mut controller: &'static mut MockBatteryController<&'static mut MockBattery>,
-    channel: &'static mut BatteryChannel,
-    static_data: &'static Mutex<NoopRawMutex, Option<StaticBatteryMsgs>>
+    mut controller: &'static mut OurController,
+    channel: &'static mut BatteryChannel
 ) {
     use battery_service::context::BatteryEventInner;
 
     println!("🛠️  Starting event handler...");
+
 
     loop {
         let event = channel.receive().await;
@@ -29,6 +29,7 @@ async fn event_handler_task(
             }
             BatteryEventInner::PollDynamicData => {
                 println!("🔄 Handling PollDynamicData");
+
             }
             BatteryEventInner::DoInit => {
                 println!("⚙️  Handling DoInit");
@@ -43,6 +44,12 @@ async fn event_handler_task(
     }
 }
 ```
+and add this import near the top:
+```rust
+use battery_service::controller::Controller;
+```
+so that we can reach the `Controller` methods of our controller.
+
 Note that in an actual battery implementation, it is common to cache this static data after the first fetch to avoid the 
 overhead of interrogating the hardware for this unchanging data each time. We are not doing that here, as it would be superfluous to our virtual implementation.
 
@@ -51,39 +58,32 @@ Output now should look like:
 ```
 🛠️  Starting event handler...
 🔄 Launching wrapper task...
-🔌 EspiService init()
-🧩 Registering ESPI service endpoint...
-🕒 time_driver started
 🔌 Initializing battery fuel gauge service...
 🔋 Launching battery service (single-threaded)
 🧩 Registering battery device...
 ✅🔋 Battery service is up and running.
-✅🔌 EspiService READY
 🔔 BATTERY_FUEL_READY signaled
 ✍ Sending test BatteryEvent...
-📬 EspiService received message: Message { from: Internal(Battery), to: Internal(Battery), data: Data { contents: Any { .. } } }
 ✅ Test BatteryEvent sent
 🔔 event_handler_task received event: BatteryEvent { event: PollStaticData, device_id: DeviceId(1) }
 🔄 Handling PollStaticData
-📊 Fetching static battery data for the first time
-📊 Static battery data: StaticBatteryMsgs { manufacturer_name: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], device_name: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], device_chemistry: [0, 0, 0, 0, 0], design_capacity_mwh: 0, design_voltage_mv: 0, device_chemistry_id: [0, 0], serial_num: [0, 0, 0, 0] }
-```
+📊 Static battery data: Ok(StaticBatteryMsgs { manufacturer_name: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], device_name: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], device_chemistry: [0, 0, 0, 0, 0], design_capacity_mwh: 0, design_voltage_mv: 0, device_chemistry_id: [0, 0], serial_num: [0, 0, 0, 0] })```
 
 We can see the data is all zeroes.
 
 ___But wait! Didn't we create our `VirtualBatteryState` with meaningful values and implement `MockBattery` to use it?___
 
 Yes.  We did.  And we made sure our `MockBatteryController` forwarded all of its `SmartBattery` traits to its inner battery.
-But we did not implement the `BatteryController` traits for this with anything other than default (0) values.
+But we did not implement our `Controller` traits for this with anything other than default (0) values.
 
 ### Implementing `get_static_data` at the `MockBatteryController`
 
 If we look at `mock_battery_controller.rs` we see the existing code for `get_static_data` is simply:
 
 ```rust
-async fn get_static_data(&mut self) -> Result<StaticBatteryMsgs, Self::ControllerError> {
+    async fn get_static_data(&mut self) -> Result<StaticBatteryMsgs, Self::ControllerError> {
         Ok(StaticBatteryMsgs { ..Default::default() })
-}
+    }
 ```
 
 The `StaticBatteryMsgs` structure is made up of series of named data elements:
@@ -141,22 +141,17 @@ Now when we run, we should see our MockBattery data represented:
 ```
 🛠️  Starting event handler...
 🔄 Launching wrapper task...
-🔌 EspiService init()
-🧩 Registering ESPI service endpoint...
-🕒 time_driver started
 🔌 Initializing battery fuel gauge service...
 🔋 Launching battery service (single-threaded)
 🧩 Registering battery device...
 ✅🔋 Battery service is up and running.
-✅🔌 EspiService READY
 🔔 BATTERY_FUEL_READY signaled
 ✍ Sending test BatteryEvent...
-📬 EspiService received message: Message { from: Internal(Battery), to: Internal(Battery), data: Data { contents: Any { .. } } }
 ✅ Test BatteryEvent sent
 🔔 event_handler_task received event: BatteryEvent { event: PollStaticData, device_id: DeviceId(1) }
 🔄 Handling PollStaticData
 MockBatteryController: Fetching static data
-📊 Static battery data: Ok(StaticBatteryMsgs { manufacturer_name: [77, 111, 99, 107, 66, 97, 116, 116, 101, 114, 121, 67, 111, 114, 112, 0, 0, 0, 0, 0, 0], device_name: [77, 66, 45, 52, 50, 48, 48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], device_chemistry: [76, 73, 79, 78, 0], design_capacity_mwh: 5000, design_voltage_mv: 7800, device_chemistry_id: [1, 2], serial_num: [0, 0, 48, 57] })
+📊 Static battery data: Ok(StaticBatteryMsgs { manufacturer_name: [77, 111, 99, 107, 66, 97, 116, 116, 101, 114, 121, 67, 111, 114, 112, 0, 0, 0, 0, 0, 0], device_name: [77, 66, 45, 52, 50, 48, 48, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], device_chemistry: [76, 73, 79, 78, 0], design_capacity_mwh: 5000, design_voltage_mv: 7800, device_chemistry_id: [1, 2], serial_num: [0, 0, 1, 2] })
 ```
 
 So, very good. Crude, but effective. Now we can do essentially the same thing for `get_dynamic_data`.
@@ -187,7 +182,7 @@ and in the `event_handler_task`:
     BatteryEventInner::PollDynamicData => {
         println!("🔄 Handling PollDynamicData");
         let dd  = controller.get_dynamic_data().await;
-        println!("📊 Static battery data: {:?}", dd);
+        println!("📊 Dynamic battery data: {:?}", dd);
     }
 ```
 will suffice for a quick report.
@@ -267,7 +262,7 @@ Now run and you will see representative values that come from your current `Mock
 ```
 🔄 Handling PollDynamicData
 MockBatteryController: Fetching dynamic data
-📊 Static battery data: Ok(DynamicBatteryMsgs { max_power_mw: 0, sus_power_mw: 0, full_charge_capacity_mwh: 4800, remaining_capacity_mwh: 4800, relative_soc_pct: 100, cycle_count: 0, voltage_mv: 4200, max_error_pct: 1, battery_status: 0, charging_voltage_mv: 8400, charging_current_ma: 2000, battery_temp_dk: 2982, current_ma: 0, average_current_ma: 0 })
+📊 Dynamic battery data: Ok(DynamicBatteryMsgs { max_power_mw: 0, sus_power_mw: 0, full_charge_capacity_mwh: 4800, remaining_capacity_mwh: 4800, relative_soc_pct: 100, cycle_count: 0, voltage_mv: 4200, max_error_pct: 1, battery_status: 0, charging_voltage_mv: 0, charging_current_ma: 0, battery_temp_dk: 2982, current_ma: 0, average_current_ma: 0 })
 ```
 
 ## Starting a simulation
@@ -296,7 +291,7 @@ async fn simulation_task(
             
             // Advance the simulation by one tick
             println!("calling tick...");
-            state.tick(multiplier);
+            state.tick(0, multiplier);
         }
 
         // Simulate once per second
@@ -304,10 +299,12 @@ async fn simulation_task(
     }
 }
 ```
-and near the top, add this import:
+and near the top, add these imports:
 
 ```rust
+use mock_battery::mock_battery::MockBattery;
 use embassy_time::{Timer, Duration};
+
 ```
 
 This task takes passed-in references to the battery and also a 'multiplier' that determines how fast the simulaton runs (effectively the number of seconds computed for the tick operation)
@@ -320,7 +317,8 @@ So let's call that in our `spawn` block with
 creating the `battery_for_sim` value as another copy of `battery` in the section above:
 
 ```rust
-    let battery_for_sim: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const _ as *mut _) };
+        let battery_for_sim: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const MockBatteryDevice as *mut MockBatteryDevice) };
+
 ```
       
 Now we want to look at the dynamic values of the battery over time.  To continue our crude but effective `println!` output

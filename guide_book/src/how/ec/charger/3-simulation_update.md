@@ -10,12 +10,12 @@ In `main.rs` add this new executor task at the bottom of the file:
 ```rust
 #[embassy_executor::task]
 async fn charger_rule_task(
-    controller: &'static mut MockBatteryController<&'static mut MockBattery, &'static mut MockCharger>
+    controller: &'static mut OurController
 ) {
     loop {
         controller.poll_and_manage_charger().await.unwrap();
-        let seconds = controller.get_timeout().await.unwrap();
-        Timer::after(Duration::from_secs(seconds)).await;
+        let seconds = controller.get_timeout();
+        Timer::after(seconds).await;
     }
 }
 ```
@@ -29,10 +29,10 @@ spawner.spawn(charger_rule_task(controller_for_poll)).unwrap();
 ```
 which also requires us to make the `controller_for_poll` copy above:
 ```rust
-let controller_for_poll = unsafe { &mut *(controller as *const _ as *mut _) };
+let controller_for_poll = unsafe { &mut *(controller as *const OurController as *mut OurController) };
 ```
 
-### Updateing the simulation task
+### Updating the simulation task
 We also need to update our `simulation_task` to accept a new passed-in parameter for the charger and use it.
 
 Replace the existing `simulation_task` with this updated version:
@@ -70,16 +70,21 @@ and we need to update the `spawn` call for this in our `main()`:
 ```
 which will require us to create the `battery_for_sim2` reference above, right below `battery_for_sim`:
 ```rust
-    let battery_for_sim: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const _ as *mut _) };
-    let battery_for_sim2: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const _ as *mut _) };
+    let battery_for_sim: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const MockBatteryDevice as *mut MockBatteryDevice) };
+    let battery_for_sim2: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const MockBatteryDevice as *mut MockBatteryDevice) };
 ```
+Note also that in this new spawn to the simulation task we are running with a multiplier passed in as `50.0` instead of `10.0` because we want the simulation to run a bit faster. We can change this value as we like.
 
+also, add this import near the top of `main.rs`:
+```rust
+use mock_battery::mock_charger::MockCharger;
+```
 
 ## Run the stable battery
 
 Running with `cargo run` should give you the familiar looking output of the battery discharging.  
 But after a while, once it reaches below 90% charge capacity within the polling window of the `charger_rule_task`, you will see the  call to `poll_and_manage_charger` have its effect and turn on the charger.  The charge capacity will rise until it reaches the 90%
-mark, and then start going down again.  The battery will remain at a continual charge somewhere between about 87 - 90 % from hereon, depending upon the timing window effects.
+mark, and then start going down again.  The battery will remain at a continual charge somewhere between about 87 - 90 % from hereon, depending upon the timing window effects, and the speed of the  multiplier value passed to the simulation task.
 
 Now, of course, this isn't a very good implementation for a true real-world battery, which would use a more sophisticated algorithm to ramp the charging levels according to capacity and load (and other factors, such as thermal conditions), and in this simple simulation we are ust using constants for charge/discharge values, but the realism of the simulation is not really the point. 
 

@@ -40,8 +40,6 @@ const STARTING_RSOC_PERCENT:u8 = 100;
 const STARTING_ASOC_PERCENT:u8 = 100;
 const STARTING_REMAINING_CAP_MAH:u16 = 4800;
 const STARTING_FULL_CAP_MAH:u16 = 4800;
-const STARTING_CHARGE_CURRENT_MA:u16 =  2000;
-const STARTING_CHARGE_VOLTAGE_MV:u16 = 8400;
 const STARTING_VOLTAGE_MV:u16 = 4200;
 const STARTING_TEMPERATURE_DECIKELVINS:u16 = 2982; // 25 dec C.
 const STARTING_DESIGN_CAP_MAH:u16 = 5000;
@@ -64,8 +62,6 @@ pub struct VirtualBatteryState {
     pub runtime_to_empty_min: u16,
     pub avg_time_to_empty_min: u16,
     pub avg_time_to_full_min: u16,
-    pub charging_current_ma: u16,
-    pub charging_voltage_mv: u16,
     pub cycle_count: u16,
     pub design_capacity_mah: u16,
     pub design_voltage_mv: u16,
@@ -90,8 +86,6 @@ impl VirtualBatteryState {
             absolute_soc_percent: STARTING_ASOC_PERCENT,
             remaining_capacity_mah: STARTING_REMAINING_CAP_MAH,
             full_charge_capacity_mah: STARTING_FULL_CAP_MAH,
-            charging_current_ma: STARTING_CHARGE_CURRENT_MA,
-            charging_voltage_mv: STARTING_CHARGE_VOLTAGE_MV,
             design_capacity_mah: STARTING_DESIGN_CAP_MAH,
             design_voltage_mv: STARTING_DESIGN_VOLTAGE_MV,
             voltage_mv: 0,
@@ -126,6 +120,7 @@ impl VirtualBatteryState {
     /// Advance the battery simulation by one tick (e.g., 1 second)
     pub fn tick(
         &mut self,  
+        //charger_state: &Arc<Mutex<RawMutex, VirtualChargerState>>, 
         charger_current: u16,
         multiplier:f32
     ) {
@@ -161,6 +156,7 @@ impl VirtualBatteryState {
         // 7. State of Charge updates
         self.relative_soc_percent = ((self.remaining_capacity_mah as f32 / self.full_charge_capacity_mah as f32) * 100.0).round() as u8;
         self.absolute_soc_percent = self.relative_soc_percent.saturating_sub(3); // Or another logic
+
     }
 
 
@@ -211,8 +207,6 @@ impl VirtualBatteryState {
         self.remaining_capacity_mah = self.full_charge_capacity_mah;
         self.voltage_mv = STARTING_VOLTAGE_MV;
         self.temperature_dk = STARTING_TEMPERATURE_DECIKELVINS;
-        self.charging_voltage_mv = STARTING_CHARGE_VOLTAGE_MV;
-        self.charging_current_ma = STARTING_CHARGE_CURRENT_MA;
         self.current_ma = 0;
         self.avg_current_ma = 0;
         self.cycle_count = 0;
@@ -544,18 +538,14 @@ impl SmartBattery for MockBattery {
     }
 
     fn charging_current(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
-        let state = self.state.clone();
         async move {
-            let lock = state.lock().await;
-            Ok(lock.charging_current_ma)
+            Ok(0)
         }
     }
 
     fn charging_voltage(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
-        let state = self.state.clone();
         async move {
-            let lock = state.lock().await;
-            Ok(lock.charging_voltage_mv)
+            Ok(0)
         }
     }
 
@@ -640,6 +630,8 @@ impl SmartBattery for MockBattery {
     }
 }
 ```
+
+Note above that `charging_current` and `charging_voltage` are simple placeholders that return 0 values for now.  The Charger is a separate component addition that we will deal with in the next section.  There is no underlying virtual battery support for this, so we will be without a charger for the time being.
 
 ### Cargo.toml additions
 We also need to update our `Cargo.toml` files.  In `mock_battery/Cargo.toml`, add the following to your `[dependencies]` section:
