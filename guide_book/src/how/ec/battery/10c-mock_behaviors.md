@@ -307,7 +307,7 @@ use embassy_time::{Timer, Duration};
 
 ```
 
-This task takes passed-in references to the battery and also a 'multiplier' that determines how fast the simulaton runs (effectively the number of seconds computed for the tick operation)
+This task takes passed-in references to the battery and also a 'multiplier' that determines how fast the simulation runs (effectively the number of seconds computed for the tick operation)
 
 So let's call that in our `spawn` block with
 

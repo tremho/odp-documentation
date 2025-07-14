@@ -10,7 +10,7 @@ This allows us to begin development without worrying about hardware complication
 
 Once complete, our battery implementation is ready to be flashed and tested on the target embedded hardware, where it should behave identically.  
 
-If in this step we had actual battery hardware to attach to, we would replace our mock implmentations at the HAL layer with actual hardware bindings.  
+If in this step we had actual battery hardware to attach to, we would replace our mock implementations at the HAL layer with actual hardware bindings.  
 
 In our example case, our battery will remain virtual, and can continue to serve its simulated purpose when integrated as part of the 'virtual laptop' project later.
 

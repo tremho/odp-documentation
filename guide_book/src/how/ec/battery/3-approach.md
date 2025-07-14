@@ -46,7 +46,7 @@ The SBS specification outlines these functions that a smart battery should imple
 - `BatteryStatus` – Flags indicating current state conditions.
 -  `CycleCount` - Number of cycles (a measure of wear). A cycle is the amount of discharge approximately equal to the value of the DesignCapacity.
 - `DesignCapacity` - The theoretical capacity of a new battery pack.
-- `DesignVoltage` - The theoritical voltage of a new battery pack.
+- `DesignVoltage` - The theoretical voltage of a new battery pack.
 - `SpecificationInfo` - Version and scaling specification info
 - `ManufactureDate` - The data of manufacture as a bit-packed integer
 - `SerialNumber` - the manufacturer assigned serial number of this battery pack.
@@ -61,7 +61,7 @@ Some systems may support removable batteries, and such conditions must be accoun
 
 ---
 
-In the next steps, we will use the ODP published crates that expose this SBS defnition as a Trait and build our implementation on top of that starting point.
+In the next steps, we will use the ODP published crates that expose this SBS definition as a Trait and build our implementation on top of that starting point.
 
 We will implement the mock values and behaviors of our simulated battery - instead of defining and building a HAL layer - 
 and then we will walk through the process of attaching this component definition to a Device wrapper and registering it
