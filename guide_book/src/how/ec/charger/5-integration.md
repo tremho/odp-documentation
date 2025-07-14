@@ -49,7 +49,14 @@ name = "battery_subsystem_behavior"
 path = "integration/battery_subsystem_behavior.rs"
 ```
 
+and up in the `[package]` section, add this line
+```toml
+default-run = "mock_battery"
+```
+
 This configures the test target named "battery_subsystem_behavior" to run from the path given.  We've pointed it specifically at our `integration` directory location.  Without this configuration, it would look by default in `src/bin` for the name provided.
+
+The `default-run` line in `[package]` will allow us to continue to use plain `cargo run` without naming a target for our original `main` execution.
 
 
 ### The scope for our tests
@@ -66,7 +73,7 @@ to the console (which we can still do), we will be reporting on whether or not t
 ### Creating a Test Observer
 Since we are not running under a `test` context, there is no test runner framework that will report the pass/fail conditions of our test.  Just like our  `main()` code, and just like our unit tests, the Embassy Executor `run()` block that spawns our executing tasks does not exit, so we need to handle that ourselves when all of our test observations are complete.
 
-To help us with all of this, we'll create a `test_observer.rs` as a file within the `integration` directory.  Give it this code:
+To help us with all of this, we'll create a `integration/test_observer.rs`.  We keep this in the `integration` folder rather than `src` because it will be used only for integration testing. Give it this code:
 ```rust
 use mock_battery::mutex::{Arc, Mutex, RawMutex};
 use std::sync::OnceLock;
@@ -192,7 +199,7 @@ We can also continue to use `println!` statements, although these should mostly 
 
 ## Writing the Integration Test
 
-We want to make a testing version of what we have running in `main`, so let's just copy over the code from main into `battery_subsystem_behavior.rs` as our starting point:
+We want to make a testing version of what we have running in `main`, so let's just copy over the code from main into `integration/battery_subsystem_behavior.rs` as our starting point:
 
 ```rust
 use embassy_executor::Executor;

@@ -32,99 +32,14 @@ However, there are some differences in the threading model that is used when we 
 
 We need an asynchronous context for testing our asynchronous method traits, so we construct our test flow in the same way we constructed our `main()` function, and will use the Embassy `Executor` to spawn asynchronous tasks that call upon the traits we wish to test.
 
-Due to thread and Mutex handling differences between a standard run and test framework run, we need to make a few simple refactors to our existing code so that it will handle both cases.
+We've already pre-emptively dealt with this when we created different definition for `RawMutex` and picked different crate sources for `Arc` depending upon our context in `mutex.rs`.  Now is where that really comes into play.
 
-To do this, we will first define a helper module named `mutex.rs` with this content:
-```rust
-// src/mutex.rs
 
-extern crate alloc;
-
-#[cfg(test)]
-pub use std::sync::Arc;
-#[cfg(test)]
-pub use embassy_sync::blocking_mutex::raw::NoopRawMutex as RawMutex;
-
-#[cfg(not(test))]
-pub use alloc::sync::Arc;
-#[cfg(not(test))]
-pub use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex as RawMutex;
-
-// Common export regardless of test or target
-pub use embassy_sync::mutex::Mutex;
-```
-As you can see, this chooses the definition of Arc and which RawMutex type to apply, as these have ramifications across the different environments, and does so with the management of `#[cfg(test)]` and `#[cfg(not(test))]` preprocessor directives.
-
-Make this module known to your `lib.rs` file as well:
-```rust
-pub mod mock_battery;
-pub mod virtual_battery;
-pub mod mock_battery_device;
-pub mod espi_service;
-pub mod mock_battery_controller;
-pub mod types;
-pub mod mutex;
-```
-
-Now, we will make some replacements to use this new helper.
-
-🗎 In `espi_service.rs`, remove the line
-```rust
-use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
-```
-and replace it with
-```rust
-use crate::mutex::RawMutex;
-```
-and further down, in the declaration of `pub struct EspiService`, change
-```rust
- _signal: Signal<ThreadModeRawMutex, BatteryEvent>
-```
- to
-```rust
-  _signal: Signal<RawMutex, BatteryEvent>
-```
-🗎 In `main.rs`:
-
-remove
-```rust
-use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
-use embassy_sync::mutex::Mutex;
-```
-and replace it with
-```rust
-use mock_battery::mutex::RawMutex;
-```
-
-and replace
-```rust
- pub struct BatteryFuelReadySignal {
-    signal: Signal<ThreadModeRawMutex, ()>,
- }
- ```
- with
- ```rust
-  pub struct BatteryFuelReadySignal {
-    signal: Signal<RawMutex, ()>,
- }
-
- 🗎 Replace `type.rs` with:
-```rust
-// mock_battery/src/types.rs
-
-use crate::mutex::RawMutex;
-use embassy_sync::channel::Channel;
-use battery_service::context::BatteryEvent;
-
-pub type BatteryChannel = Channel<RawMutex, BatteryEvent, 4>;
-```
-🗎 in your `mock_battery/Cargo.toml` file, add this section:
+🗎 In your `mock_battery/Cargo.toml` file, add this section:
 ```toml
 [dev-dependencies]
 embassy-executor = { workspace = true, version = "0.5", features = ["arch-std"] }
 ```
-
-now do a `cargo clean` and `cargo build` to insure the refactoring was successful.
 
 ### Before testing
 We run tests with the `cargo test` command.
@@ -152,7 +67,7 @@ Normal test functions do not have an async entry point, so calling upon async me
 
 Tests are assumed to execute in their own thread and succeed when completing that thread.
 
-To maintain consistency with the way we execute our methods in general, we choose to employ Embassy `Executor` here again. This makes sense because it is the same mechanisims by which our `main()` tasks have been dispatched.
+To maintain consistency with the way we execute our methods in general, we choose to employ Embassy `Executor` here again. This makes sense because it is the same mechanism by which our `main()` tasks have been dispatched.
 
 But a test framework assumes the system under test -- in this case what we do in `executor.run()` -- will exit cleanly when completed. But Embassy `executor.run()` is designed to be non-returning function and there is no way to break its loop.  The only remedy is to exit the process altogether, which is kind of a nuclear option but it does signal to the test framework that tests are complete for this unit.
 

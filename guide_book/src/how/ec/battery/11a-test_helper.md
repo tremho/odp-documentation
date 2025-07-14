@@ -61,9 +61,10 @@ pub mod mock_battery;
 pub mod virtual_battery;
 pub mod mock_battery_device;
 pub mod espi_service;
-pub mod mock_battery_controller;
-pub mod types;
 pub mod mutex;
+pub mod types;
+pub mod mock_battery_controller;
+pub mod fuel_signal_ready;
 pub mod test_helper;
 ```
 

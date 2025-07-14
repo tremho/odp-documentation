@@ -23,7 +23,7 @@ In the process, we established key patterns that will carry forward into similar
 
 ## What We Didn't Do
 
-This exercise focused on illustrating patterns—not delivering production-grade code. Accordingly:
+This exercise focused on illustrating patterns -— not delivering production-grade code. Accordingly:
 
 - We did **not** fully implement the `Smart Battery` specification.  
   Features such as removable batteries, dynamic BatteryMode handling, or full status reporting were omitted for simplicity.

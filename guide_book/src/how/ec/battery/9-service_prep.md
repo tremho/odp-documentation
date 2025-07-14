@@ -36,8 +36,8 @@ Then we will register the wrapper with `register_device(...)` and we will have a
 One of the service definitions from the `embedded-services` repository we brought into scope is the `battery-service`. 
 We now need to update our Cargo.toml to know where to find it.
 Open the `Cargo.toml` file of your mock-battery project and add the dependency to the battery-service path.  We will also need a reference to `embedded-services` itself for various support needs.
-We will no longer be requiring `tokio`, so you can remove that dependency, but we do need to import crate references from `embassy`.
-Update your `mock_battery/Cargo.toml` so that your `[dependencies]` section now looks like this to include references we will need.
+we will need to import crate references from `embassy`.
+Update your `mock_battery/Cargo.toml` so that your `[dependencies]` section includes references we will need.
 
 Your new `[dependencies]` section should now look like this:
 
@@ -48,7 +48,7 @@ battery-service = { path = "../embedded-services/battery-service" }
 embedded-services = { path = "../embedded-services/embedded-service" }
 embassy-executor = { workspace = true }
 embassy-time = { workspace = true, features=["std"] }
-embassy-sync = { workspace = true, features=["std"] }
+embassy-sync = { workspace = true }
 critical-section = {version = "1.0", features = ["std"] }
 async-trait = "0.1"
 # tokio = { version = "1.45", features = ["full"] }
@@ -59,7 +59,7 @@ This will allow us to import what we need for the next steps.
 
 ### Top-level Cargo.toml
 Note that some of these dependencies say 'workspace = true'.  This implies they are in the workspace as configured by our top-level Cargo.toml, at `battery_project/Cargo.toml`.
-We need to update our top-level Cargo.toml to include these.  In `battery_project/Cargo.toml` add this section and settings:
+We need to update our top-level Cargo.toml to include these.  In `battery_project/Cargo.toml` update your `[workspace.dependencies]` section and settings:
 
 ```toml
 [workspace.dependencies]
@@ -297,6 +297,5 @@ After you've done all that,  you should be able to build with
 cargo build
 ```
 and get a clean result
-_Note: if you commented out or removed the reference to `tokio` in your `Cargo.toml` you may need to put that back to compile against the existing `main.rs`, but we will be replacing `main.rs` shortly._
 
 Next we will work to put this battery to use.
