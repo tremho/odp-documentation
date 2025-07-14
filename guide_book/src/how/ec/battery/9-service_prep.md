@@ -48,10 +48,10 @@ battery-service = { path = "../embedded-services/battery-service" }
 embedded-services = { path = "../embedded-services/embedded-service" }
 embassy-executor = { workspace = true }
 embassy-time = { workspace = true, features=["std"] }
-embassy-sync = { workspace = true }
+embassy-sync = { workspace = true, features=["std"] }
 critical-section = {version = "1.0", features = ["std"] }
 async-trait = "0.1"
-# tokio = { version = "1.45", features = ["full"] }
+tokio = { version = "1.45", features = ["full"] }
 static_cell = "1.0"
 once_cell = { workspace = true }
 ```

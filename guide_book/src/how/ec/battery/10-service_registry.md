@@ -190,7 +190,6 @@ Add both of these files as modules in `lib.rs`:
 pub mod mock_battery;
 pub mod virtual_battery;
 pub mod mock_battery_device;
-pub mod espi_service;
 pub mod mutex;
 pub mod types;
 ```
@@ -328,6 +327,8 @@ Remember to add this module to your `lib.rs` file:
 pub mod mock_battery;
 pub mod virtual_battery;
 pub mod mock_battery_device;
+pub mod mutex;
+pub mod types;
 pub mod espi_service;
 ```
 
@@ -692,8 +693,17 @@ Our controller is referenced with a generic that accepts an acceptable `SmartBat
 `MockBatteryController<&'static mut MockBattery>`, but for convenience and flexibility, let's add this to our `types.rs` file:
 
 ```rust
+// mock_battery/src/types.rs
+
+use crate::mutex::RawMutex;
+use embassy_sync::channel::Channel;
+use battery_service::context::BatteryEvent;
+use crate::mock_battery::MockBattery;
+use crate::mock_battery_controller::MockBatteryController;
+
 pub type BatteryChannel = Channel<RawMutex, BatteryEvent, 4>;
 pub type OurController = MockBatteryController<&'static mut MockBattery>;
+
 ```
 Now we can refer to it as `OurController` and get the correct assembly without changing all aspects of the code should we change this declaration.
 
@@ -706,6 +716,7 @@ Let's implement the controller into our `main.rs`.  Start by adding these import
 ```rust
 use embassy_executor::Spawner;
 use battery_service::wrapper::Wrapper;
+use mock_battery::types::OurController;
 ```
 
 We'll create new `StaticCell` instances for our `Controller` and `Wrapper`.  Add these near your other static declarations:
@@ -838,7 +849,7 @@ create the other static initializations:
 and we also have to init our `Controller`.  The `MockBatteryController` needs the battery from the MockBatteryDevice.
 ```rust
     let inner_battery = battery.inner_battery();
-    let controller = CONTROLLER.init(OurCongtroller::new(inner_battery)); 
+    let controller = CONTROLLER.init(OurController::new(inner_battery)); 
 ```
 
 so we can update our `executor.run()` block so it has the following spawns:
@@ -876,6 +887,12 @@ fn main() {
     let executor = EXECUTOR.init(Executor::new());
 
     // Construct battery and extract needed values *before* locking any 'static borrows
+    //
+    // SAFETY: We are creating multiple references to the same statically allocated value,
+    // but these are used in a controlled and non-overlapping way.
+    // The allocations are guaranteed to be static and only initialized once via `.init()`,
+    // and no concurrent mutation or re-initialization is allowed.
+    // These unsafe casts are used strictly for one-time setup in this test harness context.    
     let battery = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
     let battery_for_id: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const MockBatteryDevice as *mut MockBatteryDevice) };
     let battery_for_inner: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const MockBatteryDevice as *mut MockBatteryDevice) };
@@ -887,8 +904,6 @@ fn main() {
     let battery_fuel_ready = BATTERY_FUEL_READY.init(BatteryFuelReadySignal::new());
     let controller = CONTROLLER.init(OurController::new(inner_battery));
 
-
-
     executor.run(|spawner| {
         spawner.spawn(init_task(battery)).unwrap();
         spawner.spawn(battery_service::task()).unwrap();
@@ -898,6 +913,9 @@ fn main() {
     });
 }
 ```
+
+>#### Safety first
+>In Rust, whenever `unsafe` is used to bypass the compiler's guarantees, it is customary—and strongly recommended—to accompany that usage with a `// SAFETY:` comment explaining why the code is believed to be sound. This forms part of the "human type system" that Rust's safety model depends on when escaping the compiler’s checks.
 
 
 The output of `cargo run` should now be:

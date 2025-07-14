@@ -246,7 +246,7 @@ impl VirtualBatteryState {
 
 ```
 
-### Up
+### What's Up
 
 What we've done here is to define a virtual battery as a set of states. These coincide with the values we will need from the `MockBattery` to satisfy the `SmartBattery` traits. 
 
@@ -274,7 +274,7 @@ Now we are going to attach our virtual battery to our `MockBattery` construction
 
 Edit your `mock_battery.rs` file.  
 
-At the top, add these imports:
+At the very top of the file, add these imports:
 
 ```rust
 extern crate alloc;
@@ -343,7 +343,7 @@ With this in mind, we can then implement calls into our `VirtualBatteryState` by
 Where we obtain access to our `VirtualBatteryState` property and then use `async move` to obtain a mutex lock for thread safety, and then return the value from the locked state as a Result.    
 
 
-### A completed integration 
+### A completed implementation 
 
 When we repeat that pattern of integration for each of the `SmartBattery` traits, the end result looks like this:
 

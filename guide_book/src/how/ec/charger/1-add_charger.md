@@ -178,7 +178,7 @@ and add an `inner_charger` accessor to match the existing `inner_battery` method
 
 Finally, at the top of `mock_battery_device.rs`, add this import:
 ```rust
-use mock_battery::mock_charger::MockCharger;
+use crate::mock_charger::MockCharger;
 ```
 
 ### Keeping lib.rs updated

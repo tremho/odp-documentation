@@ -68,6 +68,7 @@ Output now should look like:
 🔔 event_handler_task received event: BatteryEvent { event: PollStaticData, device_id: DeviceId(1) }
 🔄 Handling PollStaticData
 📊 Static battery data: Ok(StaticBatteryMsgs { manufacturer_name: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], device_name: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], device_chemistry: [0, 0, 0, 0, 0], design_capacity_mwh: 0, design_voltage_mv: 0, device_chemistry_id: [0, 0], serial_num: [0, 0, 0, 0] })```
+```
 
 We can see the data is all zeroes.
 
@@ -174,6 +175,7 @@ existing `test_message_sender` task:
     } else {
         println!("✅ Test BatteryEvent sent");
     }
+    
 ```
 
 and in the `event_handler_task`:
