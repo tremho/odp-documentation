@@ -6,7 +6,7 @@
     - [Developer Experience](./why/developer_experience.md)
     - [Sustainability and Cost](./why/sustainability.md)
     - [Industry Standards](./why/standards.md)
-- [Introduction](./intro/welcome.md)
+- [Introduction](./intro/getting_started.md)
     - [Concepts](./intro/concepts/Concepts.md)
         - [A Quick Look at Rust](./intro/concepts/rust_quick_look.md)
         - [Patina](./intro/concepts/patina.md)
@@ -84,12 +84,12 @@
             - [Integration](./how/ec/integration/integration.md)
                 -[Integration Tests](./how/ec/integration/integration_tests.md)
             - [Embedded Targeting](./how/ec/embedded_target/embedded_targeting.md)
-            - [Project Board](./how/ec/embedded_target/project_board.md)
-            - [Dependencies](./how/ec/embedded_target/embedded_dependencies.md)
-            - [Code Changes](./how/ec/embedded_target/embedded_code_changes.md)
-            - [Logging](./how/ec/embedded_target/embedded_logging.md)
-            - [Flashing](./how/ec/embedded_target/embedded_flashing.md)
-            - [Testing](./how/ec/embedded_target/embedded_testing.md)
+                - [Project Board](./how/ec/embedded_target/project_board.md)
+                - [Dependencies](./how/ec/embedded_target/embedded_dependencies.md)
+                - [Code Changes](./how/ec/embedded_target/embedded_code_changes.md)
+                - [Logging](./how/ec/embedded_target/embedded_logging.md)
+                - [Flashing](./how/ec/embedded_target/embedded_flashing.md)
+                - [Testing](./how/ec/embedded_target/embedded_testing.md)
     - [Integrating the Virtual Laptop](./laptop/integrating.md)
 - [Summary and Takeaways](./conclusions.md)
 
@@ -110,5 +110,3 @@
         - [EC Manufacturing Service](./specs/ec_interface/ec-manufacturing-service.md)
         - [EC OEM Service](./specs/ec_interface/ec-oem-service.md)
         - [Sample System Implementation](./specs/ec_interface/sample-system-implementation.md)
-
-
