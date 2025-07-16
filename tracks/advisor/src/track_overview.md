@@ -1,0 +1,2 @@
+# ODP Advisor Track Overview
+The Advisor track is designed for individuals who provide strategic guidance and technical expertise to organizations using the Open Device Partnership (ODP) framework. Advisors play a crucial role in shaping the direction of ODP implementations, ensuring best practices are followed, and helping teams navigate complex technical challenges.
