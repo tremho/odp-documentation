@@ -14,45 +14,25 @@ It also embraces existing standards like UEFI, DICE, ACPI, and EC protocols—bu
 
 ---
 
-## Choose Your Path
+## How to Use This Guide
+This documentation is designed to serve multiple audiences working with the Open Device Partnership (ODP). Whether you're a firmware engineer, technology advisor, integrator, or contributor, you'll find resources tailored to your needs.
 
-Depending on your interest or role, we offer guided tracks through the documentation:
+In the [Tracks of ODP](../tracks.md), you will find curated content organized into guided paths. Each track is designed to help you learn about ODP from different perspectives, whether you're focused on value propositions, specific technologies like Patina, or roles such as engineering or advising.
 
-#### Subject-based:
-- 🏅 [**Value Proposition**](../../tracks/value_proposition/track_overview.md)
-  Understand the core benefits of ODP, including security, modularity, and cross-domain coherence.
+### Role-Based Reading Guidance
 
-- 🛫 [**Patina Boot Firmware**](../../tracks/patina/track_overview.md)  
-  Learn to build UEFI firmware with Rust using the Patina framework.
-
-- 🔋 [**Embedded Controller and Services**](../../tracks/embedded_controller/track_overview.md)
-  Dive into EC subsystems like battery, charger, and thermal control with real component walkthroughs.
-
-- 🔐 [**Security Architecture**](../../tracks/security/track_overview.md)  
-  Explore trusted boot, firmware identity, and the DICE model.
-
-
-
-#### Role-based:
-- 🧑‍🔧 [**Firmware Engineer**](../../tracks/engineer/track_overview.md)
-  Learn how to build secure, modular firmware components using ODP.
-
-- 🧠 [**Technology Advisor**](../../tracks/advisor/track_overview.md)
-  Understand the architectural decisions and best practices for ODP.  
-
-- 🔧 [**Integrator**](../../tracks/integrator/track_overview.md)
-    Discover how to integrate ODP components into larger systems.
-
-- 🧑‍🤝‍🧑 [**Contributor**](../../tracks/contributor/track_overview.md)
-    Get involved in the ODP community by contributing code, documentation, or reporting issues.
+|   Role            | Recommended Path                                                                 |
+|-------------------|-----------------------------------------------------------------------------|
+| __Firmware Engineer__ | Follow the documentation from start to finish. Includes technical tutorials, architectural insights, and integration exercises. |
+| __Technology Advisor__ | Read the mainline content up through the Architectural Overview. Skip hands-on exercises. Then proceed to the Tracks page to explore summaries and technical overviews by topic.|    
+| __Integrator__        | Read through the Architectural Overview and Integration sections, then follow the Integrator Track for platform-specific setup and bundling guidance. |
+| __Contributor__       | Review the mainline Value Proposition and Architecture Overview, then head to the Contributor Track for community, contribution standards, and roadmap content. |
+| __Security Reviewer__ | Jump to the Security Track. It includes collected topics around trusted boot, isolation, and other security concerns, with cross-links to affected design areas. |
+| __Patina SDK (UEFI) Developer__ | Refer to external Patina resources with context provided in the Patina Track. You’ll find links to upstream Patina crates, code examples, and implementation notes. |  
 
 
 ---
 
-## Need to Learn Rust?
+### Where to next?
 
-ODP uses [Rust](https://www.rust-lang.org/) to provide memory safety and modern tooling. If you're new to it, don’t worry—we provide a [Quick Look at Rust](./intro/concepts/rust_quick_look.md) to help you get oriented.
-
----
-
-Once you're ready, visit the [Tracks of ODP](../tracks.md) to start your journey.
+If you are not a developer, you can skip the next section and go directly to the [Tracks of ODP](../tracks.md) to explore the various paths available.  However, even non-developers may find it useful to understand the basics of Rust and how ODP uses it to ensure safety and reliability in firmware development.

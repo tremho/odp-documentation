@@ -33,7 +33,7 @@ describes the relationship of a hypervisor controlling a set of secure memory pa
 
 FF-A is available for Arm devices only.  A common solution for x64 is still in development. For x64 implementations, use of SMM is employed to orchestrate hypervisor access using the [Hafnium] Rust product.
 
-In a Non-Secure implementation _without_ a hyperviser, the ACPI connected components can potentially change the state within any accessible memory space.  An implementation with a hypervisor cannot.  It may still be considered a "Non-Secure" implementation, however, as the ACPI data itself is unable to be verified for trust.
+In a Non-Secure implementation _without_ a hypervisor, the ACPI connected components can potentially change the state within any accessible memory space.  An implementation with a hypervisor cannot.  It may still be considered a "Non-Secure" implementation, however, as the ACPI data itself is unable to be verified for trust.
 
 In a fully "Secure" implementation, controller code is validated at boot time to insure the trust of the data it provides. Additionally, for certain types of data, digital signing and/or encryption may be used on the data exchanged to provide an additional level of trust.
 
