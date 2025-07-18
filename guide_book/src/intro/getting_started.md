@@ -25,10 +25,10 @@ In the [Tracks of ODP](../tracks.md), you will find curated content organized in
 |-------------------|-----------------------------------------------------------------------------|
 | __Firmware Engineer__ | Follow the documentation from start to finish. Includes technical tutorials, architectural insights, and integration exercises. |
 | __Technology Advisor__ | Read the mainline content up through the Architectural Overview. Skip hands-on exercises. Then proceed to the Tracks page to explore summaries and technical overviews by topic.|    
-| __Integrator__        | Read through the Architectural Overview and Integration sections, then follow the Integrator Track for platform-specific setup and bundling guidance. |
-| __Contributor__       | Review the mainline Value Proposition and Architecture Overview, then head to the Contributor Track for community, contribution standards, and roadmap content. |
-| __Security Reviewer__ | Jump to the Security Track. It includes collected topics around trusted boot, isolation, and other security concerns, with cross-links to affected design areas. |
-| __Patina SDK (UEFI) Developer__ | Refer to external Patina resources with context provided in the Patina Track. You’ll find links to upstream Patina crates, code examples, and implementation notes. |  
+| __Integrator__        | Read through the Architectural Overview and Integration sections, then follow the [Integrator Track](../../tracks/integrator/track_overview.md) for platform-specific setup and bundling guidance. |
+| __Contributor__       | Review the mainline Value Proposition and Architecture Overview, then head to the [Contributor Track](../../tracks/contributor/track_overview.md) for community, contribution standards, and roadmap content. |
+| __Security Reviewer__ | Jump to the [Security Track](../../tracks/security/track_overview.md). It includes collected topics around trusted boot, isolation, and other security concerns, with cross-links to affected design areas. |
+| __Patina SDK (UEFI) Developer__ | Refer to external Patina resources with context provided in the [Patina Track](../../tracks/patina/track_overview.md). You’ll find links to upstream Patina crates, code examples, and implementation notes. |  
 
 
 ---

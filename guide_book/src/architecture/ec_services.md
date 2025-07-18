@@ -1,4 +1,4 @@
-# EC Services
+# EC Services Architecture
 
 
 ## Communication Pathways
