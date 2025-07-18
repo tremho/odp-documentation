@@ -7,6 +7,7 @@
     - [Sustainability and Cost](./why/sustainability.md)
     - [Industry Standards](./why/standards.md)
 - [Introduction](./intro/getting_started.md)
+    - [Welcome Developer](./intro/welcome.md)
     - [Concepts](./intro/concepts/Concepts.md)
         - [A Quick Look at Rust](./intro/concepts/rust_quick_look.md)
         - [Patina](./intro/concepts/patina.md)
