@@ -1,9 +1,12 @@
-# Getting Started
+# Welcome Developer!
 
+Welcome! If you're a firmware engineer new to the Open Device Partnership, this is the right place to begin.
 
-Welcome! If you're new to the Open Device Partnership, this is the right place to begin.
+If you're also new to the world of Embedded Controllers and the software that drives them, don't worry — you're still in the right place.
 
-If you're also new to the world of Embedded Controllers and the software that drives them, don't worry—you're still in the right place.
+If you are a previous UEFI developer, you may find some of the concepts familiar, but ODP introduces new patterns and practices that will help you build more secure and modular firmware components.  ODP introduces Patina, a Rust-based framework that provides a modern approach to firmware development, focusing on safety, modularity, and reusability.  Patina honors the legacy and traditions of UEFI while introducing new paradigms that make firmware development more efficient and secure. 
+For more specific information about Patina, you can refer to the [Patina Track](../../tracks/patina/track_overview.md) or the [Patina Concepts](./intro/concepts/patina.md) section.
+
 
 | &nbsp; | &nbsp;   
 |---|---
