@@ -1,7 +1,4 @@
 - [Overview](./track_overview.md)
-- [page2](./page2.md)
-- [folder](./folder/pagea.md)
-- [NEXT](./folder/pageb.md)
 - [Why ODP?](./why/why.md)
     - [Secure Trust](./why/secure_trust.md)
     - [Modularity](./why/modular.md)
@@ -9,3 +6,5 @@
     - [Developer Experience](./why/developer_experience.md)
     - [Sustainability and Cost](./why/sustainability.md)
     - [Industry Standards](./why/standards.md)
+- [Design Tradeoffs](./design_tradeoffs.md)
+- [Open-source Strategy](./open_source_strategy.md)

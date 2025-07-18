@@ -15,8 +15,36 @@ ODP does not usurp this development paradigm but rather empowers it further thro
 
 This book is geared to a couple of different distinct audiences.  If you are concerned primarily with any one of the particular 'tracks' of ODP and are interested in a guide to which ODP repositories are relevant for that track, continue with [What is in ODP?](./what/what.md)
 
-If you are interested in examples of _how_ to develop along any of these tracks, follow the examples in [Building a Virtual Laptop](./laptop/laptop.md), either those relevant to the topic of your interest alone, or follow the entire exercise to build a complete virtual laptop comprised of each of these elements.  
+If you are a __Firmware Engineer__ you likely will want to continue following ahead into the hands-on projects for building Embedded Controller components and services, ultimately resulting in the project for building a virtual laptop with Patina firmware. To continue on this track, simply continue to the next article.
 
+Depending on your interest or role, we offer guided tracks through the documentation:
+
+#### Subject-based:
+- 🏅 [**Value Proposition**](../tracks/value_proposition/track_overview.md)
+  Understand the core benefits of ODP, including security, modularity, and cross-domain coherence.
+
+- 🛫 [**Patina Boot Firmware**](../tracks/patina/track_overview.md)  
+  Learn to build UEFI firmware with Rust using the Patina framework.
+
+- 🔋 [**Embedded Controller and Services**](../tracks/embedded_controller/track_overview.md)
+  Dive into EC subsystems like battery, charger, and thermal control with real component walkthroughs.
+
+- 🔐 [**Security Architecture**](../tracks/security/track_overview.md)  
+  Explore trusted boot, firmware identity, and the DICE model.
+
+
+
+#### Role-based:
+
+- 🔧 [**Integrator**](../tracks/integrator/track_overview.md)
+    Discover how to integrate ODP components into larger systems.
+
+- 🧑‍🤝‍🧑 [**Contributor**](../tracks/contributor/track_overview.md)
+    Get involved in the ODP community by contributing code, documentation, or reporting issues.
+
+Technical readers may also be interested in the [Specifications](./specs/specifications.md) section, which provides detailed technical specifications for ODP components and services.
+
+---
 
 
 
