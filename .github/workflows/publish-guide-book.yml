@@ -1,25 +1,18 @@
-# @file publish-mdbook.yml
-#
-# A Github workflow that compiles an mdbook located at guide_book/* and publishes it
-# to the repository's github page.
-#
-name: Build and Publish Guide Book
+name: Build and Publish ODP Books
 
 on:
-  # Trigger this workflow manually if necessary
   workflow_dispatch:
-
-  # Triggers this workflow if a commit is pushed to main in which a file in
-  # bookshelf/** has been updated
   push:
     branches:
       - main
     paths:
       - guide_book/**
+      - tracks/**
+      - .github/workflows/publish-guide-book.yml
 
 jobs:
   build:
-    name: Build Guide Book
+    name: Build All Books
     runs-on: ubuntu-latest
 
     steps:
@@ -29,30 +22,74 @@ jobs:
       - name: Install Rust
         uses: dtolnay/rust-toolchain@stable
 
-      - name: Install MdBook
-        run: cargo install mdbook
-      
-      - name: Install Mermaid
-        run: cargo install mdbook-mermaid
+      - name: Install mdBook and Plugins
+        run: |
+          cargo install mdbook
+          cargo install mdbook-mermaid
 
-      - name: Build the Guide Book
+      - name: Prepare Output Folders
+        run: |
+          mkdir -p .temp/guide
+          mkdir -p .temp/tracks
+
+      - name: Build Main Guide Book
         run: |
           cd guide_book
+          mdbook clean
           mdbook build
+          cp -r book/* ../.temp/guide/
 
-      - name: Upload Github Pages Site Artifact
+      - name: Prepare and Build Track Books
+        run: |
+          # Reusable copy function for TOML and mermaid files
+          for TRACK in contributor embedded_controller integrator patina security value_proposition; do
+            cp -r guide_book/book.toml tracks/$TRACK/
+            cp -r guide_book/mermaid* tracks/$TRACK/
+          done
+
+          # Shared content for specific tracks
+          mkdir -p tracks/value_proposition/src/why
+          cp -r guide_book/src/why/* tracks/value_proposition/src/why/
+
+          cp -r guide_book/src/intro/concepts/patina.md tracks/patina/src/patina_concepts.md
+
+          cp -r guide_book/src/intro/concepts/Embedded_controller.md tracks/embedded_controller/src/general.md
+          cp -r guide_book/src/architecture/embedded_controller.md tracks/embedded_controller/src/architecture.md
+          cp -r guide_book/src/architecture/ec_components.md tracks/embedded_controller/src/component_arch.md
+          cp -r guide_book/src/architecture/ec_services.md tracks/embedded_controller/src/ec_services_arch.md
+          mkdir -p tracks/embedded_controller/src/images
+          cp -r guide_book/src/intro/concepts/images/simplified_layers.png tracks/embedded_controller/src/images/
+          cp -r guide_book/src/intro/concepts/images/odp_arch.png tracks/embedded_controller/src/images/
+          cp -r guide_book/src/intro/concepts/EC_Services.md tracks/embedded_controller/src/secure_ec_services.md
+
+          cp -r guide_book/src/why/secure_trust.md tracks/security/src/secure_trust.md
+          cp -r guide_book/src/architecture/security_architecture.md tracks/security/src/security_architecture.md
+          cp -r guide_book/src/architecture/secure_boot.md tracks/security/src/secure_boot.md
+          cp -r guide_book/src/architecture/secure_firmware_updates.md tracks/security/src/secure_firmware_updates.md
+          cp -r guide_book/src/architecture/secure_ec_services.md tracks/security/src/secure_ec_services.md
+
+          # Build each track
+          for TRACK in contributor embedded_controller integrator patina security value_proposition; do
+            cd tracks/$TRACK
+            mdbook clean
+            mdbook build
+            cp -r book/* ../../.temp/tracks/$TRACK/
+            cd ../..
+          done
+
+      - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
           name: github-pages
-          path: guide_book/book/
+          path: .temp/
 
   publish:
-    name: Publish Guide Book
-    needs: [build]
+    name: Publish Site
+    needs: build
     runs-on: ubuntu-latest
 
     environment:
-      name: github-pages  # 👈 Required for GitHub Pages deployment
+      name: github-pages
 
     permissions:
       id-token: write
@@ -60,7 +97,7 @@ jobs:
       pages: write
 
     steps:
-      - name: Deploy Github Page
+      - name: Deploy GitHub Pages
         uses: actions/deploy-pages@v4
         with:
           token: ${{ github.token }}
