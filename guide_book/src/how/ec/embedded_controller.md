@@ -1,8 +1,7 @@
 # Embedded Controller Components
 
-_TODO_
+The Embedded Controller orchestrates a number of individual Device Components.  Each component is tailored to meet a given subservice feature that is defined by traits.  A Device signature that fulfills these traits can be injected as a component into the system in a modular way.
 
-The Embedded Controller topic comes first, because this is where most of the modern features live, it will need to wait for this to be ready and then also connect to it for certain runtime operations.
+In the following exercises we will build a few such components -- Battery, Charger, and Thermal -- and learn the patterns for constructing and testing Embedded Controller components that are ready for embedded targeting and integration.
 
-Basic idea is to reference the Battery effort currently in place, and the soon to follow Charger and Thermal examples.  This should provide a pretty good blueprint for building a mock or real EC for these components and inspire the pattern for things not covered by the examples.
 
