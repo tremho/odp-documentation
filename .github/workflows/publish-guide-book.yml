@@ -78,6 +78,10 @@ jobs:
             cd ../..
           done
 
+      - name: Create Root Redirect to Guide Book
+        run: |
+          echo '<!DOCTYPE html><html><head><meta http-equiv="refresh" content="0; url=guide/index.html"></head><body></body></html>' > .temp/index.html
+
       - name: Upload Pages Artifact
         uses: actions/upload-pages-artifact@v3
         with:
