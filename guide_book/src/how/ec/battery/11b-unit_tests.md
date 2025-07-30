@@ -72,9 +72,8 @@ Other (synchronous) `#[test]` blocks could be included if there was more to test
 ### Update for our Mutex.rs file
 Our existing `mock_battery.rs` file does not use our `mutex.rs` definitions, and is instead using mutex definitions directly, which will be incompatible.  Replace the imports at the top of `mock_battery.rs` to use our flexible mutex definitions like this:
 ```rust
-extern crate alloc;
 use crate::virtual_battery::VirtualBatteryState;
-use crate::mutex::{Arc, Mutex, RawMutex};
+use crate::mutex::{Mutex, RawMutex};
 
 use embedded_batteries_async::smart_battery::{
     SmartBattery, CapacityModeValue, CapacityModeSignedValue, BatteryModeFields,
@@ -82,7 +81,7 @@ use embedded_batteries_async::smart_battery::{
     Error, ErrorKind
 };
 ```
-and then replace all occurences of `ThreadModeRawMutex` with `RawMutex` (there should be 7).
+and then replace all occurences of `ThreadModeRawMutex` with `RawMutex`.
 
 
 ### Run the tests

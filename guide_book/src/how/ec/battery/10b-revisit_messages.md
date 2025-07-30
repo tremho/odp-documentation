@@ -63,19 +63,19 @@ spawner.spawn(event_handler_task(controller_for_handler, battery_channel_for_han
 ```
 which will require you to add the cloned references above this:
 ```rust
-    let battery_channel_for_handler = unsafe { &mut *(battery_channel as *const BatteryChannel as *mut BatteryChannel) };
-    let controller_for_handler = unsafe { &mut *(controller as *const OurController as *mut OurController) };
+    let battery_channel_for_handler = duplicate_static_mut!(battery_channel, BatteryChannel);
+    let controller_for_handler = duplicate_static_mut!(controller, OurController);
 ```
 Now, a `cargo run` will show that we now see the event message at our handler.
 
 ```
-🛠️  Starting event handler...
-🔄 Launching wrapper task...
+⏳ Waiting for BATTERY_FUEL_READY signal...
 🔌 Initializing battery fuel gauge service...
 🔋 Launching battery service (single-threaded)
 🧩 Registering battery device...
 ✅🔋 Battery service is up and running.
 🔔 BATTERY_FUEL_READY signaled
+🛠️  Starting event handler...
 ✍ Sending test BatteryEvent...
 ✅ Test BatteryEvent sent
 🔔 event_handler_task received event: BatteryEvent { event: PollStaticData, device_id: DeviceId(1) }

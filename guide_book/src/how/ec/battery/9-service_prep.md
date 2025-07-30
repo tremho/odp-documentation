@@ -51,7 +51,7 @@ embassy-time = { workspace = true, features=["std"] }
 embassy-sync = { workspace = true }
 critical-section = {version = "1.0", features = ["std"] }
 async-trait = "0.1"
-# tokio = { version = "1.45", features = ["full"] }
+tokio = { version = "1.45", features = ["full"] }
 static_cell = "1.0"
 once_cell = { workspace = true }
 ```
@@ -75,8 +75,10 @@ and you will want to add this section as well.  This tells cargo to use our loca
 
 ```toml
 [patch.crates-io]
-embassy-executor = { path = "embassy/embassy-executor"}
+embassy-executor = { path = "embassy/embassy-executor" }
 embassy-time = { path = "embassy/embassy-time" }
+embassy-sync = { path = "embassy/embassy-sync" }
+embassy-futures = { path = "embassy/embassy-futures" }
 embassy-time-driver = { path = "embassy/embassy-time-driver" }
 embassy-time-queue-utils = { path = "embassy/embassy-time-queue-utils" }
 ```
@@ -121,12 +123,14 @@ After doing all of this, your `[workspace.dependencies]` section will look somet
 [workspace.dependencies]
 embassy-executor = { path = "embassy/embassy-executor", features = ["arch-std", "executor-thread"], default-features = false }
 embassy-time = { path = "embassy/embassy-time" }
-embassy-futures = "0.1.0"
-embassy-sync = "0.7.0"
-embassy-time-driver = "0.2.0"
+embassy-sync = { path = "embassy/embassy-sync", features = ["std"] }
+embassy-futures = { path = "embassy/embassy-futures" }
+embassy-time-driver = { path = "embassy/embassy-time-driver" }
+embassy-time-queue-utils = { path = "embassy/embassy-time-queue-utils" }
 embedded-hal = "1.0"
 embedded-hal-async = "1.0"
 once_cell = "1.19"
+static_cell = "2.1.0"
 defmt = "1.0"
 log = "0.4.27"
 bitfield = "0.19.1"
@@ -134,6 +138,7 @@ bitflags = "1.0"
 bitvec = "1.0"
 cfg-if = "1.0"
 chrono = "0.4.41"
+tokio = { version = "1.45", features = ["full"] }
 critical-section = {version = "1.0", features = ["std"] }
 document-features = "0.2.11"
 embedded-hal-nb = "1.0"
@@ -158,6 +163,24 @@ embedded-usb-pd = { path = "embedded-usb-pd" }
 
 _(Note: the entries above also include dependencies for some items we will need in upcoming steps and haven't encountered yet)_
 
+### Lint settings
+You will likely want to add this to your top-level `Cargo.toml` as well.  It is possible that not having any `[workspace.lints]` section may result in an error from one of the dependent submodules.  At a minimum, include an empty `[workspace.lints]` section to avoid this.  For more granular detail, consider this block:
+```toml
+# Lint settings for the entire workspace.
+# We start with basic warning visibility, especially for upcoming Rust changes.
+# Additional lints are listed here but disabled by default, since enabling them
+# may trigger warnings in upstream submodules like `embedded-services`.
+#
+# To tighten enforcement over time, you can uncomment these as needed.
+[workspace.lints.rust]
+warnings = "warn"              # Show warnings, but do not fail the build
+future_incompatible = "warn"  # Highlight upcoming breakage (future Rust versions)
+# rust_2018_idioms = "warn"     # Enforce idiomatic Rust style (may warn on legacy code)
+# unused_crate_dependencies = "warn"  # Detect unused deps — useful during cleanup
+# missing_docs = "warn"       # Require documentation for all public items
+# unsafe_code = "deny"        # Forbid use of `unsafe` entirely
+```
+
 Insure `cargo clean` and `cargo build` succeeds with your dependencies referenced accordingly before proceeding to the next step.
 
 ### Define the MockBatteryDevice wrapper
@@ -169,12 +192,11 @@ use crate::mock_battery::MockBattery;
 use embedded_services::power::policy::DeviceId;
 use embedded_services::power::policy::action::device::AnyState;
 use embedded_services::power::policy::device::{
-    Device, DeviceContainer, CommandData, ResponseData//, State
+    Device, DeviceContainer, CommandData, ResponseData
 };
 
 
 pub struct MockBatteryDevice {
-    #[allow(dead_code)] // Prevent unused warning for MockBattery -- not used yet   
     battery: MockBattery,
     device: Device,
 }
@@ -187,13 +209,23 @@ impl MockBatteryDevice {
         }
     }
 
+    pub fn get_internals(&mut self) -> (
+        &mut MockBattery,
+        &mut Device,
+    ) {
+        (
+            &mut self.battery,
+            &mut self.device
+        )
+    }
+
     pub fn device(&self) -> &Device {
         &self.device
     }
 
     pub fn inner_battery(&mut self) -> &mut MockBattery {
         &mut self.battery
-    }   
+    }
 
     pub async fn run(&self) {
         loop {
@@ -204,7 +236,7 @@ impl MockBatteryDevice {
 
             match request {
                 CommandData::ConnectAsConsumer(cap) => {
-                    println!("Received ConnectConsumer for {}mA @ {}mV", cap.current_ma, cap.voltage_mv);
+                    println!("Received ConnectConsumer for {}mA @ {}mV", cap.capability.current_ma, cap.capability.voltage_mv);
 
                     // Safe placeholder: detach any existing state
                     match self.device.device_action().await {
@@ -225,7 +257,7 @@ impl MockBatteryDevice {
                 }
 
                 CommandData::ConnectAsProvider(cap) => {
-                    println!("Received ConnectProvider for {}mA @ {}mV", cap.current_ma, cap.voltage_mv);
+                    println!("Received ConnectProvider for {}mA @ {}mV", cap.capability.current_ma, cap.capability.voltage_mv);
 
                     match self.device.device_action().await {
                         AnyState::ConnectedProvider(dev) => {

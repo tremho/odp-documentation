@@ -32,13 +32,13 @@ However, there are some differences in the threading model that is used when we 
 
 We need an asynchronous context for testing our asynchronous method traits, so we construct our test flow in the same way we constructed our `main()` function, and will use the Embassy `Executor` to spawn asynchronous tasks that call upon the traits we wish to test.
 
-We've already pre-emptively dealt with this when we created different definition for `RawMutex` and picked different crate sources for `Arc` depending upon our context in `mutex.rs`.  Now is where that really comes into play.
+We've already pre-emptively dealt with this when we created different definition for `RawMutex` depending upon our context in `mutex.rs`.  Now is where that really comes into play.
 
 
 🗎 In your `mock_battery/Cargo.toml` file, add this section:
 ```toml
 [dev-dependencies]
-embassy-executor = { workspace = true, version = "0.5", features = ["arch-std"] }
+embassy-executor = { workspace = true, features = ["arch-std"] }
 ```
 
 ### Before testing

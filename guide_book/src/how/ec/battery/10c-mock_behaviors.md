@@ -1,5 +1,5 @@
 ## Mocking Battery Behavior
-We now have the component parts of our battery subsystem assembled and it is ready process the messages it receives at the event handler.
+We now have the component parts of our battery subsystem assembled and it is ready to process the messages it receives at the event handler.
 
 ### Handling the messages
 
@@ -56,18 +56,19 @@ overhead of interrogating the hardware for this unchanging data each time. We ar
 Output now should look like:
 
 ```
-🛠️  Starting event handler...
-🔄 Launching wrapper task...
+⏳ Waiting for BATTERY_FUEL_READY signal...
 🔌 Initializing battery fuel gauge service...
 🔋 Launching battery service (single-threaded)
 🧩 Registering battery device...
 ✅🔋 Battery service is up and running.
 🔔 BATTERY_FUEL_READY signaled
+🛠️  Starting event handler...
 ✍ Sending test BatteryEvent...
 ✅ Test BatteryEvent sent
 🔔 event_handler_task received event: BatteryEvent { event: PollStaticData, device_id: DeviceId(1) }
 🔄 Handling PollStaticData
-📊 Static battery data: Ok(StaticBatteryMsgs { manufacturer_name: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], device_name: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], device_chemistry: [0, 0, 0, 0, 0], design_capacity_mwh: 0, design_voltage_mv: 0, device_chemistry_id: [0, 0], serial_num: [0, 0, 0, 0] })```
+📊 Static battery data: Ok(StaticBatteryMsgs { manufacturer_name: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], device_name: [0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0], device_chemistry: [0, 0, 0, 0, 0], design_capacity_mwh: 0, design_voltage_mv: 0, device_chemistry_id: [0, 0], serial_num: [0, 0, 0, 0] })
+```
 
 We can see the data is all zeroes.
 
@@ -95,6 +96,8 @@ The `StaticBatteryMsgs` structure is made up of series of named data elements:
     pub design_voltage_mv: u16,
 ```
 that we must fill from the data available from the battery.
+
+So, replace the stub for `get_static_data` in `mock_battery_controller.rs` with this working version:
             
 ```rust
     async fn get_static_data(&mut self) -> Result<StaticBatteryMsgs, Self::ControllerError> {
@@ -139,13 +142,13 @@ that we must fill from the data available from the battery.
 Now when we run, we should see our MockBattery data represented:
 
 ```
-🛠️  Starting event handler...
-🔄 Launching wrapper task...
+⏳ Waiting for BATTERY_FUEL_READY signal...
 🔌 Initializing battery fuel gauge service...
 🔋 Launching battery service (single-threaded)
 🧩 Registering battery device...
 ✅🔋 Battery service is up and running.
 🔔 BATTERY_FUEL_READY signaled
+🛠️  Starting event handler...
 ✍ Sending test BatteryEvent...
 ✅ Test BatteryEvent sent
 🔔 event_handler_task received event: BatteryEvent { event: PollStaticData, device_id: DeviceId(1) }
@@ -312,13 +315,11 @@ This task takes passed-in references to the battery and also a 'multiplier' that
 So let's call that in our `spawn` block with
 
 ```rust
-    spawner.spawn(simulation_task(battery_for_sim.inner_battery(), 10.0)).unwrap();
+    spawner.spawn(simulation_task(inner_battery_for_sim, 10.0)).unwrap();
 ```
-creating the `battery_for_sim` value as another copy of `battery` in the section above:
-
+creating the `inner_battery_for_sim` value as another copy of `inner_battery` in the section above:
 ```rust
-        let battery_for_sim: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const MockBatteryDevice as *mut MockBatteryDevice) };
-
+    let inner_battery_for_sim = duplicate_static_mut!(inner_battery, MockBattery);
 ```
       
 Now we want to look at the dynamic values of the battery over time.  To continue our crude but effective `println!` output

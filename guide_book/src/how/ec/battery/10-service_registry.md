@@ -154,15 +154,9 @@ Create a new file that will define the imports and names for our Mutex-related s
 ```rust
 // src/mutex.rs
 
-extern crate alloc;
-
-#[cfg(test)]
-pub use std::sync::Arc;
 #[cfg(test)]
 pub use embassy_sync::blocking_mutex::raw::NoopRawMutex as RawMutex;
 
-#[cfg(not(test))]
-pub use alloc::sync::Arc;
 #[cfg(not(test))]
 pub use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex as RawMutex;
 
@@ -190,7 +184,6 @@ Add both of these files as modules in `lib.rs`:
 pub mod mock_battery;
 pub mod virtual_battery;
 pub mod mock_battery_device;
-pub mod espi_service;
 pub mod mutex;
 pub mod types;
 ```
@@ -328,6 +321,8 @@ Remember to add this module to your `lib.rs` file:
 pub mod mock_battery;
 pub mod virtual_battery;
 pub mod mock_battery_device;
+pub mod mutex;
+pub mod types;
 pub mod espi_service;
 ```
 
@@ -409,6 +404,40 @@ After all this is in place if we run it, we should see this output:
 Which shows our spawned tasks going through their steps and the test message having been sent.
 
 But we have nothing in place to respond to this message yet.
+
+### Restructuring `main()`
+Next, we are going to attach the `comms` implementation to the Controller that will respond to incoming events. But before we do that, there's a small bit of housekeeping that will help align our `main()` structure with embedded-friendly patterns.
+
+In our current setup, we invoke `embassy-executor` to create a `Spawner`, and use that to launch our async tasks. This works fine in a `std` desktop environment where a synchronous `fn main()` is required. However, in an embedded `no-std` environment, there is no `main()` — instead, async entry is provided via an attribute like `#[embassy_main]`.
+
+To make our example more portable and easier to adapt later, we’ll refactor `main()` now so that it matches that async entry model more closely.
+
+Replace your current `main()` function with this:
+```rust
+fn main() {
+    let executor = EXECUTOR.init(Executor::new());
+    executor.run(|spawner| {
+        spawner.spawn(entry_task(spawner)).unwrap();
+    });
+}
+#[embassy_executor::task]
+async fn entry_task(spawner: Spawner) {
+    // Initialize our values one time
+    let battery = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
+    let battery_id = battery.device().id().0;
+    let fuel = BATTERY_FUEL.init(BatteryDevice::new(BatteryDeviceId(battery_id)));
+    let battery_channel = BATTERY_EVENT_CHANNEL.init(Channel::new());
+
+    spawner.spawn(init_task(battery)).unwrap();
+    spawner.spawn(battery_service::task()).unwrap();
+    spawner.spawn(battery_service_init_task(fuel)).unwrap();
+    spawner.spawn(espi_service_init_task(battery_channel)).unwrap();
+    spawner.spawn(test_message_sender()).unwrap();
+}
+```
+As you can see, this simply moves our existing logic into an asynchronous `entry_task`, which now acts as the true entry point under the async runtime. This structure is directly compatible with embedded-style `#[embassy_main]` usage, and your code should continue to build and run as before.
+
+With that out of the way, let’s move on to implementing the Controller.
 
 ### The `Controller`
 
@@ -680,11 +709,10 @@ Don't forget that we need to include this new file in our `lib.rs` declarations:
 pub mod mock_battery;
 pub mod virtual_battery;
 pub mod mock_battery_device;
-pub mod espi_service;
 pub mod mutex;
 pub mod types;
+pub mod espi_service;
 pub mod mock_battery_controller;
-
 ```
 
 #### Defining our Controller type
@@ -692,6 +720,15 @@ Our controller is referenced with a generic that accepts an acceptable `SmartBat
 `MockBatteryController<&'static mut MockBattery>`, but for convenience and flexibility, let's add this to our `types.rs` file:
 
 ```rust
+// mock_battery/src/types.rs
+
+use crate::mutex::RawMutex; 
+use embassy_sync::channel::Channel;
+use battery_service::context::BatteryEvent;
+use crate::mock_battery::MockBattery;
+use crate::mock_battery_controller::MockBatteryController;
+
+
 pub type BatteryChannel = Channel<RawMutex, BatteryEvent, 4>;
 pub type OurController = MockBatteryController<&'static mut MockBattery>;
 ```
@@ -706,6 +743,14 @@ Let's implement the controller into our `main.rs`.  Start by adding these import
 ```rust
 use embassy_executor::Spawner;
 use battery_service::wrapper::Wrapper;
+```
+and replace the existing
+```rust
+use mock_battery::types::BatteryChannel;
+```
+with
+```rust
+use mock_battery::types::{BatteryChannel, OurController};
 ```
 
 We'll create new `StaticCell` instances for our `Controller` and `Wrapper`.  Add these near your other static declarations:
@@ -762,9 +807,9 @@ Include this in `lib.rs`:
 pub mod mock_battery;
 pub mod virtual_battery;
 pub mod mock_battery_device;
-pub mod espi_service;
 pub mod mutex;
 pub mod types;
+pub mod espi_service;
 pub mod mock_battery_controller;
 pub mod fuel_signal_ready;
 ```
@@ -793,118 +838,138 @@ async fn battery_service_init_task(
     ready.signal(); 
 }
 ```
+We can now update our main `entry_task` so that we spawn our tasks in right sequence, assuring things are ready for us:
 
-Now, to tie this together, we need another task that launches our Controller wrapper when it is ready. Add this to the end of `main.rs` with the other tasks:
-
+We would want to make these additions:
 ```rust
-#[embassy_executor::task]
-async fn wrapper_task_launcher(
-    fuel: &'static BatteryDevice,
-    controller: &'static mut OurController,
-    ready: &'static BatteryFuelReadySignal,
-    spawner: Spawner,
-) {
-    println!("🔄 Launching wrapper task...");
-
-    ready.wait().await;
-    println!("🔔 BATTERY_FUEL_READY signaled");
-
-    let wrapper = BATTERY_WRAPPER.init(Wrapper::new(fuel, controller));
-    spawner.spawn(wrapper_task(wrapper)).unwrap();
-    spawner.spawn(test_message_sender()).unwrap();
-}
-
-```
-You'll note this one is a bit different than the others.  We pass in a Spawner, and in turn use it to spawn our wrapper when we get the signal that our battery fuel gauge service is ready, and _then_ send our test message.
-
-
-In your `run` block of `main()`, remove the old call to send the test message:
-
-```rust
-    spawner.spawn(test_message_sender()).unwrap();
-```
-and replace it with the call to our wrapper task launcher with this:
-
-```rust
-    spawner.spawn(wrapper_task_launcher(fuel, controller, battery_fuel_ready, spawner)).unwrap();
-```
-Where we pass in what this new async launcher will need.
-
-We also need to update the call to `battery_service_init_task` to pass in the `ready` signal, in main where we
-create the other static initializations:
-```rust
-    let battery_fuel_ready = BATTERY_FUEL_READY.init(BatteryFuelReadySignal::new());
+    let fuel_ready = BATTERY_FUEL_READY.init(BatteryFuelReadySignal::new());
 ```
 and we also have to init our `Controller`.  The `MockBatteryController` needs the battery from the MockBatteryDevice.
 ```rust
     let inner_battery = battery.inner_battery();
-    let controller = CONTROLLER.init(OurCongtroller::new(inner_battery)); 
+    let controller = CONTROLLER.init(OurController::new(inner_battery)); 
 ```
 
-so we can update our `executor.run()` block so it has the following spawns:
+so we might expect our updated `entry_task` to look like this:
 ```rust
-    executor.run(|spawner| {
-        spawner.spawn(init_task(battery)).unwrap();
-        spawner.spawn(battery_service::task()).unwrap();
-        spawner.spawn(battery_service_init_task(fuel, battery_fuel_ready)).unwrap(); 
-        spawner.spawn(time_driver::run()). unwrap(); 
-        spawner.spawn(espi_service_init_task ()).unwrap(); 
-        spawner.spawn(wrapper_task_launcher(fuel, controller, battery_fuel_ready, spawner)).unwrap(); 
+#[embassy_executor::task]
+async fn entry_task(spawner: Spawner) {
+    // Initialize shared objects
+    let battery = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
+    let battery_id = battery.device().id().0;
+    let inner_battery = battery.inner_battery();
 
+    let fuel = BATTERY_FUEL.init(BatteryDevice::new(BatteryDeviceId(battery_id)));
+    let battery_channel = BATTERY_EVENT_CHANNEL.init(Channel::new());
+    let fuel_ready = BATTERY_FUEL_READY.init(BatteryFuelReadySignal::new());
+    let controller = CONTROLLER.init(OurController::new(inner_battery));
+
+    // Spawn independent setup tasks
+    spawner.spawn(init_task(battery)).unwrap();
+    spawner.spawn(battery_service::task()).unwrap();
+    spawner.spawn(battery_service_init_task(fuel, fuel_ready)).unwrap();
+    spawner.spawn(espi_service_init_task(battery_channel)).unwrap();
+
+    // Wait for fuel to be ready before launching dependent tasks
+    println!("⏳ Waiting for BATTERY_FUEL_READY signal...");
+    fuel_ready.wait().await;
+    println!("🔔 BATTERY_FUEL_READY signaled");
+
+    // Launch wrapper and test message sender
+    let wrapper = BATTERY_WRAPPER.init(Wrapper::new(fuel, controller));
+    spawner.spawn(wrapper_task(wrapper)).unwrap();
+    spawner.spawn(test_message_sender()).unwrap();
+}
 ```
+Because this sets up our component objects and spawn the tasks that use them.  It waits for `fuel_ready` to be signaled that the
+battery_service_init_task has completed and the fuel gauge service is registered.  Then it proceeds to start up the Controller via the wrapper task and sends a test message.
 
 And herein lies a problem. If we build this code, we'll receive an error:
 
+> cannot borrow `*battery` as mutable more than once at a time
+and
 > cannot borrow `*fuel` as immutable because it is also borrowed as mutable
 
-this is a "double-borrow" violation of Rust. We've already 'borrowed' `fuel` by passing it to `battery_service_init_task`, so attempting to use it again creates the violation  because Rust can't be certain these two shares won't conflict with one another.
+this is a "double-borrow" violation of Rust. We've already 'borrowed' `battery` by getting the device id, and `fuel` by passing it to `battery_service_init_task`, so attempting to use either of these again creates the violation  because Rust can't be certain these two shares won't conflict with one another.
 
+#### Handling the double-borrow problem
+There are a couple of strategies we can use, but we are limited in our options because `StaticCell` does not have a 'get()' that will return an instance.  Only an `init`, and this can only be called one time.
+
+##### Collecting more than one thing in a single borrow
+You may recall that when we implemented `MockBatteryDevice` we created `device()` and `inner_battery()` getters, but we also created the someone enigmatic `get_internals()` that returns both of these internal properties at once.  This gives us a little bit of relief because instead of spending our `battery` borrow reference twice to get both `device()` and `inner_battery()` we can get both of these with a single call reference to `get_internals()`. 
+However, this still won't help us completely because making the call will still use up our borrow, so although we get two fresh references for one spent, we still can't use the reference to `battery` anymore afterward.
 We can get around this with a bit of `unsafe` marked code that creates a copy we can borrow instead.
 ```rust
-    let fuel_for_controller = unsafe { &mut *(fuel as *const BatteryDevice as *mut BatteryDevice) };
-
+    let battery_mut = unsafe { &mut *(battery as *const MockBattery as *mut MockBattery) };
 ```
-and we'll use this reference to pass to the wrapper_task_launcher, since `fuel` has already been referenced by `battery_service_init_task`.
+which will give us a second reference to the `battery` we can use, albeit at the expense of using some awkward `unsafe` marked code.
+The action is safe in context because we are in total ownership control of the objects that we know will live for a static lifetime and their access is protected by mutex locks and/or single-threaded scheduling (embedded/embassy).
 
-We will soon learn that this same situation applies to the access to `battery` as well, but it actually has three separate cases: one to get the `battery_id`, one to get the `inner_battery`, and one to pass to the `init_task`.
-
-So our new main now looks like this:
-
+We will need to make use of this technique for a few of these starting values.  To simplify this and make it more clear what is happening, we will create a macro for the technique.  Place this near the top of `main.rs`, above the `main()` function:
 ```rust
-
-fn main() {
-    let executor = EXECUTOR.init(Executor::new());
-
-    // Construct battery and extract needed values *before* locking any 'static borrows
-    let battery = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
-    let battery_for_id: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const MockBatteryDevice as *mut MockBatteryDevice) };
-    let battery_for_inner: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const MockBatteryDevice as *mut MockBatteryDevice) };
-    let battery_id = battery_for_id.device().id().0;
-    let inner_battery = battery_for_inner.inner_battery();
-    let fuel = BATTERY_FUEL.init(BatteryDevice::new(BatteryDeviceId(battery_id)));
-    let fuel_for_controller = unsafe { &mut *(fuel as *const BatteryDevice as *mut BatteryDevice) };
-    let battery_channel = BATTERY_EVENT_CHANNEL.init(Channel::new());
-    let battery_fuel_ready = BATTERY_FUEL_READY.init(BatteryFuelReadySignal::new());
-    let controller = CONTROLLER.init(OurController::new(inner_battery));
-
-
-
-    executor.run(|spawner| {
-        spawner.spawn(init_task(battery)).unwrap();
-        spawner.spawn(battery_service::task()).unwrap();
-        spawner.spawn(battery_service_init_task(fuel, battery_fuel_ready)).unwrap();
-        spawner.spawn(espi_service_init_task (battery_channel)).unwrap();
-        spawner.spawn(wrapper_task_launcher(fuel_for_controller, controller, battery_fuel_ready, spawner)).unwrap();
-    });
+/// # Safety
+/// This macro performs an unchecked cast to create a second mutable reference to a `'static` value.
+/// 
+/// This is **only safe** when:
+/// - The original value is guaranteed to live for the `'static` lifetime,
+/// - The caller ensures **no two references** are ever used simultaneously,
+/// - The value is managed in a way (e.g., through `Mutex` guards or single-threaded scheduling)
+///   that prevents aliasing mutable access.
+///
+/// Use only during static, one-time setup in test harnesses or embedded single-threaded contexts.
+macro_rules! duplicate_static_mut {
+    ($val:expr, $ty:ty) => {
+        unsafe { &mut *($val as *const $ty as *mut $ty) }
+    };
 }
 ```
 
+and then update your `entry_task` with this new version that incorporates its usage:
+```rust
+#[embassy_executor::task]
+async fn entry_task(spawner: Spawner) {
+    // Construct battery and extract needed values *before* locking any 'static borrows
+    //
+    // Safety: `duplicate_static_mut!` macro is used to make copies that are not subject to Rust's borrow counting
+    // `StaticCell` can only call init one time and each call that supplies the resulting reference results in a
+    // borrow, so this copy is necessary. Referenced objects are under Mutex protection.
+    let battery = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
+    let battery_mut = duplicate_static_mut!(battery, MockBatteryDevice);
+    let (inner_battery, bat_device) = battery_mut.get_internals();
+    let battery_id = bat_device.id().0;
+
+    let fuel = BATTERY_FUEL.init(BatteryDevice::new(BatteryDeviceId(battery_id)));
+    let fuel_for_controller = duplicate_static_mut!(fuel, BatteryDevice);
+    
+    let battery_channel = BATTERY_EVENT_CHANNEL.init(Channel::new());
+
+    let controller = CONTROLLER.init(OurController::new(inner_battery));
+
+    let fuel_ready = BATTERY_FUEL_READY.init(BatteryFuelReadySignal::new());
+
+    // Spawn independent setup tasks
+    spawner.spawn(init_task(battery)).unwrap();
+    spawner.spawn(battery_service::task()).unwrap();
+    spawner.spawn(battery_service_init_task(fuel, fuel_ready)).unwrap();
+    spawner.spawn(espi_service_init_task(battery_channel)).unwrap();
+
+    // Wait for fuel to be ready before launching dependent tasks
+    println!("⏳ Waiting for BATTERY_FUEL_READY signal...");
+    fuel_ready.wait().await;
+    println!("🔔 BATTERY_FUEL_READY signaled");
+
+    // Launch wrapper and test message sender
+    let wrapper = BATTERY_WRAPPER.init(Wrapper::new(fuel_for_controller, controller));
+    spawner.spawn(wrapper_task(wrapper)).unwrap();
+    spawner.spawn(test_message_sender()).unwrap();
+}
+```
 
 The output of `cargo run` should now be:
 
 ```
      Running `target\debug\mock_battery.exe`
-🔄 Launching wrapper task...
+ Waiting for BATTERY_FUEL_READY signal...
 🔌 Initializing battery fuel gauge service...
 🔋 Launching battery service (single-threaded)
 🧩 Registering battery device...
