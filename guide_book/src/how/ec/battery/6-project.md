@@ -23,6 +23,7 @@ into our workspace and build the crates it exports.
 _(from the `battery_project` directory):_
 ```
 git submodule add https://github.com/OpenDevicePartnership/embedded-batteries
+
 ```
 
 The `embedded-batteries` repository has the subsystem service definitions for the battery defined in both 

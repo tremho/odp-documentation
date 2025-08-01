@@ -12,7 +12,6 @@ The `embedded-services` repository has some examples for us to consider already.
 
 There are a few tricks involved, though, because Embassy is normally designed to run in an embedded context, and we are using it in a std local machine environment.  That's fine.  In the end, we will build in such a way that we can define, build, and test our component completely before committing to an embedded target, and when we do there will only be minor changes required.
 
-
 ## 🔌 Wiring Up the Battery Service
 We need to create a device `Registry` as defined by `embedded-services` to wire our `MockBatteryDevice` into.
 
@@ -435,6 +434,12 @@ async fn entry_task(spawner: Spawner) {
     spawner.spawn(test_message_sender()).unwrap();
 }
 ```
+
+You may also need to add this import near the top of the file:
+```rust
+use embassy_executor::Spawner;
+```
+
 As you can see, this simply moves our existing logic into an asynchronous `entry_task`, which now acts as the true entry point under the async runtime. This structure is directly compatible with embedded-style `#[embassy_main]` usage, and your code should continue to build and run as before.
 
 With that out of the way, let’s move on to implementing the Controller.
@@ -905,7 +910,9 @@ We can get around this with a bit of `unsafe` marked code that creates a copy we
 which will give us a second reference to the `battery` we can use, albeit at the expense of using some awkward `unsafe` marked code.
 The action is safe in context because we are in total ownership control of the objects that we know will live for a static lifetime and their access is protected by mutex locks and/or single-threaded scheduling (embedded/embassy).
 
-We will need to make use of this technique for a few of these starting values.  To simplify this and make it more clear what is happening, we will create a macro for the technique.  Place this near the top of `main.rs`, above the `main()` function:
+We will need to make use of this technique for a few of these starting values.  To simplify this and make it more clear what is happening, we will create a macro for the technique.
+
+Create a new file named `mut_copy.rs` and give it this macro definition content:
 ```rust
 /// # Safety
 /// This macro performs an unchecked cast to create a second mutable reference to a `'static` value.
@@ -917,11 +924,15 @@ We will need to make use of this technique for a few of these starting values.  
 ///   that prevents aliasing mutable access.
 ///
 /// Use only during static, one-time setup in test harnesses or embedded single-threaded contexts.
+#[macro_export]
 macro_rules! duplicate_static_mut {
     ($val:expr, $ty:ty) => {
         unsafe { &mut *($val as *const $ty as *mut $ty) }
     };
 }
+and then, back in `main.rs`, add to the top of the file:
+```rust
+mod mut_copy;
 ```
 
 and then update your `entry_task` with this new version that incorporates its usage:
@@ -964,6 +975,8 @@ async fn entry_task(spawner: Spawner) {
     spawner.spawn(test_message_sender()).unwrap();
 }
 ```
+
+The need to use the `duplicate_static_mut!` macro is unfortunate, but unavoidable in this case and we have constrained it only to the component construction aspects, where we know the lifetime of our component stack and enforce mutex access.
 
 The output of `cargo run` should now be:
 

@@ -18,64 +18,187 @@ files in this location are not compiled with a `#[cfg(test)]` gate in effect, si
 
 Another "special" location for Rust is `src/bin`.  Files in this location can each have their own separate `main()` function and operate as independent executions when targeted by the `run` command.
 
-### Our choices for `mutex.rs`
-You may recall that we are using two different threading strategies depending upon whether or not we are executing in a test or not.
-We make use of the `embassy::executor` to spawn asynchronous tasks.  
-
-Why the difference?
-
-In our unit test context we are using `std::sync::Arc` because `cargo test` test runner executes in a full host OS environment that includes `std` support. Since we are running `embassy::executor` to spawn our async tasks in a single-threaded fashion, true mutex locking is not necessary -- so we use `NoopRawMutex` as a placeholder.  
-
-In contrast, under normal execution for firmware (even while on the host in `std`) we use `alloc::sync::Arc` and `ThreadModeRawMutex`, which is Embassy's intended approach for embedded single-threaded runtimes.
-
-This distinction allows our integration tests to reflect real behavior without requiring major changes when porting to embedded hardware.
-
 ### How we will set up our integration test.
-We want to reproduce the basic execution model that we created in `main()`, but do so in a way that serves the goals of an integration test.  Therefore, we want to choose an execution context that is similar to `main()`.
+You may recall that the battery example's `main()` function invokes `embassy-executor` to spawn a series of asynchronous tasks, because this reflects how the code is meant to operate in an integrated embedded environment.  You will also recall the use of our `test_helper.rs` in both the battery and the charger examples to give us essentially the same async model for testing.
+
+We will be using a similar technique for this combined integration, in a way that serves the goals of an integration test.  
+
+Accordingly, we will not be using the `test` features of Rust, but rather creating a normal runnable program to execute the testing behaviors.  
 
 Often, integration tests can be implemented as another variation of unit tests, and placed in the `tests` directory where the test runner of `cargo test` will find them and execute them, and report on the results, along with the unit tests.
 
-While it’s possible to run a continuously executing `embassy::executor` under `cargo test` —- as we’ve done in our test_helper unit test framework —- it can become cumbersome when testing full system behavior. Our integration test reuses nearly the same code structure as `main()`, and runs indefinitely unless manually terminated. For this reason, we define it as a standalone binary and run it using `cargo run --bin`. This avoids constraints from the test harness and gives us full control over execution and output, especially useful in continuous integration contexts.
+But we will choose to not use this method, and just run our tests with `cargo run` because as we've already seen the async nature of our code undermines the usefulness of each `#[test]` block. We want each of our tasks to be independently observable.  To do that we will be creating a `TestObserver` for reporting our pass/fail results.
 
 #### But where?
-In order to keep a normal run context (like `main()`) we could put our test code in `src/bin` and then target it by name.  This would be a fine and idiomatic choice.  Still, files in `src/bin` could be constructed for many purposes, and we might want it to be 
-semantically quite clear where our integration test is.  So we'll create a directory named `integration`, and within that we'll create a file named `battery_subsystem_behavior.rs`, since that is what we will be testing with it.  This file will have a `main()` entry point and we will target it with `cargo run --bin battery_subsystem_behavior`.  But for that to work outside of the idiomatic `src/bin` location, we need to configure for it.
-
-In `mock_battery/Cargo.toml`, we add this section:
-
-```toml
-[[bin]]
-name = "battery_subsystem_behavior"
-path = "integration/battery_subsystem_behavior.rs"
+We will create a new project space for this.  Alongside your `battery_project` and `charger_project` directories, create a new one named `battery_charger_subsystem`.  Go ahead and populate the new project with some starting files (these can be empty at first), so that your setup looks something like this:
+```
+ec_examples/
+├── battery_project/
+├── charger_project/
+├── battery_charger_subsystem/
+│   ├── src/
+│   │   ├── lib.rs
+│   │   ├── main.rs
+│   │   ├── policy.rs       
+│   │   ├── test_observer.rs
+│   └── Cargo.toml
 ```
 
-and up in the `[package]` section, add this line
-```toml
-default-run = "mock_battery"
+You can construct the `battery_charger_subsystem` structure with these commands from a `cmd` prompt:
+```cmd
+mkdir battery_charger_subsystem
+cd battery_charger_subsystem
+echo # Battery-Charger Subsystem > Cargo.toml
+mkdir src
+cd src
+echo // lib.rs > lib.rs
+echo // main.rs > main.rs
+echo // policy.rs > policy.rs
+echo // test_observer.rs > test_observer.rs
 ```
 
-This configures the test target named "battery_subsystem_behavior" to run from the path given.  We've pointed it specifically at our `integration` directory location.  Without this configuration, it would look by default in `src/bin` for the name provided.
+## A note on dependency structuring
+Up to this point we've been treating each component project as a standalone effort, and in that respect all of the dependent repositories are brought in as submodules _within_ each project.  For battery and charger, these dependencies are nearly identical.
+In retrospect, it would probably have been better to place these dependencies outside of the component project spaces so they could share the same resources. That would have been especially helpful now that we are here at integration.
 
-The `default-run` line in `[package]` will allow us to continue to use plain `cargo run` without naming a target for our original `main` execution.
+In fact, it becomes _imperative_ that we remedy this structure before we continue to insure all the components in question and the test code itself are relying on the same versions of the dependent code. Even a minor difference that would cause no trouble for execution in any version of the dependencies may be enough to halt building if Rust senses a version drift.
 
+## ⚠️⚒ Refactoring detour ⚒⚠️
+We need to bite the bullet and remedy this before we continue.  It won't take too long.
+First, identify the containing folder you have your `battery_project` and `charger_project` files in.
+We are going to turn this folder into an unattached `git` folder the same way we did for the projects and bring the submodules in at this level.  If your containing folder is not appropriate for this, create a new folder (mine is named `ec_examples`) and move your project folders into here before continuing.
 
-### The scope for our tests
-For these integration tests, we will want to test the whole of the battery subsystem and how it works within service structure.
-The parts of this subsystem include
-- `MockBatteryDevice` and internal `MockBattery` and `MockCharger` components
-- `MockBatteryController` 
+Now, in the containing folder (`ec_examples`), perform the following:
+```
+git init
+git submodule add https://github.com/embassy-rs/embassy.git 
+git submodule add https://github.com/OpenDevicePartnership/embedded-batteries
+git submodule add https://github.com/OpenDevicePartnership/embedded-services
+git submodule add https://github.com/OpenDevicePartnership/embedded-cfu
+git submodule add https://github.com/OpenDevicePartnership/embedded-usb-pd
+```
 
-and how these work together to monitor the battery and control the charger.
+now, go into your battery_project and at the root of this project, execute these commands to remove its internal submodules:
+```cmd
+git submodule deinit -f embassy
+git rm -f embassy
+git submodule deinit -f embedded-batteries
+git rm -f embedded-batteries
+git submodule deinit -f embedded-services
+git rm -f embedded-services
+git submodule deinit -f embedded-cfu
+git rm -f embedded-cfu
+git submodule deinit -f embedded-usb-pd
+git rm -f embedded-usb-pd
+```
+Now in both your `battery_project/Cargo.toml` and your `battery_project/mock_battery/Cargo.toml` change all path references to `embassy`, or `embedded-`anything by prepending a `../` to their path.  This will point these to our new location in the container.
 
-Since we've already done essentially this in our `main.rs` file, we can copy much of the code used there.  But instead of printing
-to the console (which we can still do), we will be reporting on whether or not the system behaves as expected for a series of named behaviors.
+> 📦 **Dependency Overrides**
+>
+> Because some crates (like `battery-service`) pull in Embassy as a Git dependency, while we use a local path-based submodule, we must unify them using a `[patch]` section in our `Cargo.toml`.
+>
+> This ensures all parts of our build use the *same single copy* of Embassy, which is critical to avoid native-linking conflicts like `embassy-time-driver`.
 
-### Creating a Test Observer
-Since we are not running under a `test` context, there is no test runner framework that will report the pass/fail conditions of our test.  Just like our  `main()` code, and just like our unit tests, the Embassy Executor `run()` block that spawns our executing tasks does not exit, so we need to handle that ourselves when all of our test observations are complete.
+Add this to the bottom of your top-level `Cargo.toml` (`battery_project/Cargo.toml`):
+```toml
+[patch.'https://github.com/embassy-rs/embassy']
+embassy-time = { path = "../embassy/embassy-time" }
+embassy-time-driver = { path = "../embassy/embassy-time-driver" }
+embassy-sync = { path = "../embassy/embassy-sync" }
+embassy-executor = { path = "../embassy/embassy-executor" }
+embassy-futures = { path = "../embassy/embassy-futures" }
+```
 
-To help us with all of this, we'll create a `integration/test_observer.rs`.  We keep this in the `integration` folder rather than `src` because it will be used only for integration testing. Give it this code:
+and add this line to the bottom of your `[patch.crates-io]` section
+```toml
+embedded-batteries-async = { path = "../embedded-batteries/embedded-batteries-async" }
+```
+
+Now, still in `battery_project` insure you can still build with `cargo clean` and `cargo build`
+
+### Do the same for charger_project
+We want to follow the exact same steps for the charger project:
+- switch to that project directory (`charger_project`)
+- Execute the same submodule removal commands we used for the battery_project
+- Prepend `../` to all the path names for `embassy` and `embedded-`* in the `Cargo.toml` files
+- add the `[patch.'https://github.com/embassy-rs/embassy']` section from above to the top-level `Cargo.toml`
+- add the `embedded-batteries-async` fixup line to the `[path.crates.io]` as we did above.
+
+Ensure `charger_project` builds clean in its new form.
+
+## Continuing with the integration project
+Okay. That really wasn't so bad, and now we are on track to complete our mini-integration of the battery-charger subsystem, and we are also on a better track for the future and integrations yet to come.
+
+So go back to our `battery_charger_subsystem` project.
+
+In `battery_charger_subsystem/Cargo.toml`, we add this:
+
+```toml
+# Battery-Charger Subsystem 
+[package]
+name = "battery_charger_subsystem"
+version = "0.1.0"
+edition = "2021"
+
+[dependencies]
+embassy-executor = { path = "../embassy/embassy-executor",  features = ["arch-std", "executor-thread"], default-features = false }
+embassy-time = { path = "../embassy/embassy-time", features = ["std"] }
+embassy-sync = { path = "../embassy/embassy-sync", features = ["std"] }
+embassy-futures = { path = "../embassy/embassy-futures" }
+embassy-time-driver = { path = "../embassy/embassy-time-driver" }
+embassy-time-queue-utils = { path = "../embassy/embassy-time-queue-utils" }
+
+mock_battery = { path = "../battery_project/mock_battery" }
+mock_charger = { path = "../charger_project/mock_charger" }
+
+[patch.'https://github.com/embassy-rs/embassy']
+embassy-time = { path = "../embassy/embassy-time" }
+embassy-time-driver = { path = "../embassy/embassy-time-driver" }
+embassy-sync = { path = "../embassy/embassy-sync" }
+embassy-executor = { path = "../embassy/embassy-executor" }
+embassy-futures = { path = "../embassy/embassy-futures" }
+
+[patch.crates-io]
+embedded-batteries-async = { path = "../embedded-batteries/embedded-batteries-async" }
+```
+
+### Getting started
+We'll start out with a `main.rs` that looks like this:
 ```rust
-use mock_battery::mutex::{Arc, Mutex, RawMutex};
+// main.rs 
+
+use embassy_executor::Spawner;
+
+mod entry;
+
+#[embassy_executor::main]
+async fn main(spawner: Spawner) {
+    spawner.spawn(entry::entry_task(spawner)).unwrap();
+}
+```
+This will just spawn our asynchronous entry point, whic it expects to find in a new file `entry.rs`, that we will create now:
+```rust
+use embassy_executor::Spawner;
+
+#[embassy_executor::task]
+pub async fn entry_task(spawner: Spawner) {
+    println!("🚀 Starting battery + charger integration test");
+    let _ = spawner;
+}
+```
+Now, build and run this with `cargo run`
+
+```
+     Running `target\debug\battery_charger_subsystem.exe`
+🚀 Starting battery + charger integration test
+```
+This code currently does not exit and you have to enter Ctrl-C to break because the `embassy-executor` run loop does not exit.  
+This will change when we introduce our `TestObserver` to help us out with our test tasks.
+
+Create `test_observer.rs` and give it this content:
+```rust
+// test_observer.rs 
+use crate::mutex::{Mutex, RawMutex};
 use std::sync::OnceLock;
 use std::vec::Vec;
 use core::cell::RefCell;
@@ -113,13 +236,13 @@ impl Observation {
 }
 
 // Global static registry
-static OBSERVATION_REGISTRY: OnceLock<Vec<Arc<Mutex<RawMutex, Observation>>>> = OnceLock::new();
+static OBSERVATION_REGISTRY: OnceLock<Vec<&'static Mutex<RawMutex, Observation>>> = OnceLock::new();
 
 thread_local! {
-    static LOCAL_OBSERVATION_REGISTRY: RefCell<Vec<Arc<Mutex<RawMutex, Observation>>>> = RefCell::new(Vec::new());
+    static LOCAL_OBSERVATION_REGISTRY: RefCell<Vec<&'static Mutex<RawMutex, Observation>>> = RefCell::new(Vec::new());
 }
 
-pub fn register_observation(obs: Arc<Mutex<RawMutex, Observation>>) {
+pub fn register_observation(obs: &'static Mutex<RawMutex, Observation>) {
     LOCAL_OBSERVATION_REGISTRY.with(|reg| {
         reg.borrow_mut().push(obs);
     });
@@ -130,7 +253,7 @@ pub fn finalize_registry() {
     OBSERVATION_REGISTRY.set(collected).unwrap_or_else(|_| panic!("Observation registry already initialized"));
 }
 
-pub fn get_registry() -> &'static [Arc<Mutex<RawMutex, Observation>>] {
+pub fn get_registry() -> &'static Vec<&'static Mutex<RawMutex, Observation>> {
     OBSERVATION_REGISTRY.get().expect("Registry not finalized")
 }
 
@@ -138,12 +261,10 @@ pub fn get_registry() -> &'static [Arc<Mutex<RawMutex, Observation>>] {
 #[macro_export]
 macro_rules! observation_decl {
     ($ident:ident, $label:expr) => {{
-
-        static $ident: StaticCell<Arc<Mutex<RawMutex, Observation>>> = StaticCell::new();
-
-        let obs = $ident.init(Arc::new(Mutex::new(Observation::new($label))));
-        register_observation(obs.clone());
-        obs
+        static $ident: StaticCell<Mutex<RawMutex, Observation>> = StaticCell::new();
+        let obs_ref: &'static Mutex<RawMutex, Observation> = $ident.init(Mutex::new(Observation::new($label)));
+        register_observation(obs_ref);
+        obs_ref
     }};
 }
 /// Checks if all registered observations have been marked (i.e., are not Unseen)
@@ -193,544 +314,59 @@ pub async fn summary() -> i32 {
     }
 }
 ```
-This defines the concept of a `TestObserver` that contains a collection of `Observations`.  Each `Observation` represents a bit of behavior that will be tested and marked as `Pass` or `Fail`.  Once all the observations have been declared, `finalize_registry()` is called to lock in the collection.  Each of these `Observer` objects are given to the execution tasks that will perform and mark the corresponding behavior.  When all the `Observations` are marked, the `all_seen()` method will return true, and the `summary()` method will print out the results, and return either 0 or -1 to use as an exit code for ending the process.  This mimics the normal output and run behavior of a typical test framework.
 
-We can also continue to use `println!` statements, although these should mostly be used for error reporting only to avoid console clutter, especially if the integration test is going to be executed on a Continuous Integration Server somewhere and logging the output.
-
-## Writing the Integration Test
-
-We want to make a testing version of what we have running in `main`, so let's just copy over the code from main into `integration/battery_subsystem_behavior.rs` as our starting point:
+We will also need our ubiquitous `mutex.rs` that we've used in the previous examples.  Saavy readers may note that the need to copy these files between projects comes from the same lack of foresight that forced us to refactor the location of the dependencies also.  Perhaps these _anti-patterns_ exhibited here will inspire better code management design in your own projects.
 
 ```rust
-use embassy_executor::Executor;
-use mock_battery::mock_charger::MockCharger;
-use static_cell::StaticCell;
-use embassy_executor::Spawner;
-use battery_service::device::{Device as BatteryDevice, DeviceId as BatteryDeviceId};
+// src/mutex.rs
 
+#[cfg(test)]
+pub use embassy_sync::blocking_mutex::raw::NoopRawMutex as RawMutex;
 
-use mock_battery::types::BatteryChannel;
-use embassy_sync::channel::Channel;
-use battery_service::controller::Controller;
-use battery_service::wrapper::Wrapper;
-use mock_battery::mock_battery_controller::MockBatteryController;
-use mock_battery::mock_battery::MockBattery;
-use embassy_time::{Timer, Duration};
+#[cfg(not(test))]
+pub use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex as RawMutex;
 
-use embedded_services::power::policy::DeviceId;
-use embedded_services::power::policy::register_device;
-use mock_battery::mock_battery_device::MockBatteryDevice;
-
-use mock_battery::espi_service;
-use mock_battery::fuel_signal_ready::BatteryFuelReadySignal;
-use embedded_services::init;
-
-static EXECUTOR: StaticCell<Executor> = StaticCell::new();
-static BATTERY: StaticCell<MockBatteryDevice> = StaticCell::new();
-static BATTERY_FUEL: StaticCell<BatteryDevice> = StaticCell::new();
-static BATTERY_WRAPPER: StaticCell<
-        Wrapper<'static, &'static mut MockBatteryController<&'static mut MockBattery, &'static mut MockCharger>>
-    > = StaticCell::new();
-static CONTROLLER: StaticCell<MockBatteryController<&'static mut MockBattery, &'static mut MockCharger>> = StaticCell::new();
-static BATTERY_EVENT_CHANNEL: StaticCell<BatteryChannel> = StaticCell::new();
-
-static BATTERY_FUEL_READY: StaticCell<BatteryFuelReadySignal> = StaticCell::new();
-
-
-// this is the entry point for integration testing only - not the main app.
-fn main() {
-
-    type OurController = MockBatteryController<&'static mut MockBattery, &'static mut MockCharger>;
-
-    let executor = EXECUTOR.init(Executor::new());
-
-    // Construct battery and extract needed values *before* locking any 'static borrows
-    let battery = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
-    let battery_for_id: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const MockBatteryDevice as *mut MockBatteryDevice) };
-    let battery_for_inner: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const MockBatteryDevice as *mut MockBatteryDevice) };
-    let battery_for_inner2: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const MockBatteryDevice as *mut MockBatteryDevice) };
-    let battery_for_sim: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const MockBatteryDevice as *mut MockBatteryDevice) };
-    let battery_for_sim2: &'static mut MockBatteryDevice = unsafe { &mut *(battery as *const MockBatteryDevice as *mut MockBatteryDevice) };
-    let battery_id = battery_for_id.device().id().0;
-    let fuel = BATTERY_FUEL.init(BatteryDevice::new(BatteryDeviceId(battery_id)));
-    let battery_fuel_ready = BATTERY_FUEL_READY.init(BatteryFuelReadySignal::new());
-    let inner_battery = battery_for_inner.inner_battery();
-    let inner_charger = battery_for_inner2.inner_charger();
-    let fuel_for_controller = unsafe { &mut *(fuel as *const BatteryDevice as *mut BatteryDevice) };
-    let controller = CONTROLLER.init(
-        MockBatteryController::<
-            &'static mut MockBattery,
-            &'static mut MockCharger
-        >::new(inner_battery, inner_charger));
-    let battery_channel = BATTERY_EVENT_CHANNEL.init(Channel::new());
-    let battery_channel_for_handler = unsafe { &mut *(battery_channel as *const BatteryChannel as *mut BatteryChannel) };
-    let controller_for_handler = unsafe { &mut *(controller as *const OurController as *mut OurController) };
-    let controller_for_poll = unsafe { &mut *(controller as *const OurController as *mut OurController) };
-
-    executor.run(|spawner| { 
-        spawner.spawn(init_task(battery)).unwrap();
-        spawner.spawn(battery_service::task()).unwrap();
-        spawner.spawn(battery_service_init_task(fuel, battery_fuel_ready)).unwrap();
-        // spawner.spawn(time_driver::run()). unwrap();
-        spawner.spawn(espi_service_init_task (battery_channel)).unwrap();
-        spawner.spawn(wrapper_task_launcher(fuel_for_controller, controller, battery_fuel_ready, spawner)).unwrap();
-        spawner.spawn(event_handler_task(controller_for_handler, battery_channel_for_handler)).unwrap();
-        spawner.spawn(simulation_task(battery_for_sim.inner_battery(), battery_for_sim2.inner_charger(), 50.0)).unwrap();
-        spawner.spawn(charger_rule_task(controller_for_poll)).unwrap();
-    });
-}
-
-
-
-#[embassy_executor::task]
-async fn init_task(battery:&'static mut MockBatteryDevice) {
-    println!("🔋 Launching battery service (single-threaded)");
-
-    init().await;
-
-    println!("🧩 Registering battery device...");
-    register_device(battery).await.unwrap();
-
-    println!("✅🔋 Battery service is up and running.");
-}
-
-#[embassy_executor::task]
-async fn battery_service_init_task(
-    dev: &'static mut BatteryDevice,
-    ready: &'static BatteryFuelReadySignal
-) {
-    println!("🔌 Initializing battery fuel gauge service...");
-    battery_service::register_fuel_gauge(dev).await.unwrap();
-    
-    // signal that the battery fuel service is ready
-    ready.signal(); 
-}
-
-#[embassy_executor::task]
-async fn espi_service_init_task(battery_channel: &'static mut BatteryChannel) {
-    espi_service::init(battery_channel).await;
-}
-
-#[embassy_executor::task]
-async fn test_message_sender() {
-    use battery_service::context::{BatteryEvent, BatteryEventInner};
-    use battery_service::device::DeviceId;
-    use embedded_services::comms::EndpointID;
-
-    println!("✍ Sending test BatteryEvent...");
-
-    // Wait a moment to ensure other services are initialized 
-    embassy_time::Timer::after(embassy_time::Duration::from_millis(100)).await;
-
-    // Access the ESPI_SERVICE singleton
-    let svc = mock_battery::espi_service::get();
-
-    let event = BatteryEvent {
-        device_id: DeviceId(1),
-        event: BatteryEventInner::PollStaticData, // or DoInit, PollDynamicData, etc.
-    };
-
-    if let Err(e) = svc.endpoint.send(
-        EndpointID::Internal(embedded_services::comms::Internal::Battery),
-        &event,
-    ).await {
-        println!("❌ Failed to send test BatteryEvent: {:?}", e);
-    } else {
-        println!("✅ Test BatteryEvent sent");
-    }
-    loop {
-            // now for the dynamic data:
-            let event2 = BatteryEvent {
-                device_id: DeviceId(1),
-                event: BatteryEventInner::PollDynamicData,
-            };
-
-            if let Err(e) = svc.endpoint.send(
-                EndpointID::Internal(embedded_services::comms::Internal::Battery),
-                &event2,
-            ).await {
-                println!("❌ Failed to send test BatteryEvent: {:?}", e);
-            } else {
-                println!("✅ Test BatteryEvent sent");
-            }
-
-            embassy_time::Timer::after(embassy_time::Duration::from_millis(3000)).await;
-
-        }
-}
-
-// }
-
-#[embassy_executor::task]
-async fn wrapper_task(wrapper: &'static mut Wrapper<'static, &'static mut MockBatteryController<&'static mut MockBattery, &'static mut MockCharger>>) {
-    wrapper.process().await;
-}
-
-#[embassy_executor::task]
-async fn wrapper_task_launcher(
-    fuel: &'static BatteryDevice,
-    controller: &'static mut MockBatteryController<&'static mut MockBattery, &'static mut MockCharger>,
-    ready: &'static BatteryFuelReadySignal,
-    spawner: Spawner,
-) {
-    println!("🔄 Launching wrapper task...");
-
-    ready.wait().await;
-    println!("🔔 BATTERY_FUEL_READY signaled");
-
-    let wrapper = BATTERY_WRAPPER.init(Wrapper::new(fuel, controller));
-    spawner.spawn(wrapper_task(wrapper)).unwrap();
-    spawner.spawn(test_message_sender()).unwrap();
-}
-
-#[embassy_executor::task]
-async fn event_handler_task(
-    mut controller: &'static mut MockBatteryController<&'static mut MockBattery, &'static mut MockCharger>,
-    channel: &'static mut BatteryChannel
-) {
-    use battery_service::context::BatteryEventInner;
-
-    println!("🛠️  Starting event handler...");
-
-    loop {
-        let event = channel.receive().await;
-        println!("🔔 event_handler_task received event: {:?}", event);
-        match event.event {
-            BatteryEventInner::PollStaticData => {
-                println!("🔄 Handling PollStaticData");
-                let sd  = controller.get_static_data(). await;
-                println!("📊 Static battery data: {:?}", sd);
-            }
-            BatteryEventInner::PollDynamicData => {
-                println!("🔄 Handling PollDynamicData");
-                let dd  = controller.get_dynamic_data().await;
-                println!("📊 Dynamic battery data: {:?}", dd);
-            }
-            BatteryEventInner::DoInit => {
-                println!("⚙️  Handling DoInit");
-            }
-            BatteryEventInner::Oem(code, data) => {
-                println!("🧩 Handling OEM command: code = {code}, data = {:?}", data);
-            }
-            BatteryEventInner::Timeout => {
-                println!("⏰ Timeout event received");
-            }
-        }
-    }
-}
-
-#[embassy_executor::task]
-async fn simulation_task(
-    battery: &'static MockBattery,
-    charger: &'static MockCharger,
-    multiplier: f32
-) {
-    loop {
-        {
-            let mut bstate = battery.state.lock().await;        
-            let cstate = charger.state.lock().await;
-
-            let charger_current = cstate.current();
-            if charger_current == 0 {
-                // Simulate current draw (e.g., discharge at 1200 mA)
-                bstate.set_current(-1200);
-            }
-            
-            // Advance the simulation by one tick
-            println!("calling tick... with charger_current {}", charger_current);
-            bstate.tick(charger_current, multiplier);
-        }
-
-        // Simulate once per second
-        Timer::after(Duration::from_secs(1)).await;
-    }
-}
-
-#[embassy_executor::task]
-async fn charger_rule_task(
-    controller: &'static mut MockBatteryController<&'static mut MockBattery, &'static mut MockCharger>
-) {
-    loop {
-        controller.poll_and_manage_charger().await.unwrap();
-        let seconds = controller.get_timeout();
-        Timer::after(seconds).await;
-    }
-}
+// Common export regardless of test or target
+pub use embassy_sync::mutex::Mutex;
 ```
-when we run `cargo run --bin battery_subsystem_behavior` we should get the same output as we do when running `cargo run`.
 
-But now we want to attach our `TestObserver` helper code and run it as a test of behaviors.
-
-Start by adding this lines at the top of `battery_subsystem_behavior.rs`:
-
+### Adding to `main.rs`
+In previous examples, we made .rs files available for import by referencing them in `lib.rs`.  But here we are doing it differently.
+Add the following to your `main.rs` file:
 ```rust
+mod entry;
+mod mutex;
 mod test_observer;
-use test_observer::{Observation, ObservationResult, finalize_registry, register_observation, all_seen, summary};
 ```
-and add this `use` statement:
+This will bind all of these modules to the current `crate`.
 
-```rust
-use mock_battery::mutex::{Arc, Mutex, RawMutex};
-```
 
-Now, we want to define the `Observation`s we want to verify for our `TestObserver` framework.
+### Using the TestObserver
+Before we write actual test tasks, let's create a couple of examples that we can use to show the pattern of using the `TestObserver` we created for this.
 
-In `main()`, somewhere before the `executor::run` block, declare a series of `Observation`s we will use, like  this:
+The `TestObserver` is used to collect a number of `Observation`s that represent a given test.  Each of these observations may be pending (`Unseen`) or may conclude with a `Pass` or `Fail`.  When all the `Observation`s have concluded, a printed output of the results is produced, and the program exits.
 
-```rust
-    let obs_battery = observation_decl!(OBS_BATTERY_SVC_READY, "Battery Service Ready");
-    let obs_fuel = observation_decl!(OBS_FUEL_SVC_READY, "Fuel Gauge Service Ready");
-    let obs_espi = observation_decl!(OBS_ESPI_SVC_READY, "Espi Service Ready");
-    let obs_fuel_signaled = observation_decl!(OBS_FUEL_SIGNALED, "Fuel Gauge service ready signal received");
-    let obs_static_data_received = observation_decl!(OBS_STATIC_DATA_RECEIVED, "Static Data received");
-    let obs_dynamic_data_received = observation_decl!(OBS_DYNAMIC_DATA_RECEIVED, "Dynamic Data received");
-    let obs_charger_activated = observation_decl!(OBS_CHARGER_ACTIVATED, "Charger activated when capacity < 90%");
-    let obs_charger_deactivated = observation_decl!(OBS_CHARGER_DEACTIVATED, "Charger deactivated when capacity >= 90%");
+Each Observation is typically assigned to a separate async task that marks the associated `Observation` with its `Pass`/`Fail` status.
 
-    finalize_registry();
-```
-Calling `finalize_registry();` at the end completes the collection.
-
-Now, we need to update our tasks so that we pass these `Observation` objects to the tasks that will observe them, 
-and each of these tasks will mark the `Observation`s that they are associated with as pass or fail.
-
-We also want to remove many of the superfluous `println` commands we have here to reduce output clutter.  We will leave `println!` output in the case of reporting errors, however.
-
+#### A couple of example test tasks to set the pattern
+We are just going to show the `TestObserver` in action, so we will create these two test tasks in `entry.rs`:
 ```rust
 #[embassy_executor::task]
-async fn init_task(
-    observer: &'static mut Arc<Mutex<RawMutex, Observation>>,
-    battery:&'static mut MockBatteryDevice
+async fn example_pass(
+    observer: &'static Mutex<RawMutex, Observation>
 ) {
-    // println!("🔋 Launching battery service (single-threaded)");
-
-    embedded_services::init().await;
-
-    // println!("🧩 Registering battery device...");
-    register_device(battery).await.unwrap();
-
-    // println!("✅🔋 Battery service is up and running.");
     let mut obs = observer.lock().await;
     obs.mark(ObservationResult::Pass);
 }
-
 #[embassy_executor::task]
-async fn battery_service_init_task(
-    observer: &'static mut Arc<Mutex<RawMutex, Observation>>,
-    dev: &'static mut BatteryDevice,
-    ready: &'static BatteryFuelReadySignal
+async fn example_fail(
+    observer: &'static Mutex<RawMutex, Observation>
 ) {
-    // println!("🔌 Initializing battery fuel gauge service...");
-    battery_service::register_fuel_gauge(dev).await.unwrap();
-
     let mut obs = observer.lock().await;
-    obs.mark(ObservationResult::Pass);
-    
-    // signal that the battery fuel service is ready
-    ready.signal(); 
-}
-
-#[embassy_executor::task]
-async fn espi_service_init_task(
-    observer: &'static mut Arc<Mutex<RawMutex, Observation>>,
-    battery_channel: &'static mut BatteryChannel) {
-    espi_service::init(battery_channel).await;
-    let mut obs = observer.lock().await;
-    obs.mark(ObservationResult::Pass);
-}
-
-#[embassy_executor::task]
-async fn test_message_sender(
-) {
-    use battery_service::context::{BatteryEvent, BatteryEventInner};
-    use battery_service::device::DeviceId;
-    use embedded_services::comms::EndpointID;
-
-    // println!("✍ Sending test BatteryEvent...");
-
-    // Wait a moment to ensure other services are initialized 
-    embassy_time::Timer::after(embassy_time::Duration::from_millis(100)).await;
-
-    // Access the ESPI_SERVICE singleton
-    let svc = mock_battery::espi_service::get();
-
-    let event = BatteryEvent {
-        device_id: DeviceId(1),
-        event: BatteryEventInner::PollStaticData, // or DoInit, PollDynamicData, etc.
-    };
-    
-    if let Err(e) = svc.endpoint.send(
-        EndpointID::Internal(embedded_services::comms::Internal::Battery),
-        &event,
-    ).await {
-        println!("❌ Failed to send PollStaticData: {:?}", e);
-    } else {
-        // println!("✅ PollStaticData sent");
-    }
-    
-    loop {
-            // now for the dynamic data:
-            let event2 = BatteryEvent {
-                device_id: DeviceId(1),
-                event: BatteryEventInner::PollDynamicData,
-            };
-
-            if let Err(e) = svc.endpoint.send(
-                EndpointID::Internal(embedded_services::comms::Internal::Battery),
-                &event2,
-            ).await {
-                println!("❌ Failed to send PollDynamicData: {:?}", e);
-            } else {
-                // println!("✅ PollDynamicData sent");
-            }
-
-            embassy_time::Timer::after(embassy_time::Duration::from_millis(3000)).await;
-
-        }
-}
-
-
-#[embassy_executor::task]
-async fn wrapper_task(wrapper: &'static mut Wrapper<'static, &'static mut MockBatteryController<&'static mut MockBattery, &'static mut MockCharger>>) {
-    wrapper.process().await;
-}
-
-#[embassy_executor::task]
-async fn wrapper_task_launcher(
-    fsig_obsv: &'static mut Arc<Mutex<RawMutex, Observation>>,
-    fuel: &'static BatteryDevice,
-    controller: &'static mut MockBatteryController<&'static mut MockBattery, &'static mut MockCharger>,
-    ready: &'static BatteryFuelReadySignal,
-    spawner: Spawner,
-) {
-    // println!("🔄 Launching wrapper task...");
-
-    ready.wait().await;
-    // println!("🔔 BATTERY_FUEL_READY signaled");
-    let mut obs = fsig_obsv.lock().await;
-    obs.mark(ObservationResult::Pass);
-
-    let wrapper = BATTERY_WRAPPER.init(Wrapper::new(fuel, controller));
-    spawner.spawn(wrapper_task(wrapper)).unwrap();
-    spawner.spawn(test_message_sender(
-        // stat_obsv, 
-        // dyn_obsv
-    )).unwrap();
-}
-
-#[embassy_executor::task]
-async fn event_handler_task(
-    stat_obsv: &'static mut Arc<Mutex<RawMutex, Observation>>,
-    dyn_obsv: &'static mut Arc<Mutex<RawMutex, Observation>>,
-    mut _controller: &'static mut MockBatteryController<&'static mut MockBattery, &'static mut MockCharger>,
-    channel: &'static mut BatteryChannel
-) {
-    use battery_service::context::BatteryEventInner;
-
-    // println!("🛠️  Starting event handler...");
-
-    loop {
-        let event = channel.receive().await;
-        // println!("🔔 event_handler_task received event: {:?}", event);
-        match event.event {
-            BatteryEventInner::PollStaticData => {
-                // println!("🔄 Handling PollStaticData");
-                // let sd  = controller.get_static_data(). await;
-                // println!("📊 Static battery data: {:?}", sd);
-                let mut sobs = stat_obsv.lock().await;
-                sobs.mark(ObservationResult::Pass)
-            }
-            BatteryEventInner::PollDynamicData => {
-                // println!("🔄 Handling PollDynamicData");
-                // let dd  = controller.get_dynamic_data().await;
-                // println!("📊 Dynamic battery data: {:?}", dd);
-                let mut dobs = dyn_obsv.lock().await;
-                dobs.mark(ObservationResult::Pass);
-            }
-            BatteryEventInner::DoInit => {
-                println!("⚙️  Handling DoInit");
-            }
-            BatteryEventInner::Oem(code, data) => {
-                println!("🧩 Handling OEM command: code = {code}, data = {:?}", data);
-            }
-            BatteryEventInner::Timeout => {
-                println!("⏰ Timeout event received");
-            }
-        }
-    }
-}
-
-#[embassy_executor::task]
-async fn simulation_task(
-    charger_active_obsv: &'static mut Arc<Mutex<RawMutex, Observation>>,
-    charger_deactive_obsv: &'static mut Arc<Mutex<RawMutex, Observation>>,
-    battery: &'static MockBattery,
-    charger: &'static MockCharger,
-    multiplier: f32
-) {
-    let mut was_on = false;
-    let mut was_off = false;
-    loop {
-        {
-            let mut bstate = battery.state.lock().await;        
-            let cstate = charger.state.lock().await;
-
-            let charger_current = cstate.current();
-            if charger_current == 0 {
-                // Simulate current draw (e.g., discharge at 1200 mA)
-                bstate.set_current(-1200);
-            }
-            
-            // Advance the simulation by one tick
-//            println!("calling tick... with charger_current {}", charger_current);
-            bstate.tick(charger_current, multiplier);
-        }
-
-        // Simulate once per second
-        Timer::after(Duration::from_secs(1)).await;
-
-        // TODO: Monitor and watch for charger activation/deactivation
-        let bstate = battery.state.lock().await;
-        let cstate = charger.state.lock().await;
-        let rsoc = bstate.relative_soc_percent;
-        let chg = cstate.current();
-        let mut obs_on = charger_active_obsv.lock().await;
-        let mut obs_off = charger_deactive_obsv.lock().await;
-        
-        // provide a little bit of feedback while it is running
-        println!("cap={} chg={}",rsoc, chg);
-
-        if rsoc < 90 {
-            if !was_on && !was_off && chg > 0 {
-                obs_on.mark(ObservationResult::Pass);
-                println!("on");
-                was_on = true;
-            }
-        }
-        else {
-            if was_on && !was_off && chg == 0 {
-                obs_off.mark(ObservationResult::Pass);
-                println!("off");
-                was_off = true
-            }
-        }
-    }
-}
-
-#[embassy_executor::task]
-async fn charger_rule_task(
-    controller: &'static mut MockBatteryController<&'static mut MockBattery, &'static mut MockCharger>
-) {
-    loop {
-        controller.poll_and_manage_charger().await.unwrap();
-        let seconds = controller.get_timeout();
-        Timer::after(seconds).await;
-    }
+    obs.mark(ObservationResult::Fail);
 }
 ```
-
-We also want to create a new task that will wait for all the `Observation` tests to be complete, then print a summary and exit:
-
+We also need a final task that will tell us when the tests are complete.  Add this task to the end of `entry.rs` as well:
 ```rust
 #[embassy_executor::task]
 async fn observations_complete_task() {
@@ -740,93 +376,91 @@ async fn observations_complete_task() {
             let exit_code = summary().await;
             std::process::exit(exit_code);
         }
-
         Timer::after(Duration::from_secs(1)).await;
-
-    }
-    
+    }    
 }
 ```
+Now replace the top part of your `entry.rs` down through the `entry_task` with this updated version:
+```rust
+use embassy_executor::Spawner;
+use static_cell::StaticCell;
+use crate::mutex::{Mutex,RawMutex};
+use crate::test_observer::{Observation, ObservationResult, register_observation, finalize_registry, all_seen, summary};
+use crate::observation_decl;
+use embassy_time::{Timer, Duration};
 
-Now we need to update all of our calls to these tasks in the `spawn block of `main()` so these `Observer` values are passed:
+
+#[embassy_executor::task]
+pub async fn entry_task(spawner: Spawner) {
+    println!("🚀 Starting battery + charger integration test");
+
+    let obs_pass = observation_decl!(OBS_PASS, "Example passing test");
+    let obs_fail = observation_decl!(OBS_FAIL, "Example failing test");
+
+    finalize_registry();
+
+    spawner.must_spawn(example_pass(obs_pass));
+    spawner.must_spawn(example_fail(obs_fail));
+    spawner.spawn(observations_complete_task()).unwrap();
+
+}
+```
+This demonstrates the pattern used to add a test task and execute it:
+1. Declare an `Observation` using `observation_decl` 
+2. Call `finalize_registry()` when all `Observation`s are declared
+3. Spawn each of the tasks, passing in the appropriate `Observation`
+4. Spawn the `observation_complete_task` as one of the spawned tasks.
+
+When you run this with `cargo run` you should see:
+```
+     Running `target\debug\battery_charger_subsystem.exe`
+🚀 Starting battery + charger integration test
+✅ Example passing test: Passed
+❌ Example failing test: Failed
+
+Summary: ✅ 1 passed, ❌ 1 failed, ❓ 0 unseen
+error: process didn't exit successfully: `target\debug\battery_charger_subsystem.exe` (exit code: 0xffffffff)
+```
+If we eliminate the fail test from this set, we get instead:
+```
+     Running `target\debug\battery_charger_subsystem.exe`
+🚀 Starting battery + charger integration test
+✅ Example passing test: Passed
+
+Summary: ✅ 1 passed, ❌ 0 failed, ❓ 0 unseen
+```
+With a clean exit code (0).  Exit code -1 is used if there is a test failure.
+
+
+## Some real tests
+We now have our test setup established, and we can write some actual test tasks now to check the integration.
+You may remove the `example_pass`/`example_fail` tests now if you like.
+
+Our first test is a bit of a sanity test -- we want to ensure that we can instantiate and compose our components without a panic.
+
+add this task in entry:
+```rust
+#[embassy_executor::task]
+async fn spawn_wrapper_test(
+    observer: &'static Mutex<RawMutex, Observation>
+) {
+    let mut obs = observer.lock().await;
+
+    let fuel = BATTERY_FUEL.init(BatteryDevice::new(BatteryDeviceId(1)));
+    let controller = CONTROLLER.init(MockChargerController::new(BatteryDeviceId(1)));
+    let wrapper = BATTERY_WRAPPER.init(Wrapper::new(fuel, controller));
+
+    let _ = wrapper; // success = no panic
+    obs.mark(ObservationResult::Pass);
+}
+```
+and wire it up. You'll need to create the observer declaration:
 
 ```rust
-    executor.run(|spawner| { 
-        
-        spawner.spawn(init_task(
-            obs_battery, 
-            battery
-        )).unwrap();
-        
-        spawner.spawn(battery_service::task(
-
-        )).unwrap();
-        
-        spawner.spawn(battery_service_init_task(
-            obs_fuel, 
-            fuel, 
-            battery_fuel_ready
-        )).unwrap();
-
-        spawner.spawn(espi_service_init_task (
-            obs_espi,
-            battery_channel
-        )).unwrap();
-        
-        spawner.spawn(wrapper_task_launcher(
-            obs_fuel_signaled,
-            fuel_for_controller,
-            controller, 
-            battery_fuel_ready, 
-            spawner
-        )).unwrap();
-        
-        spawner.spawn(event_handler_task(
-            obs_static_data_received,
-            obs_dynamic_data_received,
-            controller_for_handler,
-            battery_channel_for_handler
-        )).unwrap();
-        
-        spawner.spawn(simulation_task(
-            obs_charger_activated,
-            obs_charger_deactivated,
-            battery_for_sim.inner_battery(),
-            battery_for_sim2.inner_charger(),
-            50.0
-        )).unwrap();
-
-        spawner.spawn(charger_rule_task(
-            controller_for_poll
-        )).unwrap();
-
-        spawner.spawn(observations_complete_task(
-        )).unwrap();
-    });
-```
-Now, when run via `cargo run --bin battery_subsystem_behavior`, you should first see the minimal feedback output we included in a `println!` as the simulation behaviors are evaluated:
 
 ```
-cap=93 chg=0
+and spawn it
+```rust
 ```
-until the charge capacity drops below 90% and the charger rules turn on the charger, then you should see output like
-```
-cap=89, chg=1500
-```
-continue until the charger rules find the capacity >= 90% and turn the charger off again. At that point the test ends and you will see the summary output:
-```
-✅ Battery Service Ready: Passed
-✅ Fuel Gauge Service Ready: Passed
-✅ Espi Service Ready: Passed
-✅ Fuel Gauge service ready signal received: Passed
-✅ Static Data received: Passed
-✅ Dynamic Data received: Passed
-✅ Charger activated when capacity < 90%: Passed
-✅ Charger deactivated when capacity >= 90%: Passed
-
-Summary: ✅ 8 passed, ❌ 0 failed, ❓ 0 unseen
-```
-
-
-
+For future tests, the steps of adding the task to the `entry_task` will not be spelled out, so make note of this methodology.
 
