@@ -143,85 +143,93 @@ Our Controller will listen to policy manager events and conduct the appropriate 
 Create a new file named `mock_charger_controller.rs` and start it off like this:
 ```rust
 use crate::mock_charger::{MockCharger, MockChargerError, MilliAmps, MilliVolts};
-use crate::mutex::{Mutex, RawMutex};
 use crate::mock_charger_device::MockChargerDevice;
-
 use embedded_batteries_async::charger::{Charger, ErrorType};
 use embedded_services::power::policy::charger::{
-    ChargeController, ChargerEvent, ChargerError, PsuState
+    ChargeController, ChargerEvent, ChargerError, PsuState, State
 };
 use embedded_services::power::policy::PowerCapability;
 
-pub struct MockChargerController<'a> {
-    pub charger: &'a Mutex<RawMutex, MockCharger>,
-    pub device: &'a MockChargerDevice,
+pub struct MockChargerController<C: Charger + Send> {
+    #[allow(unused)]
+    charger: C,
+    pub device: &'static mut MockChargerDevice
 }
 
-impl<'a> MockChargerController<'a> {
-    pub fn new(
-        charger: &'a Mutex<RawMutex, MockCharger>,
-        device: &'a MockChargerDevice,
-    ) -> Self {
+impl<C> MockChargerController<C>
+where
+    C: Charger + Send
+{    
+    pub fn new(charger: C, device: &'static mut MockChargerDevice) -> Self {
         Self { charger, device }
+    }
+
+    fn inner(&mut self) -> &mut MockCharger {
+        self.device.inner_charger()
     }
 }
 
-impl<'a> ErrorType for MockChargerController<'a> {
+impl<C> ErrorType for MockChargerController<C> 
+where
+    C: Charger + Send 
+{
     type Error = MockChargerError;
 }
 
-impl<'a> Charger for MockChargerController<'a> {
+impl<C> Charger for MockChargerController<C> 
+where
+    C: Charger + Send
+{
     fn charging_current(
         &mut self,
         requested_current: MilliAmps,
     ) -> impl core::future::Future<Output = Result<MilliAmps, Self::Error>> {
-        let charger = self.charger;
-        async move {
-            let mut lock = charger.lock().await;
-            lock.charging_current(requested_current).await
-            
-        }
+        self.inner().charging_current(requested_current)
     }
 
     fn charging_voltage(
         &mut self,
         requested_voltage: MilliVolts,
     ) -> impl core::future::Future<Output = Result<MilliVolts, Self::Error>> {
-        let charger = self.charger;
-        async move {
-            let mut lock = charger.lock().await;
-            lock.charging_voltage(requested_voltage).await
-        }
+        self.inner().charging_voltage(requested_voltage)
     }
 }
 
-impl<'a> ChargeController for MockChargerController<'a> {
+impl<C> ChargeController for MockChargerController<C> 
+where 
+    C: Charger + Send
+{
     type ChargeControllerError = ChargerError;
 
     fn wait_event(&mut self) -> impl core::future::Future<Output = ChargerEvent> {
-        // For now, we simulate a one-time "initialized and ready" signal
-        async move {
-            ChargerEvent::Initialized(PsuState::Attached)
-        }
+        async move { ChargerEvent::Initialized(PsuState::Attached) }
     }
 
-    fn init_charger(&mut self) -> impl core::future::Future<Output = Result<(), Self::ChargeControllerError>> {
+    fn init_charger(
+        &mut self,
+    ) -> impl core::future::Future<Output = Result<(), Self::ChargeControllerError>> {
         async move {
             println!("🛠️  Charger initialized.");
             Ok(())
         }
     }
 
-    fn is_psu_attached(&mut self) -> impl core::future::Future<Output = Result<bool, Self::ChargeControllerError>> {
+    fn is_psu_attached(
+        &mut self,
+    ) -> impl core::future::Future<Output = Result<bool, Self::ChargeControllerError>> {
         async move {
             println!("🔌 Simulating PSU attached check...");
             Ok(true)
         }
     }
 
-    fn attach_handler(&mut self, capability: PowerCapability) -> impl core::future::Future<Output = Result<(), Self::ChargeControllerError>> {
+    fn attach_handler(
+        &mut self,
+        capability: PowerCapability,
+    ) -> impl core::future::Future<Output = Result<(), Self::ChargeControllerError>> {
         let requested_current = capability.current_ma;
         let requested_voltage = capability.voltage_mv;
+        let controller = self;
 
         async move {
             println!(
@@ -229,33 +237,36 @@ impl<'a> ChargeController for MockChargerController<'a> {
                 requested_current, requested_voltage
             );
 
-            let sup_cur = self.charging_current(requested_current).await.unwrap();
-            let sup_volt = self.charging_voltage(requested_voltage).await.unwrap();
+            let sup_cur = controller.charging_current(requested_current).await.unwrap();
+            let sup_volt = controller.charging_voltage(requested_voltage).await.unwrap();
 
             if sup_cur != requested_current || sup_volt != requested_voltage {
                 println!("⚠️ Controller refused requested values: got {} mA @ {} mV", sup_cur, sup_volt);
                 return Err(ChargerError::InvalidState(crate::mock_charger_controller::State::Unpowered));
             }           
 
-            println!(
-                "⚡ values supplied: {} mA @ {} mV",
-                sup_cur, sup_volt
-            );
+            println!("⚡ values supplied: {} mA @ {} mV", sup_cur, sup_volt);
 
             Ok(())
         }
     }
 
-    fn detach_handler(&mut self) -> impl core::future::Future<Output = Result<(), Self::ChargeControllerError>> {
+    fn detach_handler(
+        &mut self,
+    ) -> impl core::future::Future<Output = Result<(), Self::ChargeControllerError>> {
+        let controller = self;
+
         async move {
-            let _  = self.charging_current(0).await.unwrap();
-            let _ = self.charging_voltage(0).await.unwrap();
+            let _ = controller.charging_current(0).await.unwrap();
+            let _ = controller.charging_voltage(0).await.unwrap();
             println!("🔌 Charger detached.");
             Ok(())
         }
     }
 
-    fn is_ready(&mut self) -> impl core::future::Future<Output = Result<(), Self::ChargeControllerError>> {
+    fn is_ready(
+        &mut self,
+    ) -> impl core::future::Future<Output = Result<(), Self::ChargeControllerError>> {
         async move {
             println!("✅ Charger is ready.");
             Ok(())

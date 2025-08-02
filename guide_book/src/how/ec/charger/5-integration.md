@@ -434,33 +434,88 @@ With a clean exit code (0).  Exit code -1 is used if there is a test failure.
 
 ## Some real tests
 We now have our test setup established, and we can write some actual test tasks now to check the integration.
-You may remove the `example_pass`/`example_fail` tests now if you like.
 
 Our first test is a bit of a sanity test -- we want to ensure that we can instantiate and compose our components without a panic.
 
-add this task in entry:
+As we know, we need to allocate our components as `StaticCell` and call `init` to get the instance, and we know that if we
+need to use one of those instances more than once we may encounter a borrow violation and need to use our `duplicate_static_mut!` safety assertion.  The ability to make these allocations is a test in itself -- if anything panics it will stop and fail the test.
+We can't do these allocations per test task because we can only call `StaticCell::init()` once, so it makes sense to allocate
+everything we think we might need for the tasks, and then pass what that task will need when we write those tests.
+
+Let's set up our `entry.rs` to do that:
 ```rust
+use embassy_executor::Spawner;
+use static_cell::StaticCell;
+use crate::mutex::{Mutex,RawMutex};
+use crate::test_observer::{Observation, ObservationResult, register_observation, finalize_registry, all_seen, summary};
+use crate::{duplicate_static_mut, observation_decl};
+use embassy_time::{Timer, Duration};
+
+use mock_battery::fuel_signal_ready::BatteryFuelReadySignal;
+use mock_battery::mock_battery_device::MockBatteryDevice;
+
+use battery_service::device::{Device as BatteryDevice, DeviceId as BatteryDeviceId};
+use battery_service::wrapper::Wrapper;
+use mock_battery::types::{BatteryChannel, OurController};
+use embedded_services::power::policy::DeviceId;
+
+static BATTERY: StaticCell<MockBatteryDevice> = StaticCell::new();
+static BATTERY_FUEL: StaticCell<BatteryDevice> = StaticCell::new();
+static BATTERY_EVENT_CHANNEL: StaticCell<BatteryChannel> = StaticCell::new();
+static BATTERY_WRAPPER: StaticCell<
+        Wrapper<'static, &'static mut OurController>
+    > = StaticCell::new();
+static CONTROLLER: StaticCell<OurController> = StaticCell::new();
+static BATTERY_FUEL_READY: StaticCell<BatteryFuelReadySignal> = StaticCell::new();
+
+
 #[embassy_executor::task]
-async fn spawn_wrapper_test(
+pub async fn entry_task(spawner: Spawner) {
+    println!("🚀 Starting battery + charger integration test");
+
+    let obs_pass = observation_decl!(OBS_PASS, "Example Pass");
+    finalize_registry();
+
+    let battery = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
+    let battery_mut = duplicate_static_mut!(battery, MockBatteryDevice);
+    let battery_fuel = BATTERY_FUEL.init(BatteryDevice::new(BatteryDeviceId(1)));
+    let controller = CONTROLLER.init(OurController::new(battery_mut.inner_battery()));
+    let channel = BATTERY_EVENT_CHANNEL.init(BatteryChannel::new());
+    let signal = BATTERY_FUEL_READY.init(BatteryFuelReadySignal::new());
+    let wrapper = BATTERY_WRAPPER.init(Wrapper::new(battery_fuel, controller));
+
+    // we don't use these (yet)
+    let _ = wrapper;
+    let _ = signal;
+    let _ = channel; 
+
+    spawner.spawn(example_pass(obs_pass)).unwrap();
+    spawner.spawn(observations_complete_task()).unwrap();
+
+}
+
+#[embassy_executor::task]
+async fn observations_complete_task() {
+    loop {
+        let ready = all_seen().await;
+        if ready {
+            let exit_code = summary().await;
+            std::process::exit(exit_code);
+        }
+        Timer::after(Duration::from_secs(1)).await;
+    }    
+}
+#[embassy_executor::task]
+async fn example_pass (
     observer: &'static Mutex<RawMutex, Observation>
 ) {
     let mut obs = observer.lock().await;
-
-    let fuel = BATTERY_FUEL.init(BatteryDevice::new(BatteryDeviceId(1)));
-    let controller = CONTROLLER.init(MockChargerController::new(BatteryDeviceId(1)));
-    let wrapper = BATTERY_WRAPPER.init(Wrapper::new(fuel, controller));
-
-    let _ = wrapper; // success = no panic
     obs.mark(ObservationResult::Pass);
 }
 ```
-and wire it up. You'll need to create the observer declaration:
 
-```rust
+This test will run and report success but it will have allocated most of what we will need for upcoming test tasks,
+so we are now in a good starting position.
 
-```
-and spawn it
-```rust
-```
-For future tests, the steps of adding the task to the `entry_task` will not be spelled out, so make note of this methodology.
+
 
