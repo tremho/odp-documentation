@@ -160,6 +160,8 @@ use embassy_executor::Executor;
 use embassy_sync::signal::Signal;
 #[allow(unused_imports)]
 use static_cell::StaticCell;
+#[allow(unused_imports)]
+use crate::mutex::{Mutex, RawMutex};
 
 #[test]
 fn test_controller() {

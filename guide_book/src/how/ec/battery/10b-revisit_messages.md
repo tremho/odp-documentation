@@ -10,7 +10,7 @@ We are sending a `PollStaticData` event for our test message.  The `EspiService`
 
 ## Open a Channel
 
-You will recall we created our `BatteryChannel` type in `types.rs` and incorporated that into our `espi_service`
+You will recall we created our `BatteryChannel` type in `types.rs` and incorporated that into our `espi_service` but as noted, it doesn't handle the messages it receives directly.
 
 What `EspiService` _does_ do, is to route messages on to this asynchronous message queue (called a `Channel`).  
 Then an event handler spawned as one of our main tasks can read from this queue and process the messages it receives.

@@ -44,29 +44,32 @@ ec_examples/
 │   └── Cargo.toml
 ```
 
-You can construct the `battery_charger_subsystem` structure with these commands from a `cmd` prompt:
+You can construct the `battery_charger_subsystem` structure with these commands from a `cmd` prompt
+
+(from within the top-level container folder):
 ```cmd
 mkdir battery_charger_subsystem
 cd battery_charger_subsystem
-echo # Battery-Charger Subsystem > Cargo.toml
+echo '# Battery-Charger Subsystem' > Cargo.toml
 mkdir src
 cd src
 echo // lib.rs > lib.rs
-echo // main.rs > main.rs
-echo // policy.rs > policy.rs
+echo // main.rs > main.rs 
 echo // test_observer.rs > test_observer.rs
+cd ../.. 
 ```
 
-## A note on dependency structuring
+## ☙ A note on dependency structuring ☙
 Up to this point we've been treating each component project as a standalone effort, and in that respect all of the dependent repositories are brought in as submodules _within_ each project.  For battery and charger, these dependencies are nearly identical.
 In retrospect, it would probably have been better to place these dependencies outside of the component project spaces so they could share the same resources. That would have been especially helpful now that we are here at integration.
 
-In fact, it becomes _imperative_ that we remedy this structure before we continue to insure all the components in question and the test code itself are relying on the same versions of the dependent code. Even a minor difference that would cause no trouble for execution in any version of the dependencies may be enough to halt building if Rust senses a version drift.
+In fact, it becomes _imperative_ that we remedy this structure before we continue to insure all the components in question and the test code itself are relying on the same versions of the dependent code. Even a minor version mismatch -- although harmless at runtime -- may halt compilation if Rust detects drift.
 
 ## ⚠️⚒ Refactoring detour ⚒⚠️
-We need to bite the bullet and remedy this before we continue.  It won't take too long.
+We need to bite the bullet and remedy this before we continue.  It won't take too long, and once these changes are complete ou should be able to build all the components and proceed with the integration confidently.
+
 First, identify the containing folder you have your `battery_project` and `charger_project` files in.
-We are going to turn this folder into an unattached `git` folder the same way we did for the projects and bring the submodules in at this level.  If your containing folder is not appropriate for this, create a new folder (mine is named `ec_examples`) and move your project folders into here before continuing.
+We are going to turn this folder into an unattached `git` folder the same way we did for the projects and bring the submodules in at this level.  If your containing folder is not appropriate for this, create a new folder (perhaps `ec_examples`) and move your project folders into here before continuing.
 
 Now, in the containing folder (`ec_examples`), perform the following:
 ```
@@ -126,30 +129,198 @@ We want to follow the exact same steps for the charger project:
 
 Ensure `charger_project` builds clean in its new form.
 
-## Continuing with the integration project
-Okay. That really wasn't so bad, and now we are on track to complete our mini-integration of the battery-charger subsystem, and we are also on a better track for the future and integrations yet to come.
 
-So go back to our `battery_charger_subsystem` project.
+### ♻ Common files and new dependencies
+When we did the battery and charger work, we created a number of general helper files and copied these between projects. Our integration project is going to need some of these same files also, so it makes sense that while we are doing this refactor we also
+address common files that will be used between them.
 
-In `battery_charger_subsystem/Cargo.toml`, we add this:
+This also will introduce new wrinkles to the dependencies between projects, so we need to revisit our `Cargo.toml` chains again.
 
+Create a folder named `ec_common` within your containing folder do that is a sibling to your other project folders and the dependencies.
+
+Create a `Cargo.toml` file for this folder. Give it this content:
 ```toml
-# Battery-Charger Subsystem 
+# ec_common/Cargo.toml
 [package]
-name = "battery_charger_subsystem"
+name = "ec_common"
 version = "0.1.0"
-edition = "2021"
+edition = "2024"
 
 [dependencies]
-embassy-executor = { path = "../embassy/embassy-executor",  features = ["arch-std", "executor-thread"], default-features = false }
-embassy-time = { path = "../embassy/embassy-time", features = ["std"] }
+# Embassy
+embassy-executor = { path = "../embassy/embassy-executor", features = ["arch-std", "executor-thread"], default-features = false }
+embassy-time = { path = "../embassy/embassy-time" }
+embassy-sync = { path = "../embassy/embassy-sync", features = ["std"] }
+battery-service = { path = "../embedded-services/battery-service" }
+embedded-services = { path = "../embedded-services/embedded-service" }
+
+# Static allocation helpers
+static_cell = "1.2"
+
+[features]
+default = []
+thread-mode = []
+noop-mode = []
+```
+
+We also need a new toml at the top level (`ec_examples`).  Create a `Cargo.toml` file here and give it this:
+```toml
+# ec_examples/Cargo.toml
+[workspace]
+resolver = "2"
+members = [
+    "battery_project/mock_battery",
+    "charger_project/mock_charger",
+    "battery_charger_subsystem",
+    "ec_common"
+]
+
+[workspace.dependencies]
+embassy-executor = { path = "embassy/embassy-executor", features = ["arch-std", "executor-thread"], default-features = false }
+embassy-time = { path = "embassy/embassy-time" }
+embassy-sync = { path = "embassy/embassy-sync", features = ["std"] }
+embassy-futures = { path = "embassy/embassy-futures" }
+embassy-time-driver = { path = "embassy/embassy-time-driver" }
+embassy-time-queue-utils = { path = "embassy/embassy-time-queue-utils" }
+embedded-hal = "1.0"
+embedded-hal-async = "1.0"
+once_cell = "1.19"
+static_cell = "2.1.0"
+defmt = "1.0"
+log = "0.4.27"
+bitfield = "0.19.1"
+bitflags = "1.0"
+bitvec = "1.0"
+cfg-if = "1.0"
+chrono = "0.4.41"
+tokio = { version = "1.45", features = ["full"] }
+critical-section = {version = "1.0", features = ["std"] }
+document-features = "0.2.11"
+embedded-hal-nb = "1.0"
+embedded-io = "0.6.1"
+embedded-io-async = "0.6.1"
+embedded-storage = "0.3.1"
+embedded-storage-async = "0.4.1"
+fixed = "1.0"
+heapless = "0.8.0"
+postcard = "1.0"
+rand_core = "0.9.3"
+serde = "1.0"
+cortex-m = "0.7.7"
+cortex-m-rt = "0.7.5"
+embedded-batteries = { path = "embedded-batteries/embedded-batteries" }
+embedded-batteries-async = { path = "embedded-batteries/embedded-batteries-async" }
+embedded-services = { path = "embedded-services/embedded-service" }
+battery-service = { path = "embedded-services/battery-service" }
+embedded-cfu-protocol = { path = "embedded-cfu" }
+embedded-usb-pd = { path = "embedded-usb-pd" }
+
+[patch.crates-io]
+embassy-executor = { path = "embassy/embassy-executor" }
+embassy-time = { path = "embassy/embassy-time" }
+embassy-sync = { path = "embassy/embassy-sync" }
+embassy-futures = { path = "embassy/embassy-futures" }
+embassy-time-driver = { path = "embassy/embassy-time-driver" }
+embassy-time-queue-utils = { path = "embassy/embassy-time-queue-utils" }
+embedded-batteries-async = { path = "embedded-batteries/embedded-batteries-async" }
+
+# Lint settings for the entire workspace.
+# We start with basic warning visibility, especially for upcoming Rust changes.
+# Additional lints are listed here but disabled by default, since enabling them
+# may trigger warnings in upstream submodules like `embedded-services`.
+#
+# To tighten enforcement over time, you can uncomment these as needed.
+[workspace.lints.rust]
+warnings = "warn"              # Show warnings, but do not fail the build
+future_incompatible = "warn"  # Highlight upcoming breakage (future Rust versions)
+# rust_2018_idioms = "warn"     # Enforce idiomatic Rust style (may warn on legacy code)
+# unused_crate_dependencies = "warn"  # Detect unused deps — useful during cleanup
+# missing_docs = "warn"       # Require documentation for all public items
+# unsafe_code = "deny"        # Forbid use of `unsafe` entirely
+
+[patch.'https://github.com/embassy-rs/embassy']
+embassy-time = { path = "./embassy/embassy-time" }
+embassy-time-driver = { path = "./embassy/embassy-time-driver" }
+embassy-sync = { path = "./embassy/embassy-sync" }
+embassy-executor = { path = "./embassy/embassy-executor" }
+embassy-futures = { path = "./embassy/embassy-futures" }
+```
+
+You may recognize much of this as what was in our workspace `Cargo.toml` files for the battery and charger projects.  Those workspaces are still valid in local scope, but this gives us the same associations across the full integration.
+
+We need to update the existing toml files for the subprojects also. Please replace the following toml files with this new content:
+
+```toml
+# battery_project/Cargo.toml
+[workspace]
+resolver = "2"
+members = [
+    "mock_battery"
+]
+
+[workspace.dependencies]
+ec_common = { path = "../ec_common" }
+embassy-executor = { path = "../embassy/embassy-executor", features = ["arch-std", "executor-thread"], default-features = false }
+embassy-time = { path = "../embassy/embassy-time" }
 embassy-sync = { path = "../embassy/embassy-sync", features = ["std"] }
 embassy-futures = { path = "../embassy/embassy-futures" }
 embassy-time-driver = { path = "../embassy/embassy-time-driver" }
 embassy-time-queue-utils = { path = "../embassy/embassy-time-queue-utils" }
+embedded-hal = "1.0"
+embedded-hal-async = "1.0"
+once_cell = "1.19"
+static_cell = "2.1.0"
+defmt = "1.0"
+log = "0.4.27"
+bitfield = "0.19.1"
+bitflags = "1.0"
+bitvec = "1.0"
+cfg-if = "1.0"
+chrono = "0.4.41"
+tokio = { version = "1.45", features = ["full"] }
+critical-section = {version = "1.0", features = ["std"] }
+document-features = "0.2.11"
+embedded-hal-nb = "1.0"
+embedded-io = "0.6.1"
+embedded-io-async = "0.6.1"
+embedded-storage = "0.3.1"
+embedded-storage-async = "0.4.1"
+fixed = "1.0"
+heapless = "0.8.0"
+postcard = "1.0"
+rand_core = "0.9.3"
+serde = "1.0"
+cortex-m = "0.7.7"
+cortex-m-rt = "0.7.5"
+embedded-batteries = { path = "../embedded-batteries/embedded-batteries" }
+embedded-batteries-async = { path = "../embedded-batteries/embedded-batteries-async" }
+embedded-services = { path = "../embedded-services/embedded-service" }
+battery-service = { path = "../embedded-services/battery-service" }
+embedded-cfu-protocol = { path = "../embedded-cfu" }
+embedded-usb-pd = { path = "../embedded-usb-pd" }
 
-mock_battery = { path = "../battery_project/mock_battery" }
-mock_charger = { path = "../charger_project/mock_charger" }
+[patch.crates-io]
+embassy-executor = { path = "../embassy/embassy-executor" }
+embassy-time = { path = "../embassy/embassy-time" }
+embassy-sync = { path = "../embassy/embassy-sync" }
+embassy-futures = { path = "../embassy/embassy-futures" }
+embassy-time-driver = { path = "../embassy/embassy-time-driver" }
+embassy-time-queue-utils = { path = "../embassy/embassy-time-queue-utils" }
+embedded-batteries-async = { path = "../embedded-batteries/embedded-batteries-async" }
+
+# Lint settings for the entire workspace.
+# We start with basic warning visibility, especially for upcoming Rust changes.
+# Additional lints are listed here but disabled by default, since enabling them
+# may trigger warnings in upstream submodules like `embedded-services`.
+#
+# To tighten enforcement over time, you can uncomment these as needed.
+[workspace.lints.rust]
+warnings = "warn"              # Show warnings, but do not fail the build
+future_incompatible = "warn"  # Highlight upcoming breakage (future Rust versions)
+# rust_2018_idioms = "warn"     # Enforce idiomatic Rust style (may warn on legacy code)
+# unused_crate_dependencies = "warn"  # Detect unused deps — useful during cleanup
+# missing_docs = "warn"       # Require documentation for all public items
+# unsafe_code = "deny"        # Forbid use of `unsafe` entirely
 
 [patch.'https://github.com/embassy-rs/embassy']
 embassy-time = { path = "../embassy/embassy-time" }
@@ -157,365 +328,489 @@ embassy-time-driver = { path = "../embassy/embassy-time-driver" }
 embassy-sync = { path = "../embassy/embassy-sync" }
 embassy-executor = { path = "../embassy/embassy-executor" }
 embassy-futures = { path = "../embassy/embassy-futures" }
+```
+
+```toml
+# mock_battery/Cargo.toml
+[package]
+name = "mock_battery"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ec_common = { path = "../../ec_common", default-features = false}
+embedded-batteries-async = { path = "../../embedded-batteries/embedded-batteries-async" }
+battery-service = { path = "../../embedded-services/battery-service" }
+embedded-services = { path = "../../embedded-services/embedded-service" }
+embassy-executor = { workspace = true }
+embassy-time = { workspace = true, features=["std"] }
+embassy-sync = { workspace = true }
+critical-section = {version = "1.0", features = ["std"] }
+async-trait = "0.1"
+tokio = { workspace = true }
+static_cell = "1.0"
+once_cell = { workspace = true }
+
+[dev-dependencies]
+embassy-executor = { workspace = true, features = ["arch-std"] }
+
+[features]
+default = ["noop-mode"]
+thread-mode = ["ec_common/thread-mode"]
+noop-mode = ["ec_common/noop-mode"]
+```
+
+```toml
+# charger_project/Cargo.toml
+[workspace]
+resolver = "2"
+members = [
+    "mock_charger"
+]
+
+[workspace.dependencies]
+embassy-executor = { path = "../embassy/embassy-executor", features = ["arch-std", "executor-thread"], default-features = false }
+embassy-time = { path = "../embassy/embassy-time" }
+embassy-sync = { path = "../embassy/embassy-sync", features = ["std"] }
+embassy-futures = { path = "../embassy/embassy-futures" }
+embassy-time-driver = { path = "../embassy/embassy-time-driver" }
+embassy-time-queue-utils = { path = "../embassy/embassy-time-queue-utils" }
+embedded-hal = "1.0"
+embedded-hal-async = "1.0"
+once_cell = "1.19"
+static_cell = "2.1.0"
+defmt = "1.0"
+log = "0.4.27"
+bitfield = "0.19.1"
+bitflags = "1.0"
+bitvec = "1.0"
+cfg-if = "1.0"
+chrono = "0.4.41"
+tokio = { version = "1.45", features = ["full"] }
+critical-section = {version = "1.0", features = ["std"] }
+document-features = "0.2.11"
+embedded-hal-nb = "1.0"
+embedded-io = "0.6.1"
+embedded-io-async = "0.6.1"
+embedded-storage = "0.3.1"
+embedded-storage-async = "0.4.1"
+fixed = "1.0"
+heapless = "0.8.0"
+postcard = "1.0"
+rand_core = "0.9.3"
+serde = "1.0"
+cortex-m = "0.7.7"
+cortex-m-rt = "0.7.5"
+embedded-batteries = { path = "../embedded-batteries/embedded-batteries" }
+embedded-batteries-async = { path = "../embedded-batteries/embedded-batteries-async" }
+embedded-services = { path = "../embedded-services/embedded-service" }
+battery-service = { path = "../embedded-services/battery-service" }
+embedded-cfu-protocol = { path = "../embedded-cfu" }
+embedded-usb-pd = { path = "../embedded-usb-pd" }
 
 [patch.crates-io]
+embassy-executor = { path = "../embassy/embassy-executor" }
+embassy-time = { path = "../embassy/embassy-time" }
+embassy-sync = { path = "../embassy/embassy-sync" }
+embassy-futures = { path = "../embassy/embassy-futures" }
+embassy-time-driver = { path = "../embassy/embassy-time-driver" }
+embassy-time-queue-utils = { path = "../embassy/embassy-time-queue-utils" }
 embedded-batteries-async = { path = "../embedded-batteries/embedded-batteries-async" }
+
+# Lint settings for the entire workspace.
+# We start with basic warning visibility, especially for upcoming Rust changes.
+# Additional lints are listed here but disabled by default, since enabling them
+# may trigger warnings in upstream submodules like `embedded-services`.
+#
+# To tighten enforcement over time, you can uncomment these as needed.
+[workspace.lints.rust]
+warnings = "warn"              # Show warnings, but do not fail the build
+future_incompatible = "warn"  # Highlight upcoming breakage (future Rust versions)
+# rust_2018_idioms = "warn"     # Enforce idiomatic Rust style (may warn on legacy code)
+# unused_crate_dependencies = "warn"  # Detect unused deps — useful during cleanup
+# missing_docs = "warn"       # Require documentation for all public items
+# unsafe_code = "deny"        # Forbid use of `unsafe` entirely
+
+[patch.'https://github.com/embassy-rs/embassy']
+embassy-time = { path = "../embassy/embassy-time" }
+embassy-time-driver = { path = "../embassy/embassy-time-driver" }
+embassy-sync = { path = "../embassy/embassy-sync" }
+embassy-executor = { path = "../embassy/embassy-executor" }
+embassy-futures = { path = "../embassy/embassy-futures" }
 ```
 
-### Getting started
-We'll start out with a `main.rs` that looks like this:
+```toml
+# mock_charger/Cargo.toml
+[package]
+name = "mock_charger"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+ec_common = { path = "../../ec_common", default-features = false}
+embedded-batteries-async = { path = "../../embedded-batteries/embedded-batteries-async" }
+embedded-batteries = { path = "../../embedded-batteries/embedded-batteries" }
+battery-service = { path = "../../embedded-services/battery-service" }
+embedded-services = { path = "../../embedded-services/embedded-service" }
+embassy-executor = { workspace = true }
+embassy-time = { workspace = true, features=["std"] }
+embassy-sync = { workspace = true }
+critical-section = {version = "1.0", features = ["std"] }
+async-trait = "0.1"
+tokio = { workspace = true }
+static_cell = "1.0"
+once_cell = { workspace = true }
+
+[dev-dependencies]
+embassy-executor = { workspace = true, features = ["arch-std"] }
+
+[features]
+default = ["noop-mode"]
+thread-mode = ["ec_common/thread-mode"]
+noop-mode = ["ec_common/noop-mode"]
+```
+
+With this in place, we have a common container that forms a workspace for the full integration, an ec_common crate for items that are shared between the subprojects, and our battery and charger projects which can continue to be built and tested individually or within an integration.
+
+Now let's finish populating the common files.  In your `ec_common` folder, create a `src` directory.  In this location we will be adding the following files:
+- __espi_service.rs__ - we created this originally in the battery project.  We'll use it here and modify it.
+- __fuel_signal_ready.rs__ - also created in battery_project.
+- __mutex.rs__ - used in both the battery and charger projects.  We will be modifying it slightly here.
+- __mut_copy.rs__ - the macro helper for making borrow-safe duplicates (created in charger project)
+- __test_helper.rs__ - used by both battery and charger projects for unit tests.
+- __lib.rs__ - we'll create this file here and keep it updated.
+
+move these files from `battery_project/mock_battery/src` to `ec_common/src`:
+- espi_service.rs
+- fuel_signal_ready.rs
+- mutex.rs
+- mut_copy.rs
+- test_helper.rs
+
+and delete these files from `charger_project/mock_charger`
+- mutex.rs
+- test_helper.rs
+
+### ⚠️ Changing the [cfg(test)] flags ⚠️
+
+We need to update our mutex.rs file here to respond to passed-in `feature` flags rather than the `#[cfg(test)]` flags we have been using.  This is because `#[cfg(test)]` only applies to the root crate being tested, not dependent crates like `ec_common`, which is where this will now reside.  Feature flags, on the other hand, are respected across crate boundaries and let us explicitly control which kind of mutex implementation is used, ensuring consistent behavior across unit tests, integration tests, and real builds.
+
+You may have noticed in our updated `Cargo.toml` files we have introduced the `[features']` for `thread-mode` and `noop-mode`.
+
+We will now update `ec_common/src/mutex.rs` to reflect this.  Change your `mutex.rs` file to look like this:
 ```rust
-// main.rs 
-
-use embassy_executor::Spawner;
-
-mod entry;
-
-#[embassy_executor::main]
-async fn main(spawner: Spawner) {
-    spawner.spawn(entry::entry_task(spawner)).unwrap();
-}
-```
-This will just spawn our asynchronous entry point, whic it expects to find in a new file `entry.rs`, that we will create now:
-```rust
-use embassy_executor::Spawner;
-
-#[embassy_executor::task]
-pub async fn entry_task(spawner: Spawner) {
-    println!("🚀 Starting battery + charger integration test");
-    let _ = spawner;
-}
-```
-Now, build and run this with `cargo run`
-
-```
-     Running `target\debug\battery_charger_subsystem.exe`
-🚀 Starting battery + charger integration test
-```
-This code currently does not exit and you have to enter Ctrl-C to break because the `embassy-executor` run loop does not exit.  
-This will change when we introduce our `TestObserver` to help us out with our test tasks.
-
-Create `test_observer.rs` and give it this content:
-```rust
-// test_observer.rs 
-use crate::mutex::{Mutex, RawMutex};
-use std::sync::OnceLock;
-use std::vec::Vec;
-use core::cell::RefCell;
-
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
-pub enum ObservationResult {
-    Unseen,
-    #[allow(dead_code)]
-    Pass,
-    #[allow(dead_code)]
-    Fail,
-}
-
-pub struct Observation {
-    pub name: &'static str,
-    pub result: ObservationResult,
-}
-
-impl Observation {
-    pub const fn new(name: &'static str) -> Self {
-        Self {
-            name,
-            result: ObservationResult::Unseen,
-        }
-    }
-
-    pub fn mark(&mut self, result: ObservationResult) {
-        self.result = result;
-    }
-
-    pub fn is_seen(&self) -> bool {
-        self.result != ObservationResult::Unseen
-    }
-}
-
-// Global static registry
-static OBSERVATION_REGISTRY: OnceLock<Vec<&'static Mutex<RawMutex, Observation>>> = OnceLock::new();
-
-thread_local! {
-    static LOCAL_OBSERVATION_REGISTRY: RefCell<Vec<&'static Mutex<RawMutex, Observation>>> = RefCell::new(Vec::new());
-}
-
-pub fn register_observation(obs: &'static Mutex<RawMutex, Observation>) {
-    LOCAL_OBSERVATION_REGISTRY.with(|reg| {
-        reg.borrow_mut().push(obs);
-    });
-}
-
-pub fn finalize_registry() {
-    let collected = LOCAL_OBSERVATION_REGISTRY.with(|reg| reg.take());
-    OBSERVATION_REGISTRY.set(collected).unwrap_or_else(|_| panic!("Observation registry already initialized"));
-}
-
-pub fn get_registry() -> &'static Vec<&'static Mutex<RawMutex, Observation>> {
-    OBSERVATION_REGISTRY.get().expect("Registry not finalized")
-}
-
-/// Macro to declare a new static observation and register it in the global registry.
-#[macro_export]
-macro_rules! observation_decl {
-    ($ident:ident, $label:expr) => {{
-        static $ident: StaticCell<Mutex<RawMutex, Observation>> = StaticCell::new();
-        let obs_ref: &'static Mutex<RawMutex, Observation> = $ident.init(Mutex::new(Observation::new($label)));
-        register_observation(obs_ref);
-        obs_ref
-    }};
-}
-/// Checks if all registered observations have been marked (i.e., are not Unseen)
-pub async fn all_seen() -> bool {
-    for obs in get_registry() {
-        let lock = obs.lock().await;
-        if !lock.is_seen() {
-            return false;
-        }
-    }
-    true
-}
-
-
-/// Print a summary of all registered observations. Returns 0 on full success, -1 if any fail or unseen.
-pub async fn summary() -> i32 {
-    let registry = get_registry();
-
-    let mut pass = 0;
-    let mut fail = 0;
-    let mut unseen = 0;
-
-    for obs in registry.iter() {
-        let obs = obs.lock().await;
-        match obs.result {
-            ObservationResult::Pass => {
-                println!("✅ {}: Passed", obs.name);
-                pass += 1;
-            }
-            ObservationResult::Fail => {
-                println!("❌ {}: Failed", obs.name);
-                fail += 1;
-            }
-            ObservationResult::Unseen => {
-                println!("❓ {}: Unseen", obs.name);
-                unseen += 1;
-            }
-        }
-    }
-
-    println!("\nSummary: ✅ {} passed, ❌ {} failed, ❓ {} unseen", pass, fail, unseen);
-
-    if fail == 0 && unseen == 0 {
-        0
-    } else {
-        -1
-    }
-}
-```
-
-We will also need our ubiquitous `mutex.rs` that we've used in the previous examples.  Saavy readers may note that the need to copy these files between projects comes from the same lack of foresight that forced us to refactor the location of the dependencies also.  Perhaps these _anti-patterns_ exhibited here will inspire better code management design in your own projects.
-
-```rust
-// src/mutex.rs
-
-#[cfg(test)]
-pub use embassy_sync::blocking_mutex::raw::NoopRawMutex as RawMutex;
-
-#[cfg(not(test))]
+#[cfg(all(feature = "thread-mode", not(feature = "noop-mode")))]
 pub use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex as RawMutex;
 
-// Common export regardless of test or target
+#[cfg(all(feature = "noop-mode", not(feature = "thread-mode")))]
+pub use embassy_sync::blocking_mutex::raw::NoopRawMutex as RawMutex;
+
+#[cfg(not(any(
+    all(feature = "thread-mode", not(feature = "noop-mode")),
+    all(feature = "noop-mode", not(feature = "thread-mode")),
+)))]
+compile_error!("Exactly one of `thread-mode` or `noop-mode` must be enabled for ec_common.");
+
+// Then these three lines to re-export:
 pub use embassy_sync::mutex::Mutex;
+pub use embassy_sync::channel::Channel;
+pub use embassy_sync::signal::Signal;
 ```
 
-### Adding to `main.rs`
-In previous examples, we made .rs files available for import by referencing them in `lib.rs`.  But here we are doing it differently.
-Add the following to your `main.rs` file:
+### ⚒ Upgrading espi_service ⚒
+We will need to update our `espi_service` support in a couple of ways.
+We need it to be able to handle independent messages for the Battery and the Charger on different channels that we will define.
+Replace the copied-over `ec_common/src/espi_service.rs` file with this new version:
 ```rust
-mod entry;
-mod mutex;
-mod test_observer;
-```
-This will bind all of these modules to the current `crate`.
+use crate::mutex::RawMutex;
+use battery_service::context::BatteryEvent;
+use embedded_services::power::policy::charger::ChargerEvent;
+use embassy_sync::signal::Signal;
+use embedded_services::comms::{self, EndpointID, Internal, MailboxDelegate, Message};
 
+pub use embedded_services::comms::MailboxDelegateError;
 
-### Using the TestObserver
-Before we write actual test tasks, let's create a couple of examples that we can use to show the pattern of using the `TestObserver` we created for this.
-
-The `TestObserver` is used to collect a number of `Observation`s that represent a given test.  Each of these observations may be pending (`Unseen`) or may conclude with a `Pass` or `Fail`.  When all the `Observation`s have concluded, a printed output of the results is produced, and the program exits.
-
-Each Observation is typically assigned to a separate async task that marks the associated `Observation` with its `Pass`/`Fail` status.
-
-#### A couple of example test tasks to set the pattern
-We are just going to show the `TestObserver` in action, so we will create these two test tasks in `entry.rs`:
-```rust
-#[embassy_executor::task]
-async fn example_pass(
-    observer: &'static Mutex<RawMutex, Observation>
-) {
-    let mut obs = observer.lock().await;
-    obs.mark(ObservationResult::Pass);
+pub trait EventChannel {
+    type Event;
+    fn try_send(&self, event: Self::Event) -> Result<(), MailboxDelegateError>;
 }
-#[embassy_executor::task]
-async fn example_fail(
-    observer: &'static Mutex<RawMutex, Observation>
-) {
-    let mut obs = observer.lock().await;
-    obs.mark(ObservationResult::Fail);
+
+pub struct EspiService<
+    'a, BatChannelT: EventChannel<Event = BatteryEvent>,
+    ChgChannelT: EventChannel<Event = ChargerEvent>
+> {
+    pub endpoint: comms::Endpoint,
+    battery_channel: &'a BatChannelT,
+    charger_channel: &'a ChgChannelT,
+    _signal: Signal<RawMutex, BatteryEvent>,
 }
-```
-We also need a final task that will tell us when the tests are complete.  Add this task to the end of `entry.rs` as well:
-```rust
-#[embassy_executor::task]
-async fn observations_complete_task() {
-    loop {
-        let ready = all_seen().await;
-        if ready {
-            let exit_code = summary().await;
-            std::process::exit(exit_code);
+
+impl<'a, BatChannelT: EventChannel<Event=BatteryEvent>, ChgChannelT: EventChannel<Event=ChargerEvent>> EspiService<'a, BatChannelT, ChgChannelT> {
+    pub fn new(battery_channel: &'a BatChannelT, charger_channel: &'a ChgChannelT) -> Self {
+        Self {
+            endpoint: comms::Endpoint::uninit(EndpointID::Internal(Internal::Battery)),
+            battery_channel,
+            charger_channel,
+            _signal: Signal::new(),
         }
-        Timer::after(Duration::from_secs(1)).await;
-    }    
+    }
+}
+
+impl<'a, BatChannelT, ChgChannelT> MailboxDelegate for EspiService<'a, BatChannelT, ChgChannelT>
+where
+    BatChannelT: EventChannel<Event = BatteryEvent>,
+    ChgChannelT: EventChannel<Event = ChargerEvent>,
+{
+    fn receive(&self, message: &Message) -> Result<(), MailboxDelegateError> {
+        if let Some(event) = message.data.get::<BatteryEvent>() {
+            self.battery_channel.try_send(*event)?;
+        } else if let Some(event) = message.data.get::<ChargerEvent>() {
+            self.charger_channel.try_send(*event)?;
+        } else {
+            return Err(MailboxDelegateError::MessageNotFound);
+        }
+
+        Ok(())
+    }
 }
 ```
-Now replace the top part of your `entry.rs` down through the `entry_task` with this updated version:
+This version of `Espi_Service` defines a generic construction in which we provide a Channel for conveying BatteryEvents or ChargerEvents.  The channels themselves are declared and owned externally and passed in.  The the MailboxDelegate `receive` function of these channels is also externally implemented.  This keeps the separation and ownership cleanly defined.
+
+###  ⛺ Add to `lib.rs` 
+Create `ec_common/lib.rs` and name the modules that will be exported:
 ```rust
-use embassy_executor::Spawner;
-use static_cell::StaticCell;
-use crate::mutex::{Mutex,RawMutex};
-use crate::test_observer::{Observation, ObservationResult, register_observation, finalize_registry, all_seen, summary};
-use crate::observation_decl;
-use embassy_time::{Timer, Duration};
-
-
-#[embassy_executor::task]
-pub async fn entry_task(spawner: Spawner) {
-    println!("🚀 Starting battery + charger integration test");
-
-    let obs_pass = observation_decl!(OBS_PASS, "Example passing test");
-    let obs_fail = observation_decl!(OBS_FAIL, "Example failing test");
-
-    finalize_registry();
-
-    spawner.must_spawn(example_pass(obs_pass));
-    spawner.must_spawn(example_fail(obs_fail));
-    spawner.spawn(observations_complete_task()).unwrap();
-
-}
+pub mod mutex;
+pub mod mut_copy;
+pub mod espi_service;
+pub mod fuel_signal_ready;
+pub mod test_helper;
 ```
-This demonstrates the pattern used to add a test task and execute it:
-1. Declare an `Observation` using `observation_decl` 
-2. Call `finalize_registry()` when all `Observation`s are declared
-3. Spawn each of the tasks, passing in the appropriate `Observation`
-4. Spawn the `observation_complete_task` as one of the spawned tasks.
 
-When you run this with `cargo run` you should see:
-```
-     Running `target\debug\battery_charger_subsystem.exe`
-🚀 Starting battery + charger integration test
-✅ Example passing test: Passed
-❌ Example failing test: Failed
+### Fix up references in existing files
+We need to make adjustments to the some of the files before our battery and charger projects will build in this new arrangement.
 
-Summary: ✅ 1 passed, ❌ 1 failed, ❓ 0 unseen
-error: process didn't exit successfully: `target\debug\battery_charger_subsystem.exe` (exit code: 0xffffffff)
-```
-If we eliminate the fail test from this set, we get instead:
-```
-     Running `target\debug\battery_charger_subsystem.exe`
-🚀 Starting battery + charger integration test
-✅ Example passing test: Passed
-
-Summary: ✅ 1 passed, ❌ 0 failed, ❓ 0 unseen
-```
-With a clean exit code (0).  Exit code -1 is used if there is a test failure.
-
-
-## Some real tests
-We now have our test setup established, and we can write some actual test tasks now to check the integration.
-
-Our first test is a bit of a sanity test -- we want to ensure that we can instantiate and compose our components without a panic.
-
-As we know, we need to allocate our components as `StaticCell` and call `init` to get the instance, and we know that if we
-need to use one of those instances more than once we may encounter a borrow violation and need to use our `duplicate_static_mut!` safety assertion.  The ability to make these allocations is a test in itself -- if anything panics it will stop and fail the test.
-We can't do these allocations per test task because we can only call `StaticCell::init()` once, so it makes sense to allocate
-everything we think we might need for the tasks, and then pass what that task will need when we write those tests.
-
-Let's set up our `entry.rs` to do that:
+In `mock_charger/src/lib.rs`, remove the references to the no-longer-existent local `mutex` and `test_helper`
 ```rust
-use embassy_executor::Spawner;
-use static_cell::StaticCell;
-use crate::mutex::{Mutex,RawMutex};
-use crate::test_observer::{Observation, ObservationResult, register_observation, finalize_registry, all_seen, summary};
-use crate::{duplicate_static_mut, observation_decl};
-use embassy_time::{Timer, Duration};
+pub mod mock_charger;
+pub mod virtual_charger;
+pub mod mock_charger_device;
+pub mod mock_charger_controller;
+```
 
+In `mock_charger/src/mock_charger_controller.rs`, find all the references to `crate::mutex` and `crate::test_helper` and change these to be `ec_common::mutex` and `ec_common::test_helper` to pull from the common crate.
+
+In `ec_common/src/test_helper.rs` remove the line `#[cfg(test)]` above the `join_signals` function.
+
+In `mock_charger/src/mock_charger.rs`, change the import from `crate::mutex` to `ec_common::mutex`
+
+--
+
+In `mock_battery/src/lib.rs`, remove the references to the moved `mutex`, `espi_service`, `fuel_signal_ready`. `types` and `test_helper`
+```rust
+pub mod mock_battery;
+pub mod virtual_battery;
+pub mod mock_battery_device;
+pub mod mock_battery_controller;
+```
+
+Remove the file `mock_battery/src/types.rs` if it still exists
+
+In `mock_battery/src/mock_battery.rs`, replace `crate::mutex` with `ec_common::mutex`
+
+In `mock_battery/src/main.rs`, replace the line 
+```rust
+mod mut_copy;
+```
+with
+```rust
+use ec_common::duplicate_static_mut;
+```
+Replace
+```rust
 use mock_battery::fuel_signal_ready::BatteryFuelReadySignal;
-use mock_battery::mock_battery_device::MockBatteryDevice;
-
-use battery_service::device::{Device as BatteryDevice, DeviceId as BatteryDeviceId};
-use battery_service::wrapper::Wrapper;
+```
+with
+```rust
+use ec_common::fuel_signal_ready::BatteryFuelReadySignal;
+```
+Remove the line
+```rust
+use mock_battery::espi_service;
+```
+Remove the line
+```rust
 use mock_battery::types::{BatteryChannel, OurController};
-use embedded_services::power::policy::DeviceId;
+```
+Include the following between the end of your current imports and the start of the code (static allocators):
+```rust
+use embassy_sync::channel::Channel; 
+use ec_common::mutex::RawMutex;
+use battery_service::context::BatteryEvent;
 
-static BATTERY: StaticCell<MockBatteryDevice> = StaticCell::new();
-static BATTERY_FUEL: StaticCell<BatteryDevice> = StaticCell::new();
-static BATTERY_EVENT_CHANNEL: StaticCell<BatteryChannel> = StaticCell::new();
-static BATTERY_WRAPPER: StaticCell<
-        Wrapper<'static, &'static mut OurController>
-    > = StaticCell::new();
-static CONTROLLER: StaticCell<OurController> = StaticCell::new();
-static BATTERY_FUEL_READY: StaticCell<BatteryFuelReadySignal> = StaticCell::new();
+use ec_common::espi_service::{EspiService, EventChannel, MailboxDelegateError};
 
 
-#[embassy_executor::task]
-pub async fn entry_task(spawner: Spawner) {
-    println!("🚀 Starting battery + charger integration test");
+pub struct BatteryChannelWrapper(pub Channel<RawMutex, BatteryEvent, 4>);
 
-    let obs_pass = observation_decl!(OBS_PASS, "Example Pass");
-    finalize_registry();
-
-    let battery = BATTERY.init(MockBatteryDevice::new(DeviceId(1)));
-    let battery_mut = duplicate_static_mut!(battery, MockBatteryDevice);
-    let battery_fuel = BATTERY_FUEL.init(BatteryDevice::new(BatteryDeviceId(1)));
-    let controller = CONTROLLER.init(OurController::new(battery_mut.inner_battery()));
-    let channel = BATTERY_EVENT_CHANNEL.init(BatteryChannel::new());
-    let signal = BATTERY_FUEL_READY.init(BatteryFuelReadySignal::new());
-    let wrapper = BATTERY_WRAPPER.init(Wrapper::new(battery_fuel, controller));
-
-    // we don't use these (yet)
-    let _ = wrapper;
-    let _ = signal;
-    let _ = channel; 
-
-    spawner.spawn(example_pass(obs_pass)).unwrap();
-    spawner.spawn(observations_complete_task()).unwrap();
-
+impl BatteryChannelWrapper {
+    pub async fn receive(&mut self) -> BatteryEvent {
+        self.0.receive().await
+    }
 }
-
-#[embassy_executor::task]
-async fn observations_complete_task() {
-    loop {
-        let ready = all_seen().await;
-        if ready {
-            let exit_code = summary().await;
-            std::process::exit(exit_code);
-        }
-        Timer::after(Duration::from_secs(1)).await;
-    }    
+impl EventChannel for BatteryChannelWrapper {
+    type Event = BatteryEvent;
+    fn try_send(&self, event: BatteryEvent) -> Result<(), MailboxDelegateError> {
+        self.0.try_send(event).map_err(|_| MailboxDelegateError::MessageNotFound)
+    }
 }
+pub struct NoopChannelWrapper(pub Channel<RawMutex, ChargerEvent, 1>);
+
+impl EventChannel for NoopChannelWrapper {
+    type Event = ChargerEvent;
+    fn try_send(&self, _: ChargerEvent) -> Result<(), MailboxDelegateError> {
+        Ok(())
+    }
+}
+use mock_battery::mock_battery_controller::MockBatteryController;
+
+// Define OurController as an alias
+type OurController = MockBatteryController<&'static mut MockBattery>;
+```
+In the `entry_task` function, add the following declarations before the spawns:
+```rust
+    let noop_channel = NOOP_EVENT_CHANNEL.init(NoopChannelWrapper(Channel::new()));
+    let espi_svc = ESPI_SERVICE.init(EspiService::new(battery_channel, noop_channel));
+    let espi_svc_init = duplicate_static_mut!(espi_svc, EspiService<'static, BatteryChannelWrapper, NoopChannelWrapper>);
+    let espi_svc_read = duplicate_static_mut!(espi_svc, EspiService<'static, BatteryChannelWrapper, NoopChannelWrapper>);    
+```
+and update the spawner calls to `espi_service_init_task` and `test_message_sender` to pass these in, like this:
+```rust
+spawner.spawn(espi_service_init_task(espi_svc_init)).unwrap();
+```
+```rust
+spawner.spawn(test_message_sender(espi_svc_read)).unwrap();
+```
+Then we need to update those tasks:
+```rust
 #[embassy_executor::task]
-async fn example_pass (
-    observer: &'static Mutex<RawMutex, Observation>
+async fn espi_service_init_task(
+    espi_svc: &'static mut EspiService<'static, BatteryChannelWrapper, NoopChannelWrapper>,
 ) {
-    let mut obs = observer.lock().await;
-    obs.mark(ObservationResult::Pass);
+    embedded_services::comms::register_endpoint(espi_svc, &espi_svc.endpoint)
+    .await
+    .expect("Failed to register espi_service");
+}
+```
+```rust
+#[embassy_executor::task]
+async fn test_message_sender(
+    svc: &'static mut EspiService<'static, BatteryChannelWrapper, NoopChannelWrapper>,
+) {
+    use battery_service::context::{BatteryEvent, BatteryEventInner};
+    use battery_service::device::DeviceId;
+    use embedded_services::comms::EndpointID;
+
+    println!("✍ Sending test BatteryEvent...");
+
+    // Wait a moment to ensure other services are initialized 
+    embassy_time::Timer::after(embassy_time::Duration::from_millis(100)).await;
+
+    let event = BatteryEvent {
+        device_id: DeviceId(1),
+        event: BatteryEventInner::PollStaticData, // or DoInit, PollDynamicData, etc.
+    };
+
+    if let Err(e) = svc.endpoint.send(
+        EndpointID::Internal(embedded_services::comms::Internal::Battery),
+        &event,
+    ).await {
+        println!("❌ Failed to send test BatteryEvent: {:?}", e);
+    } else {
+        println!("✅ Test BatteryEvent sent");
+    }
+    loop {
+            // now for the dynamic data:
+            let event2 = BatteryEvent {
+                device_id: DeviceId(1),
+                event: BatteryEventInner::PollDynamicData,
+            };
+
+            if let Err(e) = svc.endpoint.send(
+                EndpointID::Internal(embedded_services::comms::Internal::Battery),
+                &event2,
+            ).await {
+                println!("❌ Failed to send test BatteryEvent: {:?}", e);
+            } else {
+                println!("✅ Test BatteryEvent sent");
+            }
+
+            embassy_time::Timer::after(embassy_time::Duration::from_millis(3000)).await;
+        }
 }
 ```
 
-This test will run and report success but it will have allocated most of what we will need for upcoming test tasks,
-so we are now in a good starting position.
+add this import among the imports at the top:
+```rust
+use embedded_services::power::policy::charger::ChargerEvent;
+```
+Change
+```rust
+static BATTERY_EVENT_CHANNEL: StaticCell<BatteryChannel> = StaticCell::new();
+```
+to
+```rust
+static BATTERY_EVENT_CHANNEL: StaticCell<BatteryChannelWrapper> = StaticCell::new(); 
+```
+and add the following new static allocators among the others
+```rust
+static NOOP_EVENT_CHANNEL: StaticCell<NoopChannelWrapper> = StaticCell::new(); 
+static ESPI_SERVICE: StaticCell<EspiService<'static, BatteryChannelWrapper, NoopChannelWrapper>> = StaticCell::new();
+```
+Change all remaining occurrences of `BatteryChannel` with `BatteryChannelWrapper`:
+```rust
+    let battery_channel_for_handler = duplicate_static_mut!(battery_channel, BatteryChannelWrapper);
+//...
+#[embassy_executor::task]
+async fn event_handler_task(
+    mut controller: &'static mut OurController,
+    channel: &'static mut BatteryChannelWrapper
+) {
+//...
+```
+Change
+```rust
+let battery_channel = BATTERY_EVENT_CHANNEL.init(Channel::new());
+```
+to
+```rust
+ let battery_channel = BATTERY_EVENT_CHANNEL.init(BatteryChannelWrapper(Channel::new()));
+ ```
 
+Finally, in `mock_battery/src/mock_battery.rs`, change
+```rust
+//------------------------
+#[cfg(test)]
+use crate::test_helper::join_signals;
+```
+to
+```rust
+//------------------------
+#[cfg(test)]
+use ec_common::test_helper::join_signals;
+```
 
+## Check our refactoring
+
+You should now be able to build your `battery_project` and `charger_project` projects again.
+
+Let's verify that. From the top-level (`ec_examples`):
+```
+cd battery_project
+cargo build
+cargo test -p mock_battery
+cd ../charger_project
+cargo build
+cargo test -p mock_charger
+```
+This should build without errors and produce the test output from both the battery and charger projects.
 

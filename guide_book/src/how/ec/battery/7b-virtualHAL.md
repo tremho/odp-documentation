@@ -290,13 +290,13 @@ pub struct MockBattery;
 With this block of code instead:
 ```rust
 pub struct MockBattery {
-    pub state: Arc<Mutex<ThreadModeRawMutex, VirtualBatteryState>>,
+    pub state: Mutex<ThreadModeRawMutex, VirtualBatteryState>,
 }
 
 impl MockBattery {
     pub fn new() -> Self {
         Self {
-            state: Arc::new(Mutex::new(VirtualBatteryState::new_default())),
+            state: Mutex::new(VirtualBatteryState::new_default()),
         }
     }
 }
@@ -304,7 +304,14 @@ impl MockBattery {
 ```
 Now we can proceed to replace the current placeholder implementations of the `SmartBattery` traits.
 
-To do this, we will be changing the function signature patterns from `async fn function_name(&mut self) -> Result<(), Self:Error>` to `fn function_name(&mut self) -> impl Future<Output = Result<(), Self::Error>>`
+To do this, we will be changing the function signature patterns from 
+```rust
+async fn function_name(&mut self) -> Result<(), Self:Error>
+```
+ to 
+ ```rust
+ fn function_name(&mut self) -> impl Future<Output = Result<(), Self::Error>>
+ ```
 
 This is in fact a valid replacement that satisfies the trait requirement because although we are not implementing an async function, we are implementing one that returns a `Future`, which amounts to the same thing.  But it is necessary to do here because we are capturing shared state behind a mutex, which introduces constraints that conflict with the way `async fn` in trait implementations is normally handled. By returning a `Future` explicitly and using an `async move` block, we gain the flexibility needed to safely lock and use that shared state within the method, while still satisfying the trait.
 
@@ -318,7 +325,7 @@ This is in fact a valid replacement that satisfies the trait requirement because
 > - This is especially true when using `embassy_sync::Mutex`, which is designed for embedded systems and is **not `Send`**.
 > - As a result, the compiler refuses the `async fn` because it cannot produce a compatible future that satisfies the trait's expectations.
 >
-> ✅ The solution is to return a `Future` explicitly:
+> ☞ The solution is to return a `Future` explicitly:
 >
 > - This allows us to construct the future manually using an `async move` block.
 > - We can safely capture non-`Send` values inside this block (such as a mutex guard).

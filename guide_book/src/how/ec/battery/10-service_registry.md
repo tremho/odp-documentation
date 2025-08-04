@@ -2,8 +2,6 @@
 
 So far, we've defined our mock battery and wrapped it in Device wrapper so that it is ready to be included in a Service registry.
 
-To do so meant committing to an embedded target build and a no-std environment compatible with the ODP crates and dependencies.
-
 Now it is time to prepare the code we need to put this MockBatteryDevice to work.
 
 
@@ -930,6 +928,7 @@ macro_rules! duplicate_static_mut {
         unsafe { &mut *($val as *const $ty as *mut $ty) }
     };
 }
+```
 and then, back in `main.rs`, add to the top of the file:
 ```rust
 mod mut_copy;

@@ -21,7 +21,7 @@ In the process, we established key patterns that will carry forward into similar
   - Implemented comprehensive unit tests for the Battery and Charger subsystems.
   - Added integration tests to verify runtime behavior across components.
 
-## What We Didn't Do
+## What We Omitted (For Simplicity)
 
 This exercise focused on illustrating patterns -— not delivering production-grade code. Accordingly:
 
@@ -33,3 +33,5 @@ This exercise focused on illustrating patterns -— not delivering production-gr
 
 - **Error handling** was minimal.  
   A real embedded system would avoid `panic!()` in favor of structured error recovery and system notification. Here, we favored visibility and simplicity.
+
+These trade-offs allowed us to focus on demonstrating patterns and validate essential integration behavior.

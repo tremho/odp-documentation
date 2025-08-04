@@ -4,6 +4,7 @@ We have our simple _virtual charger_ ready as a component.  To complete wiring i
 
 Create `mock_charger_device.rs` and give it this content:
 ```rust
+
 use embedded_services::power::policy::DeviceId;
 use embedded_services::power::policy::action::device::AnyState;
 use embedded_services::power::policy::device::{
@@ -150,54 +151,44 @@ use embedded_services::power::policy::charger::{
 };
 use embedded_services::power::policy::PowerCapability;
 
-pub struct MockChargerController<C: Charger + Send> {
+pub struct MockChargerController {
     #[allow(unused)]
-    charger: C,
+    charger: &'static mut MockCharger,
     pub device: &'static mut MockChargerDevice
 }
 
-impl<C> MockChargerController<C>
-where
-    C: Charger + Send
+impl MockChargerController
 {    
-    pub fn new(charger: C, device: &'static mut MockChargerDevice) -> Self {
+    pub fn new(charger:&'static mut MockCharger, device: &'static mut MockChargerDevice) -> Self {
         Self { charger, device }
-    }
-
-    fn inner(&mut self) -> &mut MockCharger {
-        self.device.inner_charger()
     }
 }
 
-impl<C> ErrorType for MockChargerController<C> 
-where
-    C: Charger + Send 
+impl ErrorType for MockChargerController 
 {
     type Error = MockChargerError;
 }
 
-impl<C> Charger for MockChargerController<C> 
-where
-    C: Charger + Send
+impl Charger for MockChargerController
 {
     fn charging_current(
         &mut self,
         requested_current: MilliAmps,
     ) -> impl core::future::Future<Output = Result<MilliAmps, Self::Error>> {
-        self.inner().charging_current(requested_current)
+        let charger: &mut MockCharger = self.device.inner_charger();
+        charger.charging_current(requested_current)
     }
 
     fn charging_voltage(
         &mut self,
         requested_voltage: MilliVolts,
     ) -> impl core::future::Future<Output = Result<MilliVolts, Self::Error>> {
-        self.inner().charging_voltage(requested_voltage)
+        let charger: &mut MockCharger = self.device.inner_charger();
+        charger.charging_voltage(requested_voltage)
     }
 }
 
-impl<C> ChargeController for MockChargerController<C> 
-where 
-    C: Charger + Send
+impl ChargeController for MockChargerController 
 {
     type ChargeControllerError = ChargerError;
 
@@ -273,10 +264,18 @@ where
         }
     }
 }
+
 ```
 This pattern should look familiar to that of the Battery example in that we implement the `Charger` traits as well as the `ChargeController` traits.  The handling of the `Charger` traits is delegated to the attached `MockCharger`.
 
 The `ChargeController` handle charger attachment / detachment in response to a policy decision and event.
+
+Add to `lib.rs`:
+```rust
+pub mod mock_charger_controller;
+``` 
+
+
 
 Next we will write some tests to check out our new Charger.
 
