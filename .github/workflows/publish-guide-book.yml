@@ -73,6 +73,10 @@ jobs:
             cd tracks/$TRACK
             mdbook clean
             mdbook build
+<<<<<<< HEAD
+=======
+            mkdir -p ../../.temp/tracks/$TRACK
+>>>>>>> a343cc15e022038093e47edda2ea3a8b84bfdd1a
             cp -r book/* ../../.temp/tracks/$TRACK/
             cd ../..
           done
