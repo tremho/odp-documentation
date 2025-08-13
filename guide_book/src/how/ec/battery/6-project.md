@@ -2,8 +2,8 @@
 
 In the previous section, we saw how the _Smart Battery Specification (SBS)_ defines a set of functions that a Smart Battery service should implement.
 
-In this section, we are going to review how these traits are defined in Rust within the [embedded-services repository](https://github.com/OpenDevicePartnership/embedded-services/), and we are going to import these structures into our own workspace as we build our mock battery.
-In subsequent sections we'll connect the battery into the supporting upstream EC service framwork.
+In the next pages, we are going to review how these traits are defined in Rust within the [embedded-services repository](https://github.com/OpenDevicePartnership/embedded-services/), and we are going to import these structures into our own workspace as we build our mock battery.
+In subsequent steps we'll connect the battery into the supporting upstream EC service framework.
 
 ## Setting up for development
 We are going to create a project space that contains a folder for our battery code, and the dependent repository clones.
@@ -23,6 +23,7 @@ into our workspace and build the crates it exports.
 _(from the `battery_project` directory):_
 ```
 git submodule add https://github.com/OpenDevicePartnership/embedded-batteries
+
 ```
 
 The `embedded-batteries` repository has the subsystem service definitions for the battery defined in both 
@@ -61,7 +62,6 @@ name = "mock_battery"
 version = "0.1.0"
 edition = "2024"
 
-
 [dependencies]
 embedded-batteries-async = { path = "../embedded-batteries/embedded-batteries-async" }
 ```
@@ -69,7 +69,7 @@ embedded-batteries-async = { path = "../embedded-batteries/embedded-batteries-as
 This structure and the `Cargo.toml` definitions just define a minimal skeleton for the dependencies we will be adding to as we continue to build our mock battery implementation and work it into the larger ODP framework.
 
 The `lib.rs` file is used to tell Rust which modules are part of the project. Set it's contents to:
-```
+```rust
 pub mod mock_battery;
 ```
 

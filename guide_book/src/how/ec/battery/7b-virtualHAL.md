@@ -29,7 +29,6 @@ This may not be the most sophisticated or comprehensive battery simulator one co
 Create a file named `virtual_battery.rs` and give it these initial contents:
 ```rust
 
-
 use embedded_batteries_async::smart_battery::{
     BatteryModeFields, BatteryStatusFields, 
     SpecificationInfoFields, ManufactureDate,
@@ -41,8 +40,6 @@ const STARTING_RSOC_PERCENT:u8 = 100;
 const STARTING_ASOC_PERCENT:u8 = 100;
 const STARTING_REMAINING_CAP_MAH:u16 = 4800;
 const STARTING_FULL_CAP_MAH:u16 = 4800;
-const STARTING_CHARGE_CURRENT_MA:u16 =  2000;
-const STARTING_CHARGE_VOLTAGE_MV:u16 = 8400;
 const STARTING_VOLTAGE_MV:u16 = 4200;
 const STARTING_TEMPERATURE_DECIKELVINS:u16 = 2982; // 25 dec C.
 const STARTING_DESIGN_CAP_MAH:u16 = 5000;
@@ -65,8 +62,6 @@ pub struct VirtualBatteryState {
     pub runtime_to_empty_min: u16,
     pub avg_time_to_empty_min: u16,
     pub avg_time_to_full_min: u16,
-    pub charging_current_ma: u16,
-    pub charging_voltage_mv: u16,
     pub cycle_count: u16,
     pub design_capacity_mah: u16,
     pub design_voltage_mv: u16,
@@ -91,8 +86,6 @@ impl VirtualBatteryState {
             absolute_soc_percent: STARTING_ASOC_PERCENT,
             remaining_capacity_mah: STARTING_REMAINING_CAP_MAH,
             full_charge_capacity_mah: STARTING_FULL_CAP_MAH,
-            charging_current_ma: STARTING_CHARGE_CURRENT_MA,
-            charging_voltage_mv: STARTING_CHARGE_VOLTAGE_MV,
             design_capacity_mah: STARTING_DESIGN_CAP_MAH,
             design_voltage_mv: STARTING_DESIGN_VOLTAGE_MV,
             voltage_mv: 0,
@@ -107,7 +100,7 @@ impl VirtualBatteryState {
                 bs
             },
             specification_info: SpecificationInfoFields::from_bits(0x0011),
-            serial_number: 0,
+            serial_number: 0x0102,
             current_ma: 0,
             avg_current_ma: 0,
             runtime_to_empty_min: 0,
@@ -125,7 +118,12 @@ impl VirtualBatteryState {
     }
 
     /// Advance the battery simulation by one tick (e.g., 1 second)
-    pub fn tick(&mut self, multiplier:f32) {
+    pub fn tick(
+        &mut self,  
+        charger_current: u16,
+        multiplier:f32
+    ) {
+
         // 1. Update remaining capacity
         let delta_f = (self.current_ma as f32 / 3600.0) * multiplier; // control speed of simulation
         let delta = delta_f.round() as i32;
@@ -142,14 +140,19 @@ impl VirtualBatteryState {
         // 3. Recalculate voltage
         self.voltage_mv = self.estimate_voltage();
 
-        // 4. Adjust average current toward current_ma
+        // 4. Adjust current for charging
+        if charger_current > 0 {
+            self.current_ma = charger_current as i16 - self.current_ma;
+        }
+
+        // 5. Adjust average current toward current_ma
         self.avg_current_ma = ((self.avg_current_ma as i32 * 7 + self.current_ma as i32) / 8) as i16;
 
-        // 5. Simulate temp change
+        // 6. Simulate temp change
         let temp = self.temperature_dk as i32 + self.estimate_temp_change() as i32;
         self.temperature_dk = temp.clamp(0, u16::MAX as i32) as u16;
 
-        // 6. State of Charge updates
+        // 7. State of Charge updates
         self.relative_soc_percent = ((self.remaining_capacity_mah as f32 / self.full_charge_capacity_mah as f32) * 100.0).round() as u8;
         self.absolute_soc_percent = self.relative_soc_percent.saturating_sub(3); // Or another logic
 
@@ -203,8 +206,6 @@ impl VirtualBatteryState {
         self.remaining_capacity_mah = self.full_charge_capacity_mah;
         self.voltage_mv = STARTING_VOLTAGE_MV;
         self.temperature_dk = STARTING_TEMPERATURE_DECIKELVINS;
-        self.charging_voltage_mv = STARTING_CHARGE_VOLTAGE_MV;
-        self.charging_current_ma = STARTING_CHARGE_CURRENT_MA;
         self.current_ma = 0;
         self.avg_current_ma = 0;
         self.cycle_count = 0;
@@ -244,7 +245,7 @@ impl VirtualBatteryState {
 
 ```
 
-### Up
+### Understanding the virtual battery
 
 What we've done here is to define a virtual battery as a set of states. These coincide with the values we will need from the `MockBattery` to satisfy the `SmartBattery` traits. 
 
@@ -275,11 +276,9 @@ Edit your `mock_battery.rs` file.
 At the top, add these imports:
 
 ```rust
-extern crate alloc;
 use crate::virtual_battery::VirtualBatteryState;
 use embassy_sync::blocking_mutex::raw::ThreadModeRawMutex;
 use embassy_sync::mutex::Mutex;
-use alloc::sync::Arc;
 ```
 This will give us access to our virtual battery construction and supply the necessary thread-safe wrappers we will need to access it.
 
@@ -291,13 +290,13 @@ pub struct MockBattery;
 With this block of code instead:
 ```rust
 pub struct MockBattery {
-    pub state: Arc<Mutex<ThreadModeRawMutex, VirtualBatteryState>>,
+    pub state: Mutex<ThreadModeRawMutex, VirtualBatteryState>,
 }
 
 impl MockBattery {
     pub fn new() -> Self {
         Self {
-            state: Arc::new(Mutex::new(VirtualBatteryState::new_default())),
+            state: Mutex::new(VirtualBatteryState::new_default()),
         }
     }
 }
@@ -305,21 +304,28 @@ impl MockBattery {
 ```
 Now we can proceed to replace the current placeholder implementations of the `SmartBattery` traits.
 
-To do this, we will be changing the function signature patterns from `async fn function_name(&mut self) -> Result<(), Self:Error>` to `fn function_name(&mut self) -> impl Future<Output = Result<(), Self::Error>>`
+To do this, we will be changing the function signature patterns from 
+```rust
+async fn function_name(&mut self) -> Result<(), Self:Error>
+```
+ to 
+ ```rust
+ fn function_name(&mut self) -> impl Future<Output = Result<(), Self::Error>>
+ ```
 
-This is in fact a valid replacement that satisfies the trait requirement because although we are not implementing an async function, we are implementing one that returns a future, which amounts to the same thing.  But it is necessary to do here because we are capturing shared state behind a mutex, which introduces constraints that conflict with the way `async fn` in trait implementations is normally handled. By returning a `Future` explicitly and using an `async move` block, we gain the flexibility needed to safely lock and use that shared state within the method, while still satisfying the trait.
+This is in fact a valid replacement that satisfies the trait requirement because although we are not implementing an async function, we are implementing one that returns a `Future`, which amounts to the same thing.  But it is necessary to do here because we are capturing shared state behind a mutex, which introduces constraints that conflict with the way `async fn` in trait implementations is normally handled. By returning a `Future` explicitly and using an `async move` block, we gain the flexibility needed to safely lock and use that shared state within the method, while still satisfying the trait.
 
 > **Why can't we just use `async fn`?**
 >
 > While the `SmartBattery` trait defines its methods using `async fn`, and our earlier implementation used that form successfully, it no longer works once we introduce shared mutable state behind a `Mutex`. Here's why:
 >
-> - `async fn` in a trait impl desugars to a fixed, compiler-generated future type.
+> - `async fn` in a trait impl "de-sugars" to a fixed, compiler-generated Future type.
 > - This future type must be safely transferrable and nameable in the trait system.
 > - When the body of the `async fn` captures a value like `self.state.lock().await`, it may no longer satisfy required bounds like `Send`.
 > - This is especially true when using `embassy_sync::Mutex`, which is designed for embedded systems and is **not `Send`**.
 > - As a result, the compiler refuses the `async fn` because it cannot produce a compatible future that satisfies the trait's expectations.
 >
-> ✅ The solution is to return a `Future` explicitly:
+> ☞ The solution is to return a `Future` explicitly:
 >
 > - This allows us to construct the future manually using an `async move` block.
 > - We can safely capture non-`Send` values inside this block (such as a mutex guard).
@@ -331,7 +337,7 @@ This is in fact a valid replacement that satisfies the trait requirement because
 With this in mind, we can then implement calls into our `VirtualBatteryState` by following a pattern such as the one exhibited here:
 ```rust
     fn voltage(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.voltage_mv)
@@ -348,7 +354,7 @@ When we repeat that pattern of integration for each of the `SmartBattery` traits
 ```rust
 impl SmartBattery for MockBattery {
     fn remaining_capacity_alarm(&mut self) -> impl Future<Output = Result<CapacityModeValue, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.remaining_capacity_alarm)
@@ -356,7 +362,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn set_remaining_capacity_alarm(&mut self, val: CapacityModeValue) -> impl Future<Output = Result<(), Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = &mut state.lock().await;
             lock.remaining_capacity_alarm = val;
@@ -365,7 +371,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn remaining_time_alarm(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.remaining_time_alarm_min)
@@ -373,7 +379,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn set_remaining_time_alarm(&mut self, val: u16) -> impl Future<Output = Result<(), Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = &mut state.lock().await;
             lock.remaining_time_alarm_min = val;
@@ -382,7 +388,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn battery_mode(&mut self) -> impl Future<Output = Result<BatteryModeFields, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.battery_mode)
@@ -390,7 +396,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn set_battery_mode(&mut self, val: BatteryModeFields) -> impl Future<Output = Result<(), Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = &mut state.lock().await;
             lock.battery_mode = val;
@@ -399,7 +405,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn at_rate(&mut self) -> impl Future<Output = Result<CapacityModeSignedValue, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.at_rate)
@@ -407,7 +413,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn set_at_rate(&mut self, val: CapacityModeSignedValue) -> impl Future<Output = Result<(), Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = &mut state.lock().await;
             lock.at_rate = val;
@@ -416,7 +422,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn at_rate_time_to_full(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.at_rate_time_to_full)
@@ -424,7 +430,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn at_rate_time_to_empty(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.at_rate_time_to_empty)
@@ -432,7 +438,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn at_rate_ok(&mut self) -> impl Future<Output = Result<bool, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.at_rate_ok)
@@ -440,7 +446,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn temperature(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.temperature_dk)
@@ -448,7 +454,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn voltage(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.voltage_mv)
@@ -456,7 +462,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn current(&mut self) -> impl Future<Output = Result<i16, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.current_ma)
@@ -464,7 +470,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn average_current(&mut self) -> impl Future<Output = Result<i16, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.avg_current_ma)
@@ -472,7 +478,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn max_error(&mut self) -> impl Future<Output = Result<u8, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.max_error)
@@ -480,7 +486,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn relative_state_of_charge(&mut self) -> impl Future<Output = Result<u8, MockBatteryError>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.relative_soc_percent)
@@ -488,7 +494,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn absolute_state_of_charge(&mut self) -> impl Future<Output = Result<u8, MockBatteryError>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.absolute_soc_percent)
@@ -496,7 +502,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn remaining_capacity(&mut self) -> impl Future<Output = Result<CapacityModeValue, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(CapacityModeValue::MilliAmpUnsigned(lock.remaining_capacity_mah))
@@ -504,7 +510,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn full_charge_capacity(&mut self) -> impl Future<Output = Result<CapacityModeValue, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(CapacityModeValue::MilliAmpUnsigned(lock.full_charge_capacity_mah))
@@ -512,7 +518,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn run_time_to_empty(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.time_to_empty_minutes())
@@ -520,7 +526,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn average_time_to_empty(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.avg_time_to_empty_min)
@@ -528,7 +534,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn average_time_to_full(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.avg_time_to_full_min)
@@ -536,23 +542,19 @@ impl SmartBattery for MockBattery {
     }
 
     fn charging_current(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
-        let state = self.state.clone();
         async move {
-            let lock = state.lock().await;
-            Ok(lock.charging_current_ma)
+            Ok(0)
         }
     }
 
     fn charging_voltage(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
-        let state = self.state.clone();
         async move {
-            let lock = state.lock().await;
-            Ok(lock.charging_voltage_mv)
+            Ok(0)
         }
     }
 
     fn battery_status(&mut self) -> impl Future<Output = Result<BatteryStatusFields, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.battery_status)
@@ -560,7 +562,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn cycle_count(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.cycle_count)
@@ -568,7 +570,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn design_capacity(&mut self) -> impl Future<Output = Result<CapacityModeValue, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(CapacityModeValue::MilliAmpUnsigned(lock.design_capacity_mah))
@@ -576,7 +578,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn design_voltage(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.design_voltage_mv)
@@ -584,7 +586,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn specification_info(&mut self) -> impl Future<Output = Result<SpecificationInfoFields, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.specification_info)
@@ -592,7 +594,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn manufacture_date(&mut self) -> impl Future<Output = Result<ManufactureDate, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = &mut state.lock().await;
             lock.manufacture_date()
@@ -600,7 +602,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn serial_number(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = state.lock().await;
             Ok(lock.serial_number)
@@ -608,7 +610,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn manufacturer_name(&mut self, buf: &mut [u8]) -> impl Future<Output = Result<(), Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = &mut state.lock().await;
             lock.manufacturer_name(buf)
@@ -616,7 +618,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn device_name(&mut self, buf: &mut [u8]) -> impl Future<Output = Result<(), Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = &mut state.lock().await;
             lock.device_name(buf)
@@ -624,7 +626,7 @@ impl SmartBattery for MockBattery {
     }
 
     fn device_chemistry(&mut self, buf: &mut [u8]) -> impl Future<Output = Result<(), Self::Error>> {
-        let state = self.state.clone();
+        let state = &self.state;
         async move {
             let lock = &mut state.lock().await;
             lock.device_chemistry(buf)
@@ -632,6 +634,8 @@ impl SmartBattery for MockBattery {
     }
 }
 ```
+
+Note above that `charging_current` and `charging_voltage` are simple placeholders that return 0 values for now.  The Charger is a separate component addition that we will deal with in the next section.  There is no underlying virtual battery support for this, so we will be without a charger for the time being.
 
 ### Cargo.toml additions
 We also need to update our `Cargo.toml` files.  In `mock_battery/Cargo.toml`, add the following to your `[dependencies]` section:

@@ -5,7 +5,7 @@ In the previous step we set up our project workspace so that we can import from 
 From the overview discussion you will recall that the SBS specification defines the Smart Battery with a series of functions that will return required data in expected ways.
 Not surprisingly, then, we will find that the embedded-batteries crate we have imported defines these functions as traits to a SmartBattery trait.  If you are new to Rust, recall that if this were, say, C++ or Java, we would call this the SmartBattery _class_, or an _interface_.  These are _almost_ interchangeable terms, but there are differences.  See [this definition](https://doc.rust-lang.org/book/ch10-02-traits.html) for more detail on that.
 
-If we look through the `embedded-batteries` repository, we will see the SmartBattery trait defines the same functions we saw in the specification (except for the optional proprietary manufacturer facilitations).
+If we look through the `embedded-batteries` repository, we will see the SmartBattery trait defines the same functions we saw in the specification (except for the optional proprietary manufacturer facilitation).
 
 So our job now is to implement these functions with data that comes from our battery - our Mock Battery.
 
@@ -216,4 +216,4 @@ Finally, we get to the SmartBattery implementation for our MockBattery.  As you 
 
 We have defined the battery traits and given our simulated placeholder values for our mock battery here.
 If we were implementing a real battery, the process would follow the same pattern except that instead of the literal values we've assigned, we would call upon our Hardware Abstraction Layer (HAL) implementation modules to pull these values from the actual hardware circuitry, per manufacturer design (i.e. GPIO or MMIO).
-But before any of this is useful, it needs to be exposed to the service layer.  In the next step, we'll do a simple test that shows we can expose these values, and then we'll implement the service layer that conveys these up the chain in response to service messages.
+But before any of this is useful, it needs to be exposed to the service layer.  In an upcoming step, we'll do a simple test that shows we can expose these values, and then we'll implement the service layer that conveys these up the chain in response to service messages.

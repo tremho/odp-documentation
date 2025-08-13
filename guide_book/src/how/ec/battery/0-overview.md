@@ -22,11 +22,6 @@ This repository defines the Hardware Abstraction Layer (HAL) for a battery, tail
 
 Although our first exercises will be limited to simple desktop tests, we will then be building for an embedded context and that will require us to use features from [Embassy](https://embassy.dev/) both directly and indirectly.
 
-### soc-embedded-controller
-
-This repository provides the core EC functionality, which in this case is centered around power policy and regulation.
-
-We will refer to this later as we work on our own (virtual) battery service implementation.
 
 We’ll begin with the battery service — one of the embedded services — and later return here to integrate our battery into the broader scope of power management.
 

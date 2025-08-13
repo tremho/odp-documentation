@@ -69,9 +69,29 @@ calls upon our helper `join_signals` to wait for all the tests to complete and t
 
 Other (synchronous) `#[test]` blocks could be included if there was more to test in this module than just our asynchronous traits.  We could also put each trait test in its own `#[test]` setup block that spawns only a single task. But this would be unnecessarily verbose and use more overhead than necessary.  
 
+### Update for our Mutex.rs file
+Our existing `mock_battery.rs` file does not use our `mutex.rs` definitions, and is instead using mutex definitions directly, which will be incompatible.  Replace the imports at the top of `mock_battery.rs` to use our flexible mutex definitions like this:
+```rust
+use crate::virtual_battery::VirtualBatteryState;
+use crate::mutex::{Mutex, RawMutex};
+
+use embedded_batteries_async::smart_battery::{
+    SmartBattery, CapacityModeValue, CapacityModeSignedValue, BatteryModeFields,
+    BatteryStatusFields, SpecificationInfoFields, ManufactureDate, ErrorType, 
+    Error, ErrorKind
+};
+```
+and then replace all occurences of `ThreadModeRawMutex` with `RawMutex`.
+
+
 ### Run the tests
 
-The command `cargo test -p mock_battery` should show you that 1 test sucessfully ran.  It will not report an 'ok' because the test was forced to exit due to the nature of the test helper before the `#[test]` process returned.
+The command `cargo test -p mock_battery` should show you that 1 test successfully ran.  It will not report an 'ok' because the test was forced to exit due to the nature of the test helper before the `#[test]` process returned.
+
+```
+running 1 test
+     Running unittests src\main.rs (target\debug\deps\mock_battery-ab08c57bd07d0c98.exe)
+```     
 
 ### Forcing a failure
 
@@ -406,14 +426,14 @@ async fn atf_test_task(done:  &'static Signal<RawMutex, ()>) {
 async fn chg_cur_test_task(done:  &'static Signal<RawMutex, ()>) {
     let mut battery = MockBattery::new();
     let value = battery.charging_current().await.unwrap();
-    assert_eq!(value, 2000);
+    assert_eq!(value, 0);
     done.signal(())
 }
 #[embassy_executor::task]
 async fn chg_volt_test_task(done:  &'static Signal<RawMutex, ()>) {
     let mut battery = MockBattery::new();
     let value = battery.charging_voltage().await.unwrap();
-    assert_eq!(value, 8400);
+    assert_eq!(value, 0);
     done.signal(())
 }
 #[embassy_executor::task]

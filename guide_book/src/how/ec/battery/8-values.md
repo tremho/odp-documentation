@@ -25,7 +25,7 @@ use embedded_batteries_async::smart_battery::SmartBattery;
 
 #[tokio::main]
 async fn main() {
-    let mut battery = MockBattery;
+    let mut battery = MockBattery::new();
 
     let voltage = battery.voltage().await.unwrap();
     let soc = battery.relative_state_of_charge().await.unwrap();

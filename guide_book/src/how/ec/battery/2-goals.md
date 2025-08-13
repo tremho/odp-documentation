@@ -15,4 +15,3 @@ In this example, we will:
 - Wrap this simple Traits implementation into a Device for service insertion
 - Provide the service layer and insert the device into it
 - Test the end result with unit tests and simple executions
-- Update the project for an embedded build and deploy onto hardware.
