@@ -1,5 +1,4 @@
 name: Build and Publish ODP Books
-name: Build and Publish ODP Books
 
 on:
   workflow_dispatch:
@@ -15,7 +14,6 @@ on:
 
 jobs:
   build:
-    name: Build All Books
     name: Build All Books
     runs-on: ubuntu-latest
 
@@ -45,7 +43,6 @@ jobs:
           mkdir -p .temp/guide
           mkdir -p .temp/tracks
 
-      - name: Build Main Guide Book
       - name: Build Main Guide Book
         run: |
           cd guide_book
@@ -101,17 +98,13 @@ jobs:
         with:
           name: github-pages
           path: .temp/
-          path: .temp/
 
   publish:
-    name: Publish Site
-    needs: build
     name: Publish Site
     needs: build
     runs-on: ubuntu-latest
 
     environment:
-      name: github-pages
       name: github-pages
 
     permissions:
@@ -120,7 +113,6 @@ jobs:
       pages: write
 
     steps:
-      - name: Deploy GitHub Pages
       - name: Deploy GitHub Pages
         uses: actions/deploy-pages@v4
         with:
