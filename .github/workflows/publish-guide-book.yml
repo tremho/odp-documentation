@@ -1,5 +1,4 @@
 name: Build and Publish ODP Books
-name: Build and Publish ODP Books
 
 on:
   workflow_dispatch:
