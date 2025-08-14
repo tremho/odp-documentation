@@ -1,6 +1,6 @@
 # Embedded Controller Interface Specification
 
-Embedded Controller(EC) Interface Specification describes base set of requirements to interface to core windows features.
+Embedded Controller(EC) Interface Specification describes base set of requirements to interface to core Windows features.
 It covers the following areas:
 - Firmware Management
 - Battery
