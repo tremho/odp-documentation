@@ -17,7 +17,10 @@ pub enum ThresholdEvent {
 Which of these events is triggered will depend on the temperature readings and the thresholds that we set.
 We will also need to keep track of whether we have already triggered an event for a given threshold, to avoid spamming the event stream with repeated events.
 
-In the `MockSensor` implementation, we will add a method to evaluate the thresholds based on the current temperature:
+> **Note:** In production, OEMs typically rely on the built-in threshold and hysteresis support provided by the `thermal-service`. Our example models the same logic directly in the mock sensor to make the control flow visible, but this would not be re-implemented in an actual deployment.
+
+
+In our `MockSensor` implementation, we will add a method to evaluate the thresholds based on the current temperature:
 ```rust
     // Check if temperature has exceeded the high/low thresholds and 
     // issue an event if so.  Protect against hysteresis.
@@ -65,6 +68,9 @@ pub struct CoolingResult {
 }
 ```
 We also want to define a "policy" for how to handle these requests, which will be defined in a `FanPolicy` struct. This policy will define a set of configurable values that will be used to determine how to respond to the cooling requests. We will include a simple default policy that will be used to determine how to handle the cooling requests.
+
+> **Note:** The `thermal-service` already supports linking fans to sensors and driving transitions between states (OFF, ON, RAMPING, MAX). In practice, OEMs configure these states through profiles, while custom logic (like our example `FanPolicy`) is most often applied to the **RAMPING** behavior.
+
 
 ```rust
 /// Policy Configuration values for behavior logic
