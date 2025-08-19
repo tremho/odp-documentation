@@ -27,5 +27,10 @@ then we will get a high-level understanding of ODP Concepts in the [Concepts](./
 
 Once you've familiarized yourself with the fundamentals of Rust and the concepts and scope of ODP, you are ready to explore the ODP tracks and the repositories that support each track or to dive deep into practical examples in building your own firmware components that you can later use to build your own laptop. 
 
-Continue on to learn the concepts, or jump ahead to choose which [ODP track](../tracks.md) you will follow next.
+#### From here:
+- Continue onto the next page to learn the __concepts and basic building blocks of ODP__
+- Go directly to the __[Embedded Controller track](../embedded_controller/track_overview.md) to learn how to build firmware components for the EC__
+- Explore the other __[ODP Tracks](../tracks.md) to find a path that suits your interests and expertise)__
+
+
  
