@@ -1,12 +1,11 @@
-# Thermal management
+ # Thermal management
 
-This example shows how to implement a thermal component subsystem
-
-_TODO: This will follow similar pattern found for Battery_
+ This exercise demonstrates the implementation of a Thermal component service as part of the Embedded Controller (EC) power management system.
 
 
-## Relevant Repositories
-_TODO: Like battery, this will point out the ODP resources we will use in the upcoming example_
+ This example will be similar to the battery and charger exercises, but with some differences.
+
+ First, though, we are going to look at an alternate implementation example that focuses on the Microsoft Power Thermal Framework specification. We will revisit these topics again when we walk through our normal implementation exercise, but it is worth reading through this "side tour" to get a foundation for some of the concepts first.
 
 --------
 ## A Side Tour:
