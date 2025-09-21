@@ -2,42 +2,53 @@
 
 # Thermal component Diagrams
 
-_TODO: This will mirror similar content for Battery_
 
-The construction of a component such as our thermal subsystem looks as follows.
+Our Thermal component subsystem will be pretty simple and basic.  It will be comprised of one temperature and one fan.  
+More sensors and more fans or other thermal mitigation hardware solutions could be added to any given real-world implementation using the same patterns.
+
 
 ```mermaid
-flowchart TD
-    A[Service<br><i>Service initiates query</i>]
-    B[Thermal Subsystem Controller<br><i>Orchestrates component behavior</i>]
-    C[Thermal Component Trait Interface<br><i>Defines the functional contract</i>]
-    D[Thermal HAL Implementation<br><i>Implements trait using hardware-specific logic</i>]
-    E[EC / Hardware Access<br><i>Performs actual I/O operations</i>]
+flowchart LR
+  %% overall left-to-right so the two lanes sit side-by-side
+  %% ─────────────────────────────────────────────────────────
 
-    A --> B
-    B --> C
-    C --> D
-    D --> E
+  subgraph SVC[Service Layer]
+    svc[Service<br/><i>message / request</i>]
+  end
 
-    subgraph Service Layer
-        A
+  subgraph SUBSYS[Thermal Subsystem]
+    direction LR
+
+    %% ── Sensor lane ───────────────────────────────────────
+    subgraph SENSOR[Sensor path]
+      SC[Sensor Controller<br/><i>policy, hysteresis</i>]
+      ST[Thermal Traits<br/><code>TemperatureSensor</code><br/><code>TemperatureThresholdSet</code>]
+      SM[MockSensor Device<br/><i>device wrapper</i>]
     end
 
-    subgraph Subsystem Layer
-        B
+    %% ── Fan lane ──────────────────────────────────────────
+    subgraph FAN[Fan path]
+      FC[Fan Controller<br/><i>policy, spin-up</i>]
+      FT[Fan Traits<br/><code>Fan</code><br/><code>RpmSense</code>]
+      FM[MockFan Device<br/><i>device wrapper</i>]
     end
+  end
 
-    subgraph Component Layer
-        C
-        D
-    end
+  subgraph HW[Virtual / Hardware State]
+    HS[VirtualTemperatureState<br/><i>temperature + thresholds</i>]
+    HF[VirtualFanState<br/><i>rpm</i>]
+  end
 
-    subgraph Hardware Layer
-        E
-    end
+  %% wiring
+  svc --> SC
+  svc --> FC
+
+  SC --> ST --> SM --> HS
+  FC --> FT --> FM --> HF
 ```
 
-When in operation, it conducts its operations in response to message events
+When in operation, it conducts its operations in response to message events according to behavior logic that we will define and test here.
 
-_TODO: Will be similar to battery example diagram_
+![Thermal Service Diagram](./media/thermal_service_revised.png)
+
 

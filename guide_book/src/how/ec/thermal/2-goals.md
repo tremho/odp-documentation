@@ -1,8 +1,7 @@
 # The Thermal Component Example
 
-In this example we will be constructing a functioning mock thermal component subsystem.
-
-_TODO -- this will closely follow the pattern of the Battery example_
+In this example we will be constructing a functioning mock thermal component subsystem, similar to what we have done
+previously for Battery and Charger components.
 
 ## Goals
 
@@ -18,5 +17,3 @@ In this example, we will:
 - Wrap this simple Traits implementation into a Device for service insertion
 - Provide the service layer and insert the device into it
 - Test the end result with unit tests and simple executions
-- Update the project for an embedded build and deploy onto hardware.
-
