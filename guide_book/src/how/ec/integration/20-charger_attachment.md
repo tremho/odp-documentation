@@ -4,7 +4,7 @@ Let's continue on with the next step we've outlined in our `TestStep` series: `T
 
 To do this, create a new member function for this:
 ```rust
-            fn check_charger_attach(&mut self, mins_passed: f32, soc:f32, _draw_watts:f32, charge_watts:f32) -> TestStep{
+            fn check_charger_attach(&mut self, mins_passed: f32, soc:f32, charge_watts:f32) -> TestStep {
                 let reporter = &mut self.reporter;
                 // Fail if we don't see our starting conditions within a reasonable time
                 if mins_passed > 30.0 { // should occur before 30 minutes simulation time
@@ -19,7 +19,9 @@ To do this, create a new member function for this:
                 add_test!(reporter, "Check Charger Attachment", |obs| {
                     expect!(obs, soc <= 90.0, "Attach expected <= 90% SOC");
                 });
-                TestStep::EndAndReport // go to next step   
+                // TestStep::RaiseLoadAndCheckTemp // go to next step   
+                TestStep::EndAndReport
+
             }
 ```
 This is a little different because it first checks for qualifying (or disqualifying error) conditions before it begins the actual test closure.  
@@ -27,18 +29,16 @@ First, it checks to see if we've timed out -- using simulation time, and assumin
 We then check to see if the charger is attached, which is evidenced by `charge_watts > 0.0` until this is true, we return `TestStep::CheckChargerAttach` so that we continue to be called each frame until then.
 Once these conditional checks are done, we can test what it means to be in attached state and proceed to the next step, which in this case is `EndAndReport` until we add another test.
 
-On that note, edit the return of `check_starting_values()` to now be `TestStep::CheckChargerAttach`.
+On that note, edit the return of `check_starting_values()` to now be `TestStep::CheckChargerAttach` so that it chains to this one.
 
 Now, in the match arms for this, add this caller:
 ```rust
                     TestStep::CheckChargerAttach => {
                         let mins_passed = dv.sim_time_ms / 60_000.0;
                         let soc = dv.soc_percent;
-                        let draw_watts = dv.draw_watts;
                         let charge_watts = dv.charge_watts;
 
-                        self.step = self.check_charger_attach(mins_passed, soc, draw_watts, charge_watts);
-
+                        self.step = self.check_charger_attach(mins_passed, soc, charge_watts);
                     },
 ```
 

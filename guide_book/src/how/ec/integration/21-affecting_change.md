@@ -2,7 +2,7 @@
 
 For our next test, we want to raise the system load and then see how that affects temperature (it should rise).
 
-We don't currently have a way to tell the simulation to raise the load.  But in interactive mode we can, and we did that by sending `InteractionEvent` messages.  Let's do that here.  We'll need to pass in the `InteractionChannelWrapper` we need for sending these messages into the `interaction_test()` function.
+We don't currently have a way to tell the simulation to raise the load.  But in interactive mode we can, and we did that by sending `InteractionEvent` messages.  Let's do that here.  We'll need to pass in the `InteractionChannelWrapper` we need for sending these messages into the `integration_test()` function.
 
 Start by adding these imports:
 ```rust
@@ -96,7 +96,8 @@ Now, fill out our `raise_load_and_check_temp` function to look like this:
                 } 
                 // reset in case we want to use these again later
                 self.mark_temp = None;
-                self.mark_time = None;                
+                self.mark_time = None;
+                // TestStep::RaiseLoadAndCheckFan   // next step             
                 TestStep::EndAndReport
             }
 ```
@@ -120,7 +121,7 @@ The next test we'll create is similar, but in this case, we'll raise the load (a
 
 Create the member function we'll need for this. it will look much like the previous one in many ways:
 ```rust
-            fn raise_load_and_check_fan(&mut self, mins_passed:f32, draw_watts:f32, temp_c:f32, fan_level:u8) -> TestStep {
+            fn raise_load_and_check_fan(&mut self, mins_passed:f32, draw_watts:f32, temp_c:f32, fan_rpm:u16) -> TestStep {
                 let reporter = &mut self.reporter;
 
                 // record time we started this
@@ -134,20 +135,20 @@ Create the member function we'll need for this. it will look much like the previ
                 }
                 let mt = *self.mark_time.get_or_insert(mins_passed);
                 let time_elapsed = if mins_passed > mt { mins_passed - mt } else { 0.0 };
-                if time_elapsed > 0.25 && fan_level == 0 { // this should happen relatively quickly (about 15 seconds of sim time)
+                if time_elapsed > 0.25 && fan_rpm == 0 { // this should happen relatively quickly
                     add_test!(reporter, "Timed out waiting for fan", |obs| {
                         obs.fail("Time expired");
                     });
-                    return TestStep::EndAndReport // end the test now on timeout error
+                    return TestStep::EndAndReport  // quit tests if we timeout
                 }
                 
-                if fan_level > 0 {
-                    add_test!(reporter, "Fan turns on", |obs| {
-                        obs.pass();
-                    });
+                if fan_rpm > 0 {
                     add_test!(reporter, "Temperature is warm", |obs| {
                         expect!(obs, temp_c >= 28.0, "temp below fan on range");
                     });                    
+                    add_test!(reporter, "Fan turns on", |obs| {
+                        obs.pass();
+                    });
                 } else {
                     // keep going
                     return TestStep::RaiseLoadAndCheckFan
@@ -155,6 +156,7 @@ Create the member function we'll need for this. it will look much like the previ
                 // reset in case we want to use these again later
                 self.mark_temp = None;
                 self.mark_time = None;
+                // TestStep::LowerLoadAndCheckCooling
                 TestStep::EndAndReport
             }
 ```
@@ -164,11 +166,10 @@ add the calling case to the match arm:
                         let mins_passed = dv.sim_time_ms / 60_000.0;
                         let draw_watts = dv.draw_watts;
                         let temp_c = dv.temp_c;
-                        let fan_level = dv.fan_level;
+                        let fan_rpm = dv.fan_rpm;
 
-                        self.step = self.raise_load_and_check_fan(mins_passed, draw_watts, temp_c, fan_level);
+                        self.step = self.raise_load_and_check_fan(mins_passed, draw_watts, temp_c, fan_rpm);
                     },
-
 ```
 Don't forget to update the next step return of the previous step so that it carries forward to this one.
 
@@ -177,7 +178,7 @@ Great! Now, let's make sure the temperature goes back down with less demand on t
 
 Create the member function
 ```rust
-            fn lower_load_and_check_cooling(&mut self, mins_passed:f32, draw_watts:f32, temp_c:f32, fan_level:u8) -> TestStep {
+            fn lower_load_and_check_cooling(&mut self, mins_passed:f32, draw_watts:f32, temp_c:f32, fan_rpm:u16) -> TestStep {
                 let reporter = &mut self.reporter;
 
                 // record time and temp when we started this
@@ -194,24 +195,22 @@ Create the member function
                 // wait a bit
                 let mark_time = *self.mark_time.get_or_insert(mins_passed);
                 let diff = mins_passed - mark_time;
-                if diff > 60.0 { // wait for an hour for it to cool all the way 
+                if diff < 60.0 { // wait for an hour for it to cool all the way 
                     return TestStep::LowerLoadAndCheckCooling
                 }
 
                 add_test!(reporter, "Cooled", |obs| {
                     expect!(obs, draw_watts < 10.0, "Load < 10 W");
-                    println!("temp is {}", temp_c);
                     expect!(obs, temp_c < 25.5, "Temp is < 25.5");
                 });
                 add_test!(reporter, "Fan turns off", |obs| {
-                    expect_eq!(obs, fan_level, 0);
+                    expect_eq!(obs, fan_rpm, 0);
                 });
                 // reset in case we want to use these again later
                 self.mark_temp = None;
                 self.mark_time = None;
                 TestStep::EndAndReport
             }
-
 ```
 and the caller in the match arm:
 ```rust
@@ -219,9 +218,9 @@ and the caller in the match arm:
                         let mins_passed = dv.sim_time_ms / 60_000.0;
                         let draw_watts = dv.draw_watts;
                         let temp_c = dv.temp_c;
-                        let fan_level = dv.fan_level;
+                        let fan_rpm = dv.fan_rpm;
 
-                        self.step = self.lower_load_and_check_cooling(mins_passed, draw_watts, temp_c, fan_level);
+                        self.step = self.lower_load_and_check_cooling(mins_passed, draw_watts, temp_c, fan_rpm);
                     },
 ```
 And again, remember to update the return value for the next step of the `load_and_check_fan` method to be `TestStep::LowerLoadAndCheckCooling` so that it chains to this one properly.
@@ -230,7 +229,7 @@ Your `cargo run --features integration-test` should now complete in about 40 sec
 ```
 ==================================================
  Test Section Report
- Duration: 38.2245347s
+ Duration: 35.4803276s
 
 [PASS] Static Values received
 [PASS] First Test Data Frame received

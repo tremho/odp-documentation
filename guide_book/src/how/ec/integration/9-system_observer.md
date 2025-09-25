@@ -1,7 +1,7 @@
 
 # The SystemObserver
 
-Before we can construct our `ControllerCore`, we still need a `SystemObserver` and and `InteractionChannelWrapper` to be defined.
+Before we can construct our `ControllerCore`, we still need a `SystemObserver` and `InteractionChannelWrapper` to be defined.
 
 The `SystemObserver` is the conduit to display output and communicates with a `DisplayRenderer` used to portray output in various ways.  The renderer itself is message-driven, as are user interaction events, so we will start by going back into `entry.rs` and adding both the `DisplayChannelWrapper` and `InteractionChannelWrapper` beneath the other "Channel Wrapper" definitions for Battery, Charger, and Thermal communication.  
 ```rust
@@ -147,7 +147,7 @@ fn diff_exceeds(cur: &DisplayValues, prev: &DisplayValues, th: &Thresholds) -> b
     (cur.draw_watts - prev.draw_watts).abs() >= th.load_w_delta ||
     (cur.soc_percent - prev.soc_percent).abs() >= th.soc_pct_delta ||
     (cur.temp_c - prev.temp_c).abs() >= th.temp_c_delta ||
-    (th.on_fan_change && cur.fan_level != prev.fan_level)
+    (th.on_fan_change)
 }
 ```
 

@@ -15,10 +15,6 @@ Add the following files within the `src/config` folder:
 
 `config/policy_config.rs`:
 ```rust
-
-use mock_thermal::mock_fan_controller::FanPolicy;
-
-
 #[derive(Clone)]
 /// Parameters for the charger *policy* (attach/detach + current/voltage requests).
 /// - Attach/Detach uses SOC hysteresis + idle gating (time since last heavy load).
@@ -96,37 +92,60 @@ impl Default for ChargerPolicyCfg {
 }
 
 #[derive(Clone)]
-/// Parameters for the *policy* (how we choose a fan level based on temperature).
 pub struct ThermalPolicyCfg {
-    /// Lower temperature (°C) where cooling begins (or where we allow stepping *down*).
-    /// Often the bottom of your control band. Keep < temp_high_on_c.
-    pub temp_low_on_c: f32,
+    // Your existing band/hysteresis semantics
+    pub temp_low_on_c: f32,    // “fan on” point / WARN-LOW
+    pub temp_high_on_c: f32,   // begin ramp / WARN-HIGH
+    pub fan_hyst_c: f32,       // used for both sensor & fan hysteresis
 
-    /// Upper temperature (°C) where stronger cooling is demanded (or step *up*).
-    /// Often the top of your control band. Keep > temp_low_on_c.
-    pub temp_high_on_c: f32,
+    // ODP Sensor Profile (ts::sensor::Profile)
+    pub sensor_prochot_c: f32,
+    pub sensor_crt_c: f32,
+    pub sensor_fast_sampling_threshold_c: f32,
+    pub sensor_sample_period_ms: u64,
+    pub sensor_fast_sample_period_ms: u64,
+    pub sensor_hysteresis_c: f32, // usually = fan_hyst_c
 
-    /// Fan hysteresis in °C applied around thresholds to prevent chatter.
-    /// Example: step up when T > (threshold + fan_hyst_c); step down when T < (threshold - fan_hyst_c).
-    pub fan_hyst_c: f32,
-
-    /// Minimum time (ms) the fan must remain at the current level before another change.
-    /// Anti-flap dwell; choose ≥ your control loop interval and long enough to feel stable.
-    pub fan_min_dwell_ms: u64,
-
-    /// The mapping/strategy for levels (e.g., L0..L3) → duty cycle (%), plus any custom rules.
-    /// Typically defines the % per level and possibly per-level entry/exit thresholds.
-    pub fan_policy: FanPolicy,
+    // ODP Fan Profile (ts::fan::Profile)
+    pub fan_on_temp_c: f32,      // typically = temp_low_on_c
+    pub fan_ramp_temp_c: f32,    // typically = temp_high_on_c
+    pub fan_max_temp_c: f32,     // typically = prochot or a bit under CRT
+    pub fan_sample_period_ms: u64,
+    pub fan_update_period_ms: u64,
+    pub fan_auto_control: bool,  // true for ODP-controlled ramp
 }
 
 impl Default for ThermalPolicyCfg {
     fn default() -> Self {
-        Self { 
-            temp_low_on_c: 22.0, 
-            temp_high_on_c: 30.0, 
-            fan_hyst_c: 1.5, 
-            fan_min_dwell_ms: 1000,
-            fan_policy: FanPolicy::default()
+        // Sensible defaults; tweak as you wish.
+        let temp_low_on_c  = 27.5;
+        let temp_high_on_c = 30.0;
+        let fan_hyst_c     = 0.6;
+
+        let sensor_prochot_c = 50.0;
+        let sensor_crt_c     = 80.0;
+
+        Self {
+            // legacy “band” semantics
+            temp_low_on_c,
+            temp_high_on_c,
+            fan_hyst_c,
+
+            // sensor
+            sensor_prochot_c,
+            sensor_crt_c,
+            sensor_fast_sampling_threshold_c: temp_high_on_c,
+            sensor_sample_period_ms: 250,
+            sensor_fast_sample_period_ms: 100,
+            sensor_hysteresis_c: fan_hyst_c,
+
+            // fan
+            fan_on_temp_c: temp_low_on_c,
+            fan_ramp_temp_c: temp_high_on_c,
+            fan_max_temp_c: sensor_prochot_c, // fan full speed before PROCHOT
+            fan_sample_period_ms: 250,
+            fan_update_period_ms: 250,
+            fan_auto_control: true,
         }
     }
 }
@@ -135,9 +154,11 @@ impl Default for ThermalPolicyCfg {
 /// Combined settings that affect policy
 pub struct PolicyConfig {
     pub charger: ChargerPolicyCfg,
-    pub thermal: ThermalPolicyCfg,
+    // pub thermal: ThermalPolicyCfg,
 }
 ```
+The policy configurations for the charger work in concert with the functions we will define in `charger_policy.rs` (below).
+The policy configurations for thermal mirror the policy settings used by the ODP thermal services that we will register with and attach to.
 
 `config/sim_config.rs`:
 ```rust
@@ -168,10 +189,6 @@ pub struct ThermalModelCfg {
     /// Example: P_w ≈ (load_ma * v_nominal_mv) / 1_000_000. Use an average system/battery voltage.
     pub v_nominal_mv: u16,
 
-    /// Maximum discrete fan level your policy supports (e.g., 3 → L0..L3).
-    /// Used for clamping and for mapping policy levels to a %.
-    pub max_fan_level: u8,
-
     /// fractional heat contributions of charger/charging power
     /// Rough guide: 5–10% PSU loss
     /// °C per Watt of charge power
@@ -182,7 +199,6 @@ pub struct ThermalModelCfg {
     /// °C per Watt of charge power
     pub k_batt_chg: f32,
 }
-
 
 #[allow(unused)]
 #[derive(Clone)]
@@ -216,14 +232,20 @@ impl Default for SimConfig {
         Self {
             time: TimeSimCfg { sim_multiplier: 25.0 },
             thermal: ThermalModelCfg {
-                ambient_c: 23.0, tau_s: 4.0, k_load_w: 0.20, k_fan_pct: 0.015,
-                v_nominal_mv: 8300, max_fan_level: 10,
+                ambient_c: 23.0,
+                tau_s: 8.0,
+                k_load_w: 0.16,
+                k_fan_pct: 0.027,   // how effective cooling is
+                v_nominal_mv: 8300,
+                k_psu_loss: 0.04,   // % of chg power shows up as heat in the box
+                k_batt_chg: 0.03,   // % of battery heat
             },
             device_caps: DeviceCaps { max_current_ma: 4800, max_voltage_mv: 15000 },
         }
     }
 }
 ```
+These simulation configs give us some flexibility in how we compute the effects of type/physics for our virtual device implementations.
 
 `config/ui_config.rs`:
 ```rust
@@ -366,94 +388,14 @@ pub fn decide_attach(
     AttachDecision { attach: was_attached, do_change: false }
 }
 ```
-
-`policy/thermal_governor.rs`:
-```rust
-
-use ec_common::events::{CoolingRequest, ThresholdEvent};
-use crate::state::ThermalState;
-
-pub struct ThermDecision {
-    pub threshold_event: ThresholdEvent,
-    pub cooling_request: Option<CoolingRequest>,
-    pub hi_latched: bool,
-    pub lo_latched: bool,
-    pub did_step: bool,
-}
-
-pub fn process_sample(
-    temp_c: f32,
-    hi_latched: bool, lo_latched: bool,
-    hi_on: f32, lo_on: f32,
-    hyst: f32,
-    last_fan_change_ms: u64, 
-    dwell_ms: u64,
-    now_ms: u64,
-    mut state: ThermalState
-) -> ThermDecision {
-    let hi_off = hi_on - hyst;
-    let lo_off = lo_on + hyst;
-
-    let mut hi = hi_latched;
-    let mut lo = lo_latched;
-    if !hi && temp_c >= hi_on  { hi = true; }
-    if  hi && temp_c <= hi_off { hi = false; }
-    if !lo && temp_c <= lo_on  { lo = true; }
-    if  lo && temp_c >= lo_off { lo = false; }
-
-    // Compute a *non-overlapping* neutral zone around the midpoint
-    let mid = 0.5 * (hi_on + lo_on);
-    let center_hyst = 0.5 * hyst; // or a new cfg.center_hyst_c if you want it independent
-
-    let dwell_ok = now_ms - last_fan_change_ms >= dwell_ms;
-
-    let want_dir: i8 =
-        if hi { 1 }
-        else if lo { -1 }
-        else if temp_c > mid + center_hyst { 1 }
-        else if temp_c < mid - center_hyst { -1 }
-        else { 0 };
-
-    let dir_dwell_ms = dwell_ms / 2; // or a separate cfg.fan_dir_dwell_ms
-    let reversing = want_dir != 0 && want_dir == -state.last_dir;
-    let dir_ok = !reversing || (now_ms - state.last_dir_change_ms >= dir_dwell_ms);
-
-    let mut threshold_event = ThresholdEvent::None;
-    let mut cooling_request = None;
-    let mut did_step = false;
-
-    if dwell_ok && dir_ok {
-        if want_dir > 0 { cooling_request = Some(CoolingRequest::Increase); did_step = true; }
-        if want_dir < 0 { cooling_request = Some(CoolingRequest::Decrease); did_step = true; }
-    }
-
-    if did_step {
-        state.last_fan_change_ms = now_ms;
-        if want_dir != 0 && want_dir != state.last_dir {
-            state.last_dir = want_dir;
-            state.last_dir_change_ms = now_ms;
-        }
-    }
-    
-
-    // Edge-generated events (for logging/telemetry), but not the only time we step
-    if hi && !hi_latched {
-        threshold_event = ThresholdEvent::OverHigh;
-    } else if lo && !lo_latched {
-        threshold_event = ThresholdEvent::UnderLow;
-    }
-
-    ThermDecision { threshold_event, cooling_request, hi_latched: hi, lo_latched: lo, did_step }
-}
-```
+The `charger_policy.rs` functions are controlled by the charger configurations in `policy_cfg.rs` and define the rules by which we attach and detach the charger.
 
 `policy/mod.rs`:
 ```rust
 //policy
 pub mod charger_policy;
-pub mod thermal_governor;
 ```
-These policy implementations define functions that control the decision rules for the charger and thermal components.
+We only need a charger policy defined here.  Thermal policy is provided by the ODP services.
 
 `state/charger_state.rs`:
 ```rust
@@ -479,34 +421,6 @@ impl Default for ChargerState {
 }
 ```
 
-`state/thermal_state.rs`:
-```rust
-
-#[derive(Copy, Clone)]
-pub struct ThermalState {
-    pub fan_level: u8,
-    pub hi_latched: bool,
-    pub lo_latched: bool,
-    pub last_fan_change_ms: u64,
-    pub last_dir: i8,
-    pub last_dir_change_ms: u64
-}
-
-impl Default for ThermalState {
-    fn default() -> Self {
-        Self {
-            fan_level: 0,
-            hi_latched: false,
-            lo_latched: false,
-            last_fan_change_ms: 0,
-            last_dir: 0,
-            last_dir_change_ms: 0
-        }
-    }
-}
-
-```
-
 `state/sim_state.rs`:
 ```rust
 use embassy_time::Instant;
@@ -526,11 +440,9 @@ impl Default for SimState {
 ```rust
 // state
 pub mod charger_state;
-pub mod thermal_state;
 pub mod sim_state;
 
 pub use charger_state::ChargerState;
-pub use thermal_state::ThermalState;
 pub use sim_state::SimState;
 ```
 These states are used to track the current condition of the simulation and its components in action over time.
@@ -539,13 +451,16 @@ These states are used to track the current condition of the simulation and its c
 ```rust
 use crate::config::sim_config::ThermalModelCfg;
 
+// thermal_model.rs
 pub fn step_temperature(
     t: f32,
     load_ma: i32,
-    fan_level: u8,
+    fan_rpm: u16,
+    fan_min_rpm: u16,
+    fan_max_rpm: u16,
     cfg: &ThermalModelCfg,
     dt_s: f32,
-    chg_w: f32,            // NEW: charge power in Watts (0 if not charging)
+    chg_w: f32, // charge power in Watts (0 if not charging)
 ) -> f32 {
     let load_w = (load_ma.max(0) as f32) * (cfg.v_nominal_mv as f32) / 1_000_000.0;
 
@@ -553,7 +468,15 @@ pub fn step_temperature(
     let psu_heat_w  = cfg.k_psu_loss * chg_w;   // DC-DC inefficiency + board losses
     let batt_heat_w = cfg.k_batt_chg * chg_w;   // battery internal resistance during charge
 
-    let fan_pct = 100.0 * (fan_level as f32) / (cfg.max_fan_level as f32).max(1.0);
+    // Normalize RPM → 0..1 → 0..100% (clamped)
+    let fan_frac = if fan_max_rpm <= fan_min_rpm {
+        0.0
+    } else {
+        ((fan_rpm.saturating_sub(fan_min_rpm)) as f32
+            / (fan_max_rpm - fan_min_rpm) as f32)
+            .clamp(0.0, 1.0)
+    };
+    let fan_pct = 100.0 * fan_frac;
 
     // Combined drive: ambient + load heat + charger/battery heat - fan cooling
     let drive = cfg.ambient_c
@@ -648,19 +571,6 @@ pub enum ThermalEvent {
 ```
 Now all of our event messaging can be referred to from the single enumeration source `BusEvent`, and our handlers can dispatch accordingly.
 
-
-Edit `thermal_project/mock_thermal/src/mock_sensor_controller.rs` to remove the definition of `ThresholdEvent` there, and add the following import:
-
-```rust
-use ec_common::events::ThresholdEvent;
-```
-
-Edit `thermal_project/mock_thermal/src/mock_fan_controller.rs` to remove the definitions of `CoolingRequest`, `CoolingResult`, and `SpinUp`, and add the following imports:
-
-```rust
-use ec_common::events::{CoolingRequest, CoolingResult, SpinUp};
-```
-
 We also need to add this to the `lib.rs` file of `ec_common` to make these types available to the rest of the crate:
 
 ```rust
@@ -671,5 +581,3 @@ pub mod fuel_signal_ready;
 pub mod test_helper;
 pub mod events;
 ```
-
-Try a `cargo build` (or a `cargo check`) in `thermal_project` to ensure that everything is still compiling correctly. If you have not made any other changes there, it should compile without errors.

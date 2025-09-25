@@ -154,6 +154,7 @@ We will focus first on the simulation app aspects before considering our integra
 To implement our UI, we introduce a `SystemObserver`, an intermediary between the simulation and the UI, including handling the rendering.
 
 Our rendering will assume two forms:  We'll support a conventional "Logging" output that simply prints lines in sequence to the console as the values occur, because this is useful for analysis and debugging of behavior over time.  But we will also support ANSI terminal cursor coding to support an "in-place" display that presents more of a dashboard view with changing values.  This makes evaluation of the overall behavior and "feel" of our simulation and its behavior a little more approachable.
+Don't worry, we won't spend a lot of time on UI design or implementation techniques - just drop in code that will make for a easier to use interface.
 
 Our simulation will also be interactive, allowing us to simulate increasing and decreasing load on the system, as one might experience during use of a typical laptop computer.
 
@@ -200,10 +201,6 @@ pub struct DisplayValues {
     pub soc_percent: f32,  
     /// battery/sensor temperature (Celsius)
     pub temp_c: f32, 
-    /// Fan Level (integer number 0-10)
-    pub fan_level: u8,
-    /// Fan level percentage
-    pub fan_percent: u8,
     /// Fan running RPM
     pub fan_rpm: u16, 
 
@@ -228,8 +225,6 @@ impl DisplayValues {
             sim_time_ms: 0.0,
             soc_percent: 0.0,
             temp_c: 0.0,
-            fan_level: 0,
-            fan_percent: 0,
             fan_rpm: 0,
 
             load_ma: 0,

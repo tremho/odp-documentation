@@ -11,39 +11,7 @@ This latter approach is a preferable pattern because it ensures that the same co
 
 We use the `get_internals()` method to return both the component and the `Device` instances instead of simply `inner_charger` because splitting the reference avoids inherent internal borrows on the same mutable 'self' reference.
 
-Update `charger_project/mock_charger/src/mock_charger_controller.rs` so that the `MockChargerController` definition itself looks like this:
-
-```rust
-pub struct MockChargerController {
-    pub charger: &'static mut MockCharger,
-    pub device: &'static mut Device
-}
-
-impl MockChargerController
-{    
-    pub fn new(device: &'static mut MockChargerDevice) -> Self {
-        let (charger, device) = device.get_internals();
-        Self { charger, device }
-    }
-}
-```
-and then replace any references in the code of 
-```rust
-self.device.inner_charger()
-```
-to become
-```rust
-self.charger
-```
-and lastly, change
-```rust
-let inner = controller.charger;
-```
-to become
-```rust
-let inner = &controller.charger;
-```
-to complete the revisions for `MockChargerController`.
+We'll be updating many of our previous controllers, as well as `MockChargerDevice` to make things consistent and to ensure are using the right types and traits required for the ODP service registrations.
 
 >📌 Why does `get_internals()` work where inner_charger() fails?
 >
@@ -58,10 +26,24 @@ to complete the revisions for `MockChargerController`.
 > This is why controllers like our `MockSensorController`, `MockFanController`, and now `MockChargerController` can be cleanly instantiated with `get_internals()`. The `MockBatteryController` happens not to need this because it never touches the `Device` half of `MockBatteryDevice` — it only needs the component itself.
 
 ### The other Controllers
-In our `MockSensorController` and `MockFanController` definitions, we did not make our `Device` or component members accessible, so we will change those now to do that and make them public:
+In our `MockSensorController` and `MockFanController` definitions, we did not make our `Device` or component members accessible, so we will change those now to do that and make them public.
+It also turns out that we need a few changes to the implemented traits for these controllers that are necessary to make these eligible for registering for the ODP thermal services.  Plus, we will add a couple of new helper accessor functions to simplify our usage later.
 
-In `mock_sensor_controller.rs`:
+Update `thermal_project/mock_thermal/src/mock_sensor_controller.rs` with this new version:
 ```rust
+
+use crate::mock_sensor::{MockSensor, MockSensorError};
+use crate::mock_sensor_device::MockSensorDevice;
+use embedded_services::power::policy::device::Device;
+
+use embedded_sensors_hal_async::temperature::{
+    DegreesCelsius, TemperatureSensor, TemperatureThresholdSet
+};
+use ec_common::events::ThresholdEvent;
+use embedded_sensors_hal_async::{sensor as sens, temperature as temp};
+use thermal_service as ts;
+
+
 pub struct MockSensorController {
     pub sensor: &'static mut MockSensor,
     pub device: &'static mut Device
@@ -79,10 +61,251 @@ impl MockSensorController {
         }
     }
 
+    // Check if temperature has exceeded the high/low thresholds and 
+    // issue an event if so.  Protect against hysteresis.
+    const HYST: f32 = 0.5;
+    pub fn eval_thresholds(&mut self, t:f32, lo:f32, hi:f32,
+        hi_latched: &mut bool, lo_latched: &mut bool) -> ThresholdEvent {
+
+        // trip rules: >= hi and <= lo (choose your exact policy)
+        if t >= hi && !*hi_latched {
+            *hi_latched = true;
+            *lo_latched = false;
+            return ThresholdEvent::OverHigh;
+        }
+        if t <= lo && !*lo_latched {
+            *lo_latched = true;
+            *hi_latched = false;
+            return ThresholdEvent::UnderLow;
+        }
+        // clear latches only after re-entering band with hysteresis
+        if t < hi - Self::HYST { *hi_latched = false; }
+        if t > lo + Self::HYST { *lo_latched = false; }
+        ThresholdEvent::None            
+    }
+
+    pub fn set_sim_temp(&mut self, t: f32) { self.sensor.set_temperature(t); }
+    pub fn current_temp(&self) -> f32 { self.sensor.get_temperature() }
+
+}
+
+impl sens::ErrorType for MockSensorController {
+    type Error = MockSensorError;
+}
+
+impl temp::TemperatureSensor for MockSensorController {
+    async fn temperature(&mut self) -> Result<DegreesCelsius, Self::Error> {
+        self.sensor.temperature().await
+    }
+}
+impl temp::TemperatureThresholdSet for MockSensorController {
+    async fn set_temperature_threshold_low(&mut self, threshold: DegreesCelsius) -> Result<(), Self::Error> {
+        self.sensor.set_temperature_threshold_low(threshold).await
+
+    }
+
+    async fn set_temperature_threshold_high(&mut self, threshold: DegreesCelsius) -> Result<(), Self::Error> {
+        self.sensor.set_temperature_threshold_high(threshold).await
+    }
+}
+
+impl ts::sensor::Controller for MockSensorController {}
+impl ts::sensor::CustomRequestHandler for MockSensorController {}
+
+
+
+// --------------------
+#[cfg(test)]
+use ec_common::test_helper::join_signals;
+#[allow(unused_imports)]
+use embassy_executor::Executor;
+#[allow(unused_imports)]
+use embassy_sync::signal::Signal;
+#[allow(unused_imports)]
+use static_cell::StaticCell;
+#[allow(unused_imports)]
+use embedded_services::power::policy::DeviceId;
+#[allow(unused_imports)]
+use ec_common::mutex::{Mutex, RawMutex};
+
+// Tests that don't need async
+#[test]
+fn threshold_crossings_and_hysteresis() {
+    // Build a controller with a default sensor
+    static DEVICE: StaticCell<MockSensorDevice> = StaticCell::new();
+    static CONTROLLER: StaticCell<MockSensorController> = StaticCell::new();
+    let device = DEVICE.init(MockSensorDevice::new(DeviceId(1)));
+    let controller = CONTROLLER.init(MockSensorController::new(device));
+    let mut hi_lat = false;
+    let mut lo_lat = false;
+
+    // Program thresholds via helpers or direct fields for tests
+    let (lo, hi) = (45.0_f32, 50.0_f32);
+
+    // Script: (t, expect)
+    use crate::mock_sensor_controller::ThresholdEvent::*;
+    let steps = [
+        (49.9, None),
+        (50.1, OverHigh),
+        (49.8, None),                 // still latched above-hi, no duplicate
+        (49.3, None),                 // cross below hi - hyst clears latch
+        (44.9, UnderLow),
+        (45.3, None),                 // cross above low + hyst clears latch
+    ];
+
+    for (t, want) in steps {
+        let got = controller.eval_thresholds(t, lo, hi, &mut hi_lat, &mut lo_lat);
+        assert_eq!(got, want, "t={t}°C");
+    }
+}
+
+// Tests that need async tasks --
+#[test]
+fn test_controller() {
+    static EXECUTOR: StaticCell<Executor> = StaticCell::new();
+
+    static DEVICE: StaticCell<MockSensorDevice> = StaticCell::new();
+    static CONTROLLER: StaticCell<MockSensorController> = StaticCell::new();
+
+    static TSV_DONE: StaticCell<Signal<RawMutex, ()>> = StaticCell::new();
+
+    let executor = EXECUTOR.init(Executor::new());
+
+    let tsv_done = TSV_DONE.init(Signal::new());
+
+    executor.run(|spawner| {        
+        let device = DEVICE.init(MockSensorDevice::new(DeviceId(1)));
+        let controller = CONTROLLER.init(MockSensorController::new(device));
+
+        let _ = spawner.spawn(test_setting_values(controller, tsv_done));
+ 
+        join_signals(&spawner, [
+            // vis_done,
+            tsv_done
+        ]);
+    });
+}
+
+// check initial state, then
+// set temperature, thresholds low and high, check sync with the underlying state
+#[embassy_executor::task]
+async fn test_setting_values(
+    controller: &'static mut MockSensorController,
+    done: &'static Signal<RawMutex, ()>
+) 
+{
+    // verify initial state
+    assert_eq!(0.0, controller.sensor.get_temperature());
+    assert_eq!(f32::NEG_INFINITY, controller.sensor.get_threshold_low());
+    assert_eq!(f32::INFINITY, controller.sensor.get_threshold_high());
+
+    let temp = 12.34;
+    let low = -56.78;
+    let hi = 67.89;
+    controller.sensor.set_temperature(temp);
+    let _ = controller.set_temperature_threshold_low(low).await;
+    let _ = controller.set_temperature_threshold_high(hi).await;
+    let rtemp = controller.temperature().await.unwrap();
+    assert_eq!(rtemp, temp);
+    assert_eq!(controller.sensor.get_threshold_low(), low);
+    assert_eq!(controller.sensor.get_threshold_high(), hi);
+
+    done.signal(());
+}
 ```
 
-In `mock_fan_controller.rs`:
+Likewise, update `thermal_project/mock_thermal/src/mock_fan_controller.rs` to this:
 ```rust
+
+use core::future::Future;
+use crate::mock_fan::{MockFan, MockFanError};
+use crate::mock_fan_device::MockFanDevice;
+use embedded_services::power::policy::device::Device;
+
+use embedded_fans_async as fans;
+use embedded_fans_async::{Fan, RpmSense};
+use thermal_service as ts;
+
+use ec_common::events::{CoolingRequest, CoolingResult, SpinUp};
+
+/// Policy Configuration values for behavior logic
+#[derive(Debug, Clone, Copy)]
+pub struct FanPolicy {
+    /// Max discrete cooling level (e.g., 10 means levels 0..=10).
+    pub max_level: u8,
+    /// Step per Increase/Decrease (in “levels”).
+    pub step: u8,
+    /// If going 0 -> >0, kick the fan to at least this RPM briefly.
+    pub min_start_rpm: u16,
+    /// The level you jump to on the first Increase from 0.
+    pub start_boost_level: u8,
+    /// How long to hold the spin-up RPM before dropping to level RPM.
+    pub spinup_hold_ms: u32,
+}
+
+impl Default for FanPolicy {
+    fn default() -> Self {
+        Self {
+            max_level: 10,
+            step: 2,
+            min_start_rpm: 1200,
+            start_boost_level: 3,
+            spinup_hold_ms: 300,
+        }
+    }
+}
+
+/// Linear mapping helper: level (0..=max) → PWM % (0..=100).
+#[inline]
+pub fn level_to_pwm(level: u8, max_level: u8) -> u8 {
+    if max_level == 0 { return 0; }
+    ((level as u16 * 100) / (max_level as u16)) as u8
+}
+
+/// Percentage mapping helper: pick a percentage of the range
+#[inline]
+pub fn percent_to_rpm_range(min: u16, max: u16, percent: u8) -> u16 {
+    let p = percent.min(100) as u32;
+    let span = (max - min) as u32;
+    min + (span * p / 100) as u16
+}
+/// Percentage mapping helper: pick a percentage of the max
+#[inline]
+pub fn percent_to_rpm_max(max: u16, percent: u8) -> u16 {
+    (max as u32 * percent.min(100) as u32 / 100) as u16
+}
+/// Core policy: pure, no I/O. Call this from your controller when you receive a cooling request.
+/// Later, if `spinup` is Some, briefly force RPM, then set RPM to `target_rpm_percent`.
+pub fn apply_cooling_request(cur_level: u8, req: CoolingRequest, policy: &FanPolicy) -> CoolingResult {
+    // Sanitize policy
+    let max = policy.max_level.max(1);
+    let step = policy.step.max(1);
+    let boost = policy.start_boost_level.clamp(1, max);
+
+    let mut new_level = cur_level.min(max);
+    let mut spinup = None;
+
+    match req {
+        CoolingRequest::Increase => {
+            if new_level == 0 {
+                new_level = boost;
+                spinup = Some(SpinUp { rpm: policy.min_start_rpm, hold_ms: policy.spinup_hold_ms });
+            } else {
+                new_level = new_level.saturating_add(step).min(max);
+            }
+        }
+        CoolingRequest::Decrease => {
+            new_level = new_level.saturating_sub(step);
+        }
+    }
+
+    CoolingResult {
+        new_level,
+        target_rpm_percent: level_to_pwm(new_level, max),
+        spinup,
+    }
+}
+
 pub struct MockFanController {
     pub fan: &'static mut MockFan,
     pub device: &'static mut Device
@@ -102,16 +325,222 @@ impl MockFanController {
             device
         }
     }
+
+    /// Execute behavior policy for a cooling request
+    pub async fn handle_request(
+        &mut self,
+        cur_level: u8,
+        req: CoolingRequest,
+        policy: &FanPolicy,
+    ) -> Result<(CoolingResult, u16), MockFanError> {
+        let res = apply_cooling_request(cur_level, req, policy);
+        if let Some(sp) = res.spinup {
+            // 1) force RPM to kick the rotor
+            let _ = self.set_speed_rpm(sp.rpm).await?;
+            // 2) hold for `sp.hold_ms` with embassy_time to allow spin up first
+            embassy_time::Timer::after(embassy_time::Duration::from_millis(sp.hold_ms as u64)).await;
+        }
+        let pwm = level_to_pwm(res.new_level, policy.max_level);
+        let rpm = self.set_speed_percent(pwm).await?;
+        Ok((res, rpm))
+    }
+}
+
+impl fans::ErrorType for MockFanController {
+    type Error = MockFanError;
+}
+
+impl fans::Fan for MockFanController {
+    fn min_rpm(&self) -> u16 {
+        self.fan.min_rpm()
+    }
+
+
+    fn max_rpm(&self) -> u16 {
+        self.fan.max_rpm()
+    }
+
+    fn min_start_rpm(&self) -> u16 {
+        self.fan.min_start_rpm()
+    }
+
+    fn set_speed_rpm(&mut self, rpm: u16) -> impl Future<Output = Result<u16, Self::Error>> {
+        self.fan.set_speed_rpm(rpm)
+    }
+}
+
+impl fans::RpmSense for MockFanController {
+    fn rpm(&mut self) -> impl Future<Output = Result<u16, Self::Error>> {
+        self.fan.rpm()
+    }
+}
+
+// Allow thermal service to drive us with default linear ramp
+impl ts::fan::CustomRequestHandler for MockFanController {}
+impl ts::fan::RampResponseHandler for MockFanController {}
+impl ts::fan::Controller for MockFanController {}
+
+// --------------------
+#[cfg(test)]
+use ec_common::test_helper::join_signals;
+#[allow(unused_imports)]
+use embassy_executor::Executor;
+#[allow(unused_imports)]
+use embassy_sync::signal::Signal;
+#[allow(unused_imports)]
+use static_cell::StaticCell;
+#[allow(unused_imports)]
+use embedded_services::power::policy::DeviceId;
+#[allow(unused_imports)]
+use ec_common::mutex::{Mutex, RawMutex};
+
+// Tests that don't need async
+#[test]
+fn increase_from_zero_triggers_spinup_then_levels() {
+    let p = FanPolicy { min_start_rpm: 1000, spinup_hold_ms: 250, ..FanPolicy::default() };
+    let r1 = apply_cooling_request(0, CoolingRequest::Increase, &p);
+    assert_eq!(r1.new_level, 3);
+    assert_eq!(r1.target_rpm_percent, 30);
+    assert_eq!(r1.spinup, Some(SpinUp { rpm: 1000, hold_ms: 250 }));
+
+    // Next increase: no spinup, just step
+    let r2 = apply_cooling_request(r1.new_level, CoolingRequest::Increase, &p);
+    assert_eq!(r2.new_level, 5);
+    assert_eq!(r2.spinup, None);
+}
+
+#[test]
+fn saturates_at_bounds_and_is_idempotent_at_extremes() {
+    let p = FanPolicy::default();
+
+    // Clamp at max
+    let r = apply_cooling_request(10, CoolingRequest::Increase, &p);
+    assert_eq!(r.new_level, 10);
+    assert_eq!(r.spinup, None);
+
+    // Clamp at 0
+    let r = apply_cooling_request(1, CoolingRequest::Decrease, &p);
+    assert_eq!(r.new_level, 0);
+    let r = apply_cooling_request(0, CoolingRequest::Decrease, &p);
+    assert_eq!(r.new_level, 0);
+}
+
+#[test]
+fn mapping_to_rpm_is_linear_and_total() {
+    assert_eq!(level_to_pwm(0, 10), 0);
+    assert_eq!(level_to_pwm(5, 10), 50);
+    assert_eq!(level_to_pwm(10, 10), 100);
+}
+
+// Tests that need async tasks --
+#[test]
+fn test_setting_values() {
+    static EXECUTOR: StaticCell<Executor> = StaticCell::new();
+    static DEVICE: StaticCell<MockFanDevice> = StaticCell::new();
+    static CONTROLLER: StaticCell<MockFanController> = StaticCell::new();
+    static DONE: StaticCell<Signal<RawMutex, ()>> = StaticCell::new();
+
+    let executor = EXECUTOR.init(Executor::new());
+    let done = DONE.init(Signal::new());
+
+    executor.run(|spawner| {       
+        let device = DEVICE.init(MockFanDevice::new(DeviceId(1)));
+        let controller = CONTROLLER.init(MockFanController::new(device));
+
+        // run these tasks sequentially
+        let _ = spawner.spawn(setting_values_test_task(controller, done));
+        join_signals(&spawner, [done]);
+    });
+}
+#[test]
+fn test_handle_request() {
+    static EXECUTOR: StaticCell<Executor> = StaticCell::new();
+    static DEVICE: StaticCell<MockFanDevice> = StaticCell::new();
+    static CONTROLLER: StaticCell<MockFanController> = StaticCell::new();
+    static DONE: StaticCell<Signal<RawMutex, ()>> = StaticCell::new();
+
+    let executor = EXECUTOR.init(Executor::new());
+    let done = DONE.init(Signal::new());
+
+    executor.run(|spawner| {       
+        let device = DEVICE.init(MockFanDevice::new(DeviceId(1)));
+        let controller = CONTROLLER.init(MockFanController::new(device));
+
+        // run these tasks sequentially
+        let _ = spawner.spawn(handle_request_test_task(controller, done));
+        join_signals(&spawner, [done]);
+    });
+}
+
+// check initial state, then
+// set temperature, thresholds low and high, check sync with the underlying state
+#[embassy_executor::task]
+async fn setting_values_test_task(
+    controller: &'static mut MockFanController,
+    done: &'static Signal<RawMutex, ()>
+) 
+{
+    use crate::virtual_fan::{FAN_RPM_MINIMUM, FAN_RPM_MAXIMUM, FAN_RPM_START};
+    // verify initial state
+    let rpm = controller.rpm().await.unwrap();
+    let min = controller.min_rpm();
+    let max = controller.max_rpm();
+    let min_start = controller.min_start_rpm();
+    assert_eq!(rpm, 0);
+    assert_eq!(min, FAN_RPM_MINIMUM);
+    assert_eq!(max, FAN_RPM_MAXIMUM);
+    assert_eq!(min_start, FAN_RPM_START);
+
+    // now set values and verify them
+    let _ = controller.set_speed_max().await;
+    let v = controller.rpm().await.unwrap();
+    assert_eq!(v, FAN_RPM_MAXIMUM);
+    let _ = controller.set_speed_percent(50).await;
+    let v = controller.rpm().await.unwrap();
+    assert_eq!(v, FAN_RPM_MAXIMUM / 2);
+    let _ = controller.set_speed_rpm(0).await;
+    let v = controller.rpm().await.unwrap();
+    assert_eq!(v, 0);
+
+    done.signal(());
+}
+
+#[embassy_executor::task]
+async fn handle_request_test_task(
+    controller: &'static mut MockFanController,
+    done: &'static Signal<RawMutex, ()>
+) {
+    let policy = FanPolicy { min_start_rpm: 1000, spinup_hold_ms: 0, ..Default::default() };
+
+    // Start from 0, request Increase -> expect spinup and final RPM for boost level
+    let (res1, rpm1) = controller.handle_request(0, CoolingRequest::Increase, &policy).await.unwrap();
+    assert!(res1.spinup.is_some(), "should spin up from 0");
+    assert_eq!(res1.new_level, policy.start_boost_level);
+
+    // Final RPM should match the percent mapping for the new level
+    let expect1 = percent_to_rpm_max(controller.max_rpm(), level_to_pwm(res1.new_level, policy.max_level));
+    assert_eq!(rpm1, expect1);
+
+    // Next increase -> no spinup; just step up by `step`
+    let (res2, rpm2) = controller.handle_request(res1.new_level, CoolingRequest::Increase, &policy).await.unwrap();
+    assert!(res2.spinup.is_none());
+    assert_eq!(res2.new_level, (res1.new_level + policy.step).min(policy.max_level));
+
+    let expect2 = percent_to_rpm_max(controller.max_rpm(), level_to_pwm(res2.new_level, policy.max_level));
+    assert_eq!(rpm2, expect2);
+
+    done.signal(());    
+}
 ```
 
 We mentioned that we originally implemented `MockBatteryController` as being constructed without a `Device` element, but we _will_ need to access this device context later, so we should expose that as public member in the same way.  While we are at it, we should also eliminate the generic design of the structure definition, since it is only adding unnecessary complexity and inconsistency.
 
-Update `battery_project/mock_battery/mock_battery_component.rs` so that it now looks like this (consistent with the others):
+Update `battery_project/mock_battery/mock_battery_controller.rs` so that it now looks like this (consistent with the others):
 
 ```rust
 use battery_service::controller::{Controller, ControllerEvent};
 use battery_service::device::{DynamicBatteryMsgs, StaticBatteryMsgs};
-use embassy_time::{Duration, Timer};
+use embassy_time::{Duration, Timer}; 
 use crate::mock_battery::{MockBattery, MockBatteryError};
 use crate::mock_battery_device::MockBatteryDevice;
 use embedded_services::power::policy::device::Device;
@@ -274,16 +703,16 @@ impl SmartBattery for MockBatteryController
         self.battery.serial_number().await
     }
 
-    async fn manufacturer_name(&mut self, v: &mut [u8]) -> Result<(), Self::Error> {
-        self.battery.manufacturer_name(v).await
+    async fn manufacturer_name(&mut self, buf: &mut [u8]) -> Result<(), Self::Error> {
+        self.battery.manufacturer_name(buf).await
     }
 
-    async fn device_name(&mut self, v: &mut [u8]) -> Result<(), Self::Error> {
-        self.battery.device_name(v).await
+    async fn device_name(&mut self, buf: &mut [u8]) -> Result<(), Self::Error> {
+        self.battery.device_name(buf).await
     }
 
-    async fn device_chemistry(&mut self, v: &mut [u8]) -> Result<(), Self::Error> {
-        self.battery.device_chemistry(v).await
+    async fn device_chemistry(&mut self, buf: &mut [u8]) -> Result<(), Self::Error> {
+        self.battery.device_chemistry(buf).await
     }    
 }
 
@@ -300,7 +729,7 @@ impl Controller for MockBatteryController
         let mut device = [0u8; 21];
         let mut chem = [0u8; 5];
 
-        println!("MockBatteryController: Fetching static data");
+        // println!("MockBatteryController: Fetching static data");
 
         self.battery.manufacturer_name(&mut name).await?;
         self.battery.device_name(&mut device).await?;
@@ -335,7 +764,7 @@ impl Controller for MockBatteryController
 
 
     async fn get_dynamic_data(&mut self) -> Result<DynamicBatteryMsgs, Self::ControllerError> {
-        println!("MockBatteryController: Fetching dynamic data");
+        // println!("MockBatteryController: Fetching dynamic data");
 
         // Pull values from SmartBattery trait
         let full_capacity = match self.battery.full_charge_capacity().await? {
@@ -424,22 +853,6 @@ As previously mentioned, note that these changes break the constructor calling i
 You would need to change any references to MockBatteryController<MockBattery> in any of the existing code that uses the former version to be simply `MockBatteryController` and will need to update any calls to the constructor to pass the `MockBatteryDevice` instance instead of `MockBattery`.
 There are likely other ramifications with regard to multiple borrows that still remain in the previous code that you will have to choose how to mitigate as well.
 
-### As long as we're updating controllers...
-An oversight in the implementation of some of the `SmartBattery` traits of `MockBatteryController` fail to pass the buffer parameter down into the underlying implementation.  Although this won't materially affect the build here, it should be remedied. Replace these methods in `battery_project/mock_battery/src/mock_battery_controller.rs` with the versions below:
-
-```rust
-    async fn manufacturer_name(&mut self, buf: &mut [u8]) -> Result<(), Self::Error> {
-        self.battery.manufacturer_name(buf).await
-    }
-
-    async fn device_name(&mut self, buf: &mut [u8]) -> Result<(), Self::Error> {
-        self.battery.device_name(buf).await
-    }
-
-    async fn device_chemistry(&mut self, buf: &mut [u8]) -> Result<(), Self::Error> {
-        self.battery.device_chemistry(buf).await
-    }    
-```
 
 
 

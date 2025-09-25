@@ -165,10 +165,9 @@ impl RendererBackend for LogBackend {
         let time_str = time_fmt_from_ms(dv.sim_time_ms);
         let rt_ms = Instant::now().as_millis();
         println!(
-            "[{}]({} {}) {} - SOC {:>5.1}% | Draw {:>5.1}W | Chg {:>5.1}W | Net {:>+5.1}W | T {:>4.1}°C | Fan L{} {}% {}rpm",
+            "[{}]({} {}) {} - SOC {:>5.1}% | Draw {:>5.1}W | Chg {:>5.1}W | Net {:>+5.1}W | T {:>4.1}°C | Fan: {}rpm",
             rt_ms, speed_number, speed_multiplier, time_str, 
-            dv.soc_percent, dv.draw_watts, dv.charge_watts, dv.net_watts, dv.temp_c, dv.fan_level,
-            dv.fan_percent, dv.fan_rpm
+            dv.soc_percent, dv.draw_watts, dv.charge_watts, dv.net_watts, dv.temp_c, dv.fan_rpm
         );
     }
     fn render_static(&mut self, sv: &StaticValues) {
@@ -292,8 +291,6 @@ pub async fn integration_logic(core: &mut ControllerCore)  -> Result<DynamicBatt
         sim_time_ms: 0.0,
         soc_percent: dd.relative_soc_pct as f32,
         temp_c: 0.0,
-        fan_level: 0,
-        fan_percent: 0,
         fan_rpm: 0,
         load_ma: 0,
         charger_ma: 0,
@@ -397,7 +394,6 @@ In `integration_logic.rs`, just above where we call `core.sysobs.update()`, add 
             core.chg.last_policy_sent_at_ms = now_ms;
         }
     }
-
     // --- PSU attach/detach decision
     let margin = core.cfg.policy.charger.heavy_load_ma;
     if load_ma > margin {
@@ -419,6 +415,10 @@ In `integration_logic.rs`, just above where we call `core.sysobs.update()`, add 
         core.chg.last_psu_change_ms = now_ms;
     }
 
+    let fan_rpm = {
+        let ctrl = core.fan.controller().lock().await;
+        ctrl.fan.current_rpm()
+    };
 ```
 We'll have to bring in these imports in order to get to our charger policy functions, and the format helpers from our display models:
 ```rust
@@ -442,54 +442,61 @@ Now we should see some policy behavior in action.  If we run the program with `c
 
 This behavior is roughly equivalent to what we saw in our earlier integration attempts, but now we have a more structured and modular approach to handling the display rendering and the integration logic.  We'll cap this off next by adding the thermal considerations.
 
-### Thermal Policy
+### Thermal Simulation
 
-We also created some thermal policy functions in `thermal_governor.rs` earlier.  We can use these to manage the fan speed based on the battery temperature. Let's grab what we need for imports:
+We also created some thermal physics simulation functions in `thermal_model.rs` earlier. 
+Let's grab what we need for imports:
 ```rust
 use crate::model::thermal_model::step_temperature;
-use crate::policy::thermal_governor::process_sample;
-use mock_thermal::mock_fan_controller::level_to_pwm;
 ```
 
 and add this code above the `// --- PSU attach/detach decision` comment in `integration_logic()`:
 ```rust
     // --- thermal model + governor
+
+    // Charge power in Watts (only when attached and current is into the battery)
+    let chg_w: f32 = if core.chg.was_attached {
+        (act_chg_ma.max(0) as f32) * (mv as f32) / 1_000_000.0
+    } else {
+        0.0
+    };
+    // --- fan telemetry (and for thermal model) ---
+    let (rpm, min_rpm, max_rpm) = {
+        let mut fc = core.fan.controller().lock().await;  // short lock
+        (fc.rpm().await.unwrap_or(0), fc.min_rpm(), fc.max_rpm())
+    };
+
+    let sensor_temp = {
+        let ctrl = core.sensor.controller().lock().await;
+        ctrl.current_temp()
+    };
+
+    // --- thermal model ---
     let new_temp = step_temperature(
-        core.sensor.sensor.get_temperature(),
+        sensor_temp,
         load_ma,
-        core.therm.fan_level,
+        rpm,
+        min_rpm,
+        max_rpm,
         &core.cfg.sim.thermal,
-        dt_s
+        dt_s,
+        chg_w,
     );
+
     let c100 = (new_temp * 100.0).round().clamp(0.0, 65535.0) as u16;
     let _ = core.try_send(BusEvent::Thermal(ThermalEvent::TempSampleC100(c100)));
 
-    let hi_on = core.cfg.policy.thermal.temp_high_on_c;
-    let lo_on = core.cfg.policy.thermal.temp_low_on_c;
-    let td = process_sample(
-        new_temp,
-        core.therm.hi_latched, core.therm.lo_latched,
-        hi_on, lo_on,
-        core.cfg.policy.thermal.fan_hyst_c,
-        core.therm.last_fan_change_ms, core.cfg.policy.thermal.fan_min_dwell_ms,
-        now_ms,
-    );
-    core.therm.hi_latched = td.hi_latched;
-    core.therm.lo_latched = td.lo_latched;
-    if !matches!(td.threshold_event, ThresholdEvent::None) {
-        core.send(BusEvent::Thermal(ThermalEvent::Threshold(td.threshold_event))).await;
-    }
-    if let Some(req) = td.cooling_request {
-        core.send(BusEvent::Thermal(ThermalEvent::CoolingRequest(req))).await;
-        if td.did_step { core.therm.last_fan_change_ms = now_ms; }
-    }
+    let fan_rpm = {
+        let ctrl = core.fan.controller().lock().await;
+        ctrl.fan.current_rpm()
+    };
 ```
+This computes the temperature from the battery and sends it as a sensor event.
+
 and then we can set the following `DisplayValues` fields for temperature and fan status:
 ```rust
         temp_c: new_temp,
-        fan_level: core.therm.fan_level as u8,
-        fan_percent: level_to_pwm(core.therm.fan_level, core.cfg.sim.thermal.max_fan_level),
-        fan_rpm: core.fan.fan.current_rpm(),
+        fan_rpm,
 ```
 
 We now have all the components integrated and reporting.  But nothing too exciting is happening because we only have a consistent load on the system that we've established at the start.  
