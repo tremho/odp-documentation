@@ -15,11 +15,14 @@ If we increase the load during any of this, the battery discharges faster, and t
 As we've written it, the test context does not have the ability to change the simulated time multiplier the way the interactive context allows, so all simulation time for the test runs at the pre-configured level 3 (25X).  
 
 ### Running faster
-Since this is a test, we don't need to dally.  Let's make a change so that the default level for the integration-test mode is level 5 (100X).  In `controller_core.rs` add the following lines below the temperature threshold settings within the set-aside mutex lock block:
+Since this is a test, we don't need to dally.  Let's make a change so that the default level for the integration-test mode is level 5 (100X).  In `controller_core.rs` add the following lines at the top of the `controller_core_task` so that this executes once at the start before entering the event loop:
 ```rust
-
-        #[cfg(feature = "integration-test")]
+    #[cfg(feature = "integration-test")]
+    {
+        let core = core_mutex.lock().await;
         core.sysobs.set_speed_number(5).await;
+    }
+
 ```
 
 ## Checking static, then stepwise events
@@ -208,15 +211,16 @@ Replace the current `on_static` method with this one:
 ```
 and we'll check some more of the starting values.  Change the member function `check_starting_values()` to this version:
 ```rust
-            fn check_starting_values(&mut self, soc:f32, draw_watts:f32, charge_watts:f32, temp_c:f32, fan_level:u8) -> TestStep {
+            fn check_starting_values(&mut self, soc:f32, draw_watts:f32, charge_watts:f32, temp_c:f32, fan_rpm:u16) -> TestStep {
                 let reporter = &mut self.reporter;
                 add_test!(reporter, "Check Starting Values", |obs| {
                     expect_eq!(obs, soc, 100.0);
                     expect_eq!(obs, draw_watts, 9.4);
                     expect_eq!(obs, charge_watts, 0.0);
                     expect_to_decimal!(obs, temp_c, 24.6, 1);
-                    expect_eq!(obs, fan_level, 0);
+                    expect_eq!(obs, fan_rpm, 0);
                 });
+                //TestStep::CheckChargerAttach
                 TestStep::EndAndReport
             }
 ```
@@ -227,9 +231,9 @@ and change the match arm to call it like this:
                         let charge_watts = dv.charge_watts;
                         let temp_c = dv.temp_c;
                         let soc = dv.soc_percent;
-                        let fan_level = dv.fan_level;
+                        let fan_rpm = dv.fan_rpm;
 
-                        self.step = self.check_starting_values(soc, draw_watts, charge_watts, temp_c, fan_level);
+                        self.step = self.check_starting_values(soc, draw_watts, charge_watts, temp_c, fan_rpm);
                     },
 ```
 Now we can be reasonably confident that we are starting out as expected before continuing.

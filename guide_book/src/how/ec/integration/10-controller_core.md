@@ -11,12 +11,10 @@ Our `ControllerCore` implementation will consist of four primary areas of concer
 
 The first two of these are necessary to implement in order to create a minimally viable first test.
 
-Let's start out with the basic implementation of `contoller_core.rs` by starting with this code:
+Let's start out with the basic implementation of `controller_core.rs` by starting with this code:
 ```rust
 use mock_battery::mock_battery_controller::MockBatteryController;
 use mock_charger::mock_charger_controller::MockChargerController;
-use mock_thermal::mock_sensor_controller::MockSensorController;
-use mock_thermal::mock_fan_controller::MockFanController;
 use crate::config::ui_config::RenderMode;
 use crate::system_observer::SystemObserver;
 use crate::entry::{BatteryChannelWrapper, ChargerChannelWrapper, InteractionChannelWrapper, ThermalChannelWrapper};
@@ -37,12 +35,10 @@ use embedded_services::power::policy::PowerCapability;
 use embedded_services::power::policy::charger::PolicyEvent;
 use embedded_services::power::policy::charger::ChargerResponseData;
 
-use embedded_sensors_hal_async::temperature::TemperatureThresholdSet;
-
 use ec_common::mutex::{Mutex, RawMutex};
 use crate::display_models::StaticValues;
 use crate::events::{BusEvent, InteractionEvent};
-use ec_common::events::{ThermalEvent, ThresholdEvent};
+use ec_common::events::ThermalEvent;
 use embedded_services::power::policy::charger::{ChargerEvent, PsuState};
 use embassy_sync::channel::{Channel, Sender, Receiver, TrySendError};
 
@@ -57,15 +53,23 @@ use mock_charger::mock_charger::MockChargerError;
 const BUS_CAP: usize = 32;
 
 use crate::config::AllConfig;
-use crate::state::{ChargerState, ThermalState, SimState};
+use crate::state::{ChargerState, SimState};
+
+use crate::setup_and_tap::INTERNAL_SAMPLE_BUF_LENGTH;
+
+use thermal_service as ts;
+use ts::sensor as tss;
+use ts::fan   as tsf;
+
 
 #[allow(unused)]
 pub struct ControllerCore { 
     // device components
     pub battery: MockBatteryController,         // controller tap is owned by battery service wrapper
     pub charger: MockChargerController, 
-    pub sensor: MockSensorController,
-    pub fan: MockFanController,
+    // ODP wrappers, not raw controllers
+    pub sensor: &'static tss::Sensor<mock_thermal::mock_sensor_controller::MockSensorController, {INTERNAL_SAMPLE_BUF_LENGTH}>,
+    pub fan:    &'static tsf::Fan<mock_thermal::mock_fan_controller::MockFanController, {INTERNAL_SAMPLE_BUF_LENGTH}>,
     // for charger service
     pub charger_service_device: &'static ChargerDevice,
 
@@ -85,7 +89,6 @@ pub struct ControllerCore {
 
     // state
     pub sim: SimState,
-    pub therm: ThermalState,
     pub chg: ChargerState
     
 }
@@ -96,8 +99,8 @@ impl ControllerCore {
     pub fn new(
         battery: MockBatteryController, 
         charger: MockChargerController,
-        sensor: MockSensorController,
-        fan: MockFanController,
+        sensor: &'static tss::Sensor<mock_thermal::mock_sensor_controller::MockSensorController, {INTERNAL_SAMPLE_BUF_LENGTH}>,
+        fan: &'static tsf::Fan<mock_thermal::mock_fan_controller::MockFanController, {INTERNAL_SAMPLE_BUF_LENGTH}>,
         charger_service_device: &'static ChargerDevice,
         battery_channel: &'static BatteryChannelWrapper,
         charger_channel: &'static ChargerChannelWrapper,
@@ -114,7 +117,6 @@ impl ControllerCore {
             sysobs,
             cfg: AllConfig::default(),
             sim: SimState::default(),
-            therm: ThermalState::default(),
             chg: ChargerState::default()
         }
     }
@@ -135,15 +137,17 @@ impl ControllerCore {
     /// start event processing with a passed mutex 
     pub fn start(core_mutex: &'static Mutex<RawMutex, ControllerCore>, spawner: Spawner) {
         
-        println!("In ControllerCore::start (fn={:p})", Self::start as *const ()); 
+        println!("In ControllerCore::start()"); 
     }
 }
 ```
 
 Now, you will recall that we created `BatteryAdapter` as a structure implementing all the traits required for it to serve as the component registered for the Battery Service (via the `BatteryWrapper`), and that this implementation simply passed these traits along to this `ControllerCore` instance, so we must necessarily implement all those trait methods here in `ControllerCore` as well.  Since we have our actual Battery object contained here, we can forward these in turn to that component, thus attaching it to the Battery Service.  But along the way, we get the opportunity to "tap into" this relay and use this opportunity to conduct our integration business.
 
+As noted briefly earlier, we could choose to not implement these traits here.  In the end the `ControllerCore` does not really need to "look like a battery controller" -- it just needs to handle key methods triggered by the tr
+
 Let's go ahead and implement these traits  by adding this code to `controller_core.rs` now.
-This looks long, but most of it is just pass-through to the underlying battery and charger components (remember how extensive the `SmartBatter`y traits are):
+This looks long, but most of it is just pass-through to the underlying battery and charger components (remember how extensive the `SmartBattery` traits are):
 
 ```rust
 // ================= traits ==================

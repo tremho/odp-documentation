@@ -304,3 +304,6 @@ impl Controller for BatteryAdapter {
 ```
 As noted, the `BatteryAdapter` is nothing more than a forwarding mechanism to direct the trait methods called by the battery service into our code base.  We pass it the reference to our `core_mutex` which is then used to call the battery controller traits implemented there, in our `ControllerCore` code.
 
+Note that we might also have chosen to direct all but the `get_static_data` / `get_dynamic_data` trait methods of `BatteryAdapter` directly to the `MockBatteryController`, since the `ControllerCore` is going to simply forward them there anyway.
+
+

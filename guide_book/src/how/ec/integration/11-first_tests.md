@@ -12,9 +12,8 @@ use crate::system_observer::SystemObserver;
 // use crate::display_render::display_render::DisplayRenderer;
 
 // Task imports
-use crate::setup_and_tap::{
-    setup_and_tap_task
-};
+use crate::setup_and_tap::setup_and_tap_task;
+
 ```
 And now we want to add the entry point that is called by `main()` here (in `entry.rs`):
 ```rust
@@ -149,8 +148,8 @@ setup_and_tap_starting
 🥳 >>>>> get_timeout has been called!!! <<<<<<
 🧩 Registering battery device...
 🧩 Registering charger device...
-🧩 Registering sensor device...
-🧩 Registering fan device...
+🧩 Registering sensor device to thermal service...
+🧩 Registering fan device to thermal service...
 🔌 Initializing battery fuel gauge service...
 Setup and Tap calling ControllerCore::start...
 In ControllerCore::start (fn=0x7ff6425f9860)
@@ -181,7 +180,7 @@ Let's pause here to review what is actually happening at this point.
 
 ### Review of operation so far
 1. `main()` calls `entry_task_interactive()`, which initializes the shared handles and spawns the `setup_and_tap_task()`.
-2. `setup_and_tap_task()` initializes embedded-services, spawns the battery service task, constructs and registers the mock devices and controllers, and finally spawns the `ControllerCore::start()` task.
+2. `setup_and_tap_task()` initializes embedded-services, and thermal-services, spawns the battery service task, constructs and registers the mock devices and controllers, registers the thermal components, and finally spawns the `ControllerCore::start()` task.
 3. `ControllerCore::start()` initializes the controller core, spawns the charger policy event task, the controller core task, the start charger task, and the integration listener task.
 4. Meanwhile, back in `entry_task_interactive()`, after spawning `setup_and_tap_task()`, it waits for the battery fuel service to signal that it is ready, which happens at the end of `setup_and_tap_task()`.
 5. The `battery_start_task()` is spawned as part of `setup_and_tap_task ()`, which initializes the battery service by sending it a `DoInit` event, followed by a `PollStaticData` event, and then enters a loop where it continuously sends `PollDynamicData` events to the battery service at regular intervals.   This is what drives the periodic updates of battery data in our integration.        

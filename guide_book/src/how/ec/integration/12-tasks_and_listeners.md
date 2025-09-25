@@ -116,25 +116,12 @@ async fn handle_thermal(core_mutex: &'static Mutex<RawMutex, ControllerCore>, ev
         ThermalEvent::TempSampleC100(cc) => {
             let temp_c = cc as f32 / 100.0;
             {
-                let mut core = core_mutex.lock().await;
-                core.sensor.sensor.set_temperature(temp_c);
+                let core = core_mutex.lock().await;
+                let mut ctrl = core.sensor.controller().lock().await;
+                ctrl.set_sim_temp(temp_c);
             }
-        }
-
-        ThermalEvent::Threshold(th) => {
-            match th {
-                ThresholdEvent::OverHigh => println!(" ⚠🔥 running hot"),
-                _ => {}
-            }
-        }
-
-        ThermalEvent::CoolingRequest(req) => {
-            let mut core = core_mutex.lock().await;
-            let policy = core.cfg.policy.thermal.fan_policy;
-            let cur_level = core.therm.fan_level;
-            let (res, _rpm) = core.fan.handle_request(cur_level, req, &policy).await.unwrap();
-            core.therm.fan_level = res.new_level;
-        }
+        },
+        _ => {}
     }
 }
 ```
@@ -207,9 +194,7 @@ pub async fn charger_policy_event_task(core_mutex: &'static Mutex<RawMutex, Cont
                 if p {println!("Charger PolicyEvent::PolicyConfiguration received {:?}", cap);}
                 device.send_response(Ok(ChargerResponseData::Ack)).await; // ack so caller can continue
                 let core = core_mutex.lock().await;
-                if core.try_send(BusEvent::ChargerPolicy(cap)).is_err() {
-                    eprintln!("⚠️ Dropped ChargerPolicy event (bus full)");
-                }
+                let _ = core.try_send(BusEvent::ChargerPolicy(cap));
             }
         }
     }
@@ -241,21 +226,5 @@ We also need to spawn these tasks in the `start()` method of `ControllerCore`.  
             eprintln!("spawn charger_policy_event_task failed: {:?}", e);
         }
 ```
-
-### Starting values for thermal policy
-Our thermal policy respects temperature thresholds to determine when to request cooling actions.  We have established these thresholds in the configuration, but we need to set them into action before we begin.  We can do this at the top of our `controller_core_task()` function, before we enter the main loop:
-
-```rust
-    // set initial temperature thresholds
-    {
-        let mut core = core_mutex.lock().await;
-        let lo_temp_threshold = core.cfg.policy.thermal.temp_low_on_c;
-        let hi_temp_threshold = core.cfg.policy.thermal.temp_high_on_c;
-        if let Err(e) = core.sensor.set_temperature_threshold_low(lo_temp_threshold) { eprintln!("temp low set failed: {e:?}"); }
-        if let Err(e) = core.sensor.set_temperature_threshold_high(hi_temp_threshold) { eprintln!("temp high set failed: {e:?}"); }
-    }
-```
-We do this inside of a block to limit the scope of the mutex lock.  This is a good practice to avoid holding locks longer than necessary.
-
 
 Now the handling for charger and thermal events are in place.  Now we can begin to implement the integration logic that binds these components together.

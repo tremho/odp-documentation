@@ -2,6 +2,8 @@
 
 At the start of this integration example series, we discussed how this application would serve as output both for logging changes, as an interactive simulator display, and as an integration test. We have so far implemented the logging display mode, which provides a useful perspective on system state changes over time. But we also want to implement the in-place rendering mode, which will provide a more interactive experience.
 
+We'll walk through this here -- but this is not a part of component design per-se, and certainly not something that would be part of an embedded system -- this is just "eye-candy" that makes the use of the interactive simulation a little more comfortable.  The code presented here is drop-in, so you don't need to worry about understanding ANSI control codes and other minutia of this part of the application.
+
 As you might guess, the key to implementing the in-place rendering mode lies in completing the implementation of the `display_render/in_place_render.rs` file.  Like its already-completed counterpart, `log_render.rs`, this file implements the `DisplayRenderer` trait.  The key difference is that instead of printing out log lines, it will use terminal control codes to update the display in place.
 
 ### ANSI Escape Codes
@@ -232,7 +234,7 @@ impl RendererBackend for InPlaceBackend {
         print!("Temp  {:5.1} °C   ", dv.temp_c);
         print!("{}{}Fan:  ", fg(temp_zone.fg), bg(BG_PANEL));
         print!("{}{}", bg(BG_PANEL), fg(FG_DEFAULT));
-        println!(" L{} ({}%) -- {} rpm", dv.fan_level, dv.fan_percent, dv.fan_rpm);
+        println!(" {} rpm", dv.fan_rpm);
 
         // line + footer
         line_start(ROW_LINE2, COL_LEFT);

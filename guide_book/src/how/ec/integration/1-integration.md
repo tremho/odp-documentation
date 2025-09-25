@@ -66,6 +66,9 @@ embassy-time-queue-utils    = { workspace = true }
 embedded-services           = { workspace = true }
 battery-service             = { workspace = true }
 embedded-sensors-hal-async  = {workspace = true}
+embedded-fans-async         = {workspace = true}
+thermal-service             = {workspace = true}
+
 
 ec_common       = { path = "../ec_common"}
 mock_battery    = { path = "../battery_project/mock_battery", default-features = false}
@@ -105,6 +108,12 @@ Next, edit the `ec_examples/Cargo.toml` at the top level to add `integration_pro
 ]
 ```
 
+We also need to add a couple more references to the `[patch.crates-io]` section to ensure cargo refers to the same crates across the board:
+```toml
+embedded-sensors-hal-async = { path = "embedded-sensors/embedded-sensors-async"}  
+embedded-fans-async = { path = "embedded-fans/embedded-fans-async"}
+```
+
 _As a reminder, the whole of `ec_examples/Cargo.toml` looks like this:_
 
 ```toml
@@ -117,6 +126,7 @@ members = [
     "thermal_project/mock_thermal",
     "battery_charger_subsystem",
     "integration_project",
+    "target-integration_project",
     "ec_common"
 ]
 
@@ -174,6 +184,8 @@ embassy-futures = { path = "embassy/embassy-futures" }
 embassy-time-driver = { path = "embassy/embassy-time-driver" }
 embassy-time-queue-utils = { path = "embassy/embassy-time-queue-utils" }
 embedded-batteries-async = { path = "embedded-batteries/embedded-batteries-async" }
+embedded-sensors-hal-async = { path = "embedded-sensors/embedded-sensors-async"}  
+embedded-fans-async = { path = "embedded-fans/embedded-fans-async"}
 
 # Lint settings for the entire workspace.
 # We start with basic warning visibility, especially for upcoming Rust changes.
