@@ -1,6 +1,7 @@
 # What is in ODP?
 
 There are over 60 repositories that make up the whole of the ODP umbrella. Many of these are simply HAL definitions for particular hardware, but others define the critical business logic and data traits that comprise the portable and modular framework ODP provides. Many of the crates defined by these repositories may be interdependent.  
+
 Other repositories represented here define tools and tests that are useful in development.
 
 ---
@@ -16,10 +17,7 @@ Other repositories represented here define tools and tests that are useful in de
 | [patina-fw-patcher](https://github.com/OpenDevicePartnership/patina-fw-patcher) | Speeds up incremental firmware build iterations vs. full `stuart_build`. | Patina |
 | [patina-mtrr](https://github.com/OpenDevicePartnership/patina-mtrr) | MTRR (Memory Type Range Register) library for x86_64. | Patina |
 | [patina-paging](https://github.com/OpenDevicePartnership/patina-paging) | Common paging support for ARM64 and x64. | Patina |
-| [uefi-bds](https://github.com/OpenDevicePartnership/uefi-bds) | UEFI Boot Device Selection DXE driver. | Patina |
 | [uefi-corosensei](https://github.com/OpenDevicePartnership/uefi-corosensei) | UEFI fork of corosensei crate. | Patina |
-| [modern-payload](https://github.com/OpenDevicePartnership/modern-payload) | Slimmed down UEFI payload. | Patina |
-| [slimloader](https://github.com/OpenDevicePartnership/slimloader) | First stage boot loader for AArch64. | Patina |
 
 ---
 
