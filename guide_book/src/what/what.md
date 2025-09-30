@@ -14,6 +14,7 @@ Other repositories represented here define tools and tests that are useful in de
 | [patina](https://github.com/OpenDevicePartnership/patina) | Library of crates implementing Patina UEFI code. | Patina |
 | [patina-dxe-core-qemu](https://github.com/OpenDevicePartnership/patina-dxe-core-qemu) | Builds `.efi` image from Patina libraries and local components for QEMU. | Patina |
 | [patina-qemu](https://github.com/OpenDevicePartnership/patina-qemu) | QEMU platform firmware integrating `.efi` Patina binaries. | Patina |
+| [patina-readiness-tool](https://github.com/OpenDevicePartnership/patina-readiness-tool) | Tests platform readiness for Patina. | Patina |
 | [patina-fw-patcher](https://github.com/OpenDevicePartnership/patina-fw-patcher) | Speeds up incremental firmware build iterations vs. full `stuart_build`. | Patina |
 | [patina-mtrr](https://github.com/OpenDevicePartnership/patina-mtrr) | MTRR (Memory Type Range Register) library for x86_64. | Patina |
 | [patina-paging](https://github.com/OpenDevicePartnership/patina-paging) | Common paging support for ARM64 and x64. | Patina |
